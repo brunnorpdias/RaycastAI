@@ -1,5 +1,7 @@
-import { Detail, useNavigation } from "@raycast/api";
-import { OpenAIn } from "./OpenAIn"
+import { Detail } from "@raycast/api";
+// import { OpenAIn } from '../requests/openAI'
+import { gptStatic } from './openAI'
+import { useEffect, useState } from 'react';
 
 type Data = {
   prompt: string;
@@ -12,8 +14,15 @@ type Data = {
 
 // export default function Command(prompt, model, temperature, streaming) {
 export default function Command({ data }: { data: Data }) {
-  const { push } = useNavigation();
-  push(<OpenAIn />)
-  
-  return <Detail markdown={data.prompt} />;
+
+  const [text, setText] = useState("");
+  // add a feedback that the message is over and the time it took to complete
+  useEffect(() => {
+    gptStatic(data).then((response: string | null) => {
+      console.log(response);
+      setText(response as string);
+    });
+  }, [data]);
+
+  return <Detail markdown={text} />;
 }

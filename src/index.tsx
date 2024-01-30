@@ -27,7 +27,7 @@ export default function Command() {
       ...values,
       temperature: parseFloat(values.temperature) 
     }
-    console.log(parsedValues)
+    // console.log(parsedValues)
     showToast({ title: "Submitted form", message: "See logs for submitted values" });
     push(<Answer data={parsedValues} />)
   }
