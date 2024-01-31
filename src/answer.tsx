@@ -1,28 +1,53 @@
-import { Detail } from "@raycast/api";
-// import { OpenAIn } from '../requests/openAI'
+import { Detail, showToast } from "@raycast/api";
 import { gptStatic } from './openAI'
 import { useEffect, useState } from 'react';
 
 type Data = {
   prompt: string;
-  // llm: string;
+  company: string;
   model: string;
   // instructions: string;
   temperature: number;
-  streaming: boolean;
+  stream: boolean;
 };
 
-// export default function Command(prompt, model, temperature, streaming) {
 export default function Command({ data }: { data: Data }) {
+  const [startTime, setStartTime] = useState(0);
+  const [response, setResponse] = useState('');
+  const [status, setStatus] = useState('');
 
-  const [text, setText] = useState("");
-  // add a feedback that the message is over and the time it took to complete
   useEffect(() => {
-    gptStatic(data).then((response: string | null) => {
-      console.log(response);
-      setText(response as string);
-    });
+    if (startTime === 0) {
+      setStartTime(Date.now());
+    };
+  }, [startTime]);
+
+  useEffect(() => {
+    const onResponse = (apiResponse: string, apiStatus: string) => {
+      setStatus(apiStatus);
+      setResponse((prevResponse) => prevResponse + apiResponse);
+    };
+    const fetchData = async () => {
+      if (data.company === 'openai' && data.stream === true) {
+        await gptStatic(data, onResponse);
+      };
+    };
+    fetchData();
   }, [data]);
 
-  return <Detail markdown={text} />;
+  useEffect(() => {
+    // add waiting status
+    if (status === 'done') {
+      const endTime = Date.now();
+      const duration = Math.round((endTime - startTime) / 100) / 10;
+      showToast({ title: 'Done', message: `Streaming took ${duration}s to complete`});
+    };
+  }, [status]);
+
+  // useEffect(() => {
+  //     if (status == 'done') {
+  //     };
+  // }, [endTime, startTime]);
+
+  return <Detail markdown={response} />;
 }

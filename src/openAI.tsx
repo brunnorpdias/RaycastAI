@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import dotenv from 'dotenv';
 
 type Data = {
   prompt: string;
@@ -6,14 +7,21 @@ type Data = {
   model: string;
   // instructions: string;
   temperature: number;
-  streaming: boolean;
+  stream: boolean;
 };
 
-export async function gptStatic( data: Data ) {
+// change name to streaming and copy the static version as well (don't forget to change it in answer.tsx)
+export async function gptStatic( 
+  data: Data,
+  onResponse: (response: string, status: string) => void
+) {
   // console.log(data)
-
+  
+  dotenv.config();
+  const api = process.env.OPENAI_KEY;
+  console.log(`api: ${api}`);
   const openai = new OpenAI(
-      {apiKey: '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'}
+      {apiKey: ''}
   );
 
   const completion = await openai.chat.completions.create({
@@ -23,7 +31,20 @@ export async function gptStatic( data: Data ) {
       { role: "user", content: data.prompt },
     ],
     temperature: data.temperature,
+    stream: true,
   });
 
-  return completion.choices[0].message.content;;
+  for await (const chunk of completion) {
+    if (typeof chunk.choices[0].delta.content === "string") {
+      // console.log(chunk.choices[0].delta.content);
+      onResponse(chunk.choices[0].delta.content, "streaming");
+    };
+
+    if (chunk.choices[0].finish_reason == 'stop') {
+      // console.log('Stopping stream');
+      onResponse('', 'done');
+      break;
+    };
+  };
+  // return completion.choices[0].message.content;;
 }

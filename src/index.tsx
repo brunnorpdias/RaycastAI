@@ -1,48 +1,64 @@
 import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/api";
 import Answer from './answer';
+import { useState } from 'react';
 
 type Values = {
   prompt: string;
-  // llm: string;
+  company: string;
   model: string;
   // instructions: string;
   temperature: string;
-  streaming: boolean;
+  stream: boolean;
 };
 
 type ParsedValues = {
   prompt: string;
-  // llm: string;
+  company: string;
   model: string;
   // instructions: string;
   temperature: number;
-  streaming: boolean;
+  stream: boolean;
 };
 
 export default function Command() {
   const { push } = useNavigation();
+  // const [query, setQuery] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState<string>('openai'); // default
+
+  type Company = "openai" | "deepmind" | "meta" | "perplexity";
+  type Model = { name: string, code: string };
+
+  const companyToModels: Record<Company, Model[]> = {
+    "openai": [
+      {name: "GPT 4", code: "gpt-4-0125-preview"},
+      {name: "GPT 3.5", code:  "gpt-3.5-turbo-1106"}],
+    "deepmind": [
+      {name: "Gemini Pro", code: "gemini-pro"}],
+    "meta": [
+      {name: "Llama 70b", code: "llama-70b-chat"},
+      {name: "Llama 13b", code: "llama-13b-chat"},
+      {name: "Llama Code 34b", code: "codellama-34b-instruct"}],
+    "perplexity": [
+      {name: "Online", code: "pplx-70b-online"}]
+  }
+
+    // {name: , code: },
 
   function handleSubmit(values: Values) {
     const parsedValues:ParsedValues = {
       ...values,
-      temperature: parseFloat(values.temperature) 
+      temperature: parseFloat(values.temperature),
     }
     // console.log(parsedValues)
-    showToast({ title: "Submitted form", message: "See logs for submitted values" });
+    showToast({ title: "Submitted" });
     push(<Answer data={parsedValues} />)
   }
 
   // add icons to the llms
   // add option to filter the models by using the llm
 
-  // <Form.Dropdown id="organization" title="Organization" >
-  //   <Form.Dropdown.Item value="openai" title="Open AI (offline)" />
-  //   <Form.Dropdown.Item value="deepmind" title="Gemini (offline)" />
-  //   <Form.Dropdown.Item value="perplexity" title="Perplexity (offline)" />
-  //   <Form.Dropdown.Item value="anthropic" title="Anthropic (offline)" />
-  // </Form.Dropdown>
-  
   // <Action title="Push" onAction={() => handleSubmit(values)} />
+  // <Form.Dropdown.Item value="anthropic" title="Anthropic" />
 
   return (
     <Form
@@ -54,17 +70,30 @@ export default function Command() {
       // enableDrafts={true}
     >
       <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" />
-      <Form.Dropdown id="model" title="Model" defaultValue="gpt-3.5-turbo-1106">
-          <Form.Dropdown.Item value="gpt-4-0125-preview" title="GPT 4 (off)" keywords={["openai"]} />
-        <Form.Dropdown.Item value="gpt-3.5-turbo-1106" title="GPT 3.5 (off)" keywords={["openai"]} />
-        <Form.Dropdown.Item value="gemini-pro" title="Gemini (off)" keywords={["google", "deepmind"]} />
-        <Form.Dropdown.Item value="llama-70b-chat" title="Llama 70b (off)" keywords={["meta"]} />
-        <Form.Dropdown.Item value="llama-13b-chat" title="Llama 13b (off)" keywords={["meta"]} />
-        <Form.Dropdown.Item value="codellama-34b-instruct" title="Llama Code 34b (off)" keywords={["meta"]} />
-        <Form.Dropdown.Item value="pplx-70b-online" title="Perplexity (off)" keywords={["online", "perplexity"]} />
+
+      <Form.Dropdown
+      id="company"
+      title="Company"
+      value={selectedCompany}
+      onChange={(company) => {
+        setSelectedCompany(company as string);
+      }}
+      >
+        <Form.Dropdown.Item value="openai" title="Open AI" />
+        <Form.Dropdown.Item value="deepmind" title="Deep Mind" />
+        <Form.Dropdown.Item value="meta" title="Meta" />
+        <Form.Dropdown.Item value="perplexity" title="Perplexity" />
       </Form.Dropdown>
+
+      <Form.Dropdown id="model" title="Model">
+        {companyToModels[selectedCompany].map((model: Model) => (
+          <Form.Dropdown.Item key={model.code} value={model.code} title={model.name} />
+        ))}
+      </Form.Dropdown>
+
       <Form.Separator />
       <Form.TextField id="temperature" defaultValue="0.7" placeholder="0.7" />
+
       <Form.Checkbox id="stream" title="Streaming" label="Streaming or static response" defaultValue={true} />
     </Form>
   );
