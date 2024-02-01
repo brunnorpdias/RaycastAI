@@ -1,9 +1,9 @@
 import OpenAI from "openai";
-import dotenv from 'dotenv';
+import { API_KEYS } from './enums';
 
 type Data = {
   prompt: string;
-  // llm: string;
+  company: string;
   model: string;
   // instructions: string;
   temperature: number;
@@ -15,13 +15,9 @@ export async function gptStatic(
   data: Data,
   onResponse: (response: string, status: string) => void
 ) {
-  // console.log(data)
   
-  dotenv.config();
-  const api = process.env.OPENAI_KEY;
-  console.log(`api: ${api}`);
   const openai = new OpenAI(
-      {apiKey: ''}
+      {apiKey: API_KEYS.OPENAI_KEY}
   );
 
   const completion = await openai.chat.completions.create({

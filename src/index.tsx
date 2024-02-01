@@ -22,7 +22,7 @@ type ParsedValues = {
 
 export default function Command() {
   const { push } = useNavigation();
-  // const [query, setQuery] = useState('');
+  // change to a better name: const [query, setQuery] = useState('');
   const [selectedCompany, setSelectedCompany] = useState<string>('openai'); // default
 
   type Company = "openai" | "deepmind" | "meta" | "perplexity";

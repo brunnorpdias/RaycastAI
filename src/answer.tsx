@@ -44,10 +44,5 @@ export default function Command({ data }: { data: Data }) {
     };
   }, [status]);
 
-  // useEffect(() => {
-  //     if (status == 'done') {
-  //     };
-  // }, [endTime, startTime]);
-
   return <Detail markdown={response} />;
 }
