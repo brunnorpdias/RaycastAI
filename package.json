@@ -39,10 +39,4 @@
     "lint": "ray lint",
     "publish": "npx @raycast/api@latest publish"
   },
-  "env": {
-    "OPENAI_KEY":"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",
-    "DEEPMIND_KEY":"AIzaSyC5UyxL1H7sAav8iPNmZhKs0gRyDr7qea8",
-    "METAAI_KEY":"LL-0eSqDJyhEcbLZr5NKVaK1KsJfvVTkCXYvZulA2xYRzitozuWI4Qjy36cNM4Y19jf",
-    "PERPLEXITY_KEY":"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"
-  }
 }
