@@ -1,10 +1,13 @@
-import { Detail, showToast } from "@raycast/api";
-import { gptStatic } from './openAI'
+import { Detail, showToast, useNavigation, ActionPanel, Action } from "@raycast/api";
+import { OpenAPI } from './openAI';
+import { DMindAPI } from './deepmind';
+import { PplxAPI } from './perplexity';
+import NewEntry from './newentry';
 import { useEffect, useState } from 'react';
 
 type Data = {
-  prompt: string;
-  company: string;
+  conversation: Array<{role: string, content: string}>;
+  api: string;
   model: string;
   // instructions: string;
   temperature: number;
@@ -15,6 +18,8 @@ export default function Command({ data }: { data: Data }) {
   const [startTime, setStartTime] = useState(0);
   const [response, setResponse] = useState('');
   const [status, setStatus] = useState('');
+  const [updatedData, setUpdatedData] = useState<Data>();
+  const { push } = useNavigation();
 
   useEffect(() => {
     if (startTime === 0) {
@@ -28,8 +33,15 @@ export default function Command({ data }: { data: Data }) {
       setResponse((prevResponse) => prevResponse + apiResponse);
     };
     const fetchData = async () => {
-      if (data.company === 'openai' && data.stream === true) {
-        await gptStatic(data, onResponse);
+      if (data.api === 'openai') {
+        await OpenAPI(data, onResponse);
+      } else if (data.api === 'perplexity') {
+        // llama is open source and don't have an api, so I'll run it from perplexity
+        await PplxAPI(data, onResponse);
+      } else if (data.api === 'deepmind' && !data.stream) {
+        // await DMindApi(data, onResponse);
+        // const x = await DMindAPI(data);
+        // setResponse(x);
       };
     };
     fetchData();
@@ -41,8 +53,28 @@ export default function Command({ data }: { data: Data }) {
       const endTime = Date.now();
       const duration = Math.round((endTime - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete`});
+      const temp: Data = {
+        ...data,
+        conversation: [...data.conversation, {role: 'assistant', content: response}]
+      }
+      setUpdatedData(temp);
     };
   }, [status]);
 
-  return <Detail markdown={response} />;
+  return (
+    <Detail
+      markdown={response}
+      actions={
+        <ActionPanel>
+          <Action
+            title="New Entry"
+            onAction={() => {
+              push(<NewEntry data={updatedData} />)
+            }}
+          />
+        </ActionPanel>
+      }
+    />
+  )
 }
+

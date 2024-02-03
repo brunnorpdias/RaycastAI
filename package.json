@@ -19,14 +19,15 @@
     }
   ],
   "dependencies": {
-    "@google/generative-ai": "^0.1.3",
+    "@google/generative-ai": "^0.2.0",
     "@raycast/api": "^1.66.1",
-    "dotenv": "^16.4.1",
+    "axios": "^1.6.7",
+    "llamaai": "^1.0.4",
+    "node-fetch": "^3.3.2",
     "openai": "^4.26.0"
   },
   "devDependencies": {
     "@raycast/eslint-config": "^1.0.6",
-    "@types/node": "^20.11.14",
     "@types/react": "18.2.27",
     "eslint": "^8.51.0",
     "prettier": "^3.0.3",
@@ -38,5 +39,5 @@
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
     "publish": "npx @raycast/api@latest publish"
-  },
+  }
 }

@@ -1,10 +1,10 @@
 import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/api";
 import Answer from './answer';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 type Values = {
   prompt: string;
-  company: string;
+  api: string;
   model: string;
   // instructions: string;
   temperature: string;
@@ -12,54 +12,58 @@ type Values = {
 };
 
 type ParsedValues = {
-  prompt: string;
-  company: string;
+  conversation: Array<{role: string, content: string}>;
+  api: string;
   model: string;
   // instructions: string;
   temperature: number;
   stream: boolean;
 };
 
-export default function Command() {
+export default function Command () {
   const { push } = useNavigation();
   // change to a better name: const [query, setQuery] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState<string>('openai'); // default
+  const [selectedAPI, setSelectedAPI] = useState<string>('openai'); // default
+  const [streamingValue, setStreamingValue] = useState<boolean>(true);
 
-  type Company = "openai" | "deepmind" | "meta" | "perplexity";
+  type API = "openai" | "deepmind" | "perplexity";
   type Model = { name: string, code: string };
 
-  const companyToModels: Record<Company, Model[]> = {
+  const APItoModels: Record<API, Model[]> = {
     "openai": [
       {name: "GPT 4", code: "gpt-4-0125-preview"},
-      {name: "GPT 3.5", code:  "gpt-3.5-turbo-1106"}],
-    "deepmind": [
-      {name: "Gemini Pro", code: "gemini-pro"}],
-    "meta": [
-      {name: "Llama 70b", code: "llama-70b-chat"},
-      {name: "Llama 13b", code: "llama-13b-chat"},
-      {name: "Llama Code 34b", code: "codellama-34b-instruct"}],
+      {name: "GPT 3.5", code:  "gpt-3.5-turbo-1106"},
+      ],
     "perplexity": [
-      {name: "Online", code: "pplx-70b-online"}]
+      {name: "Llama 2 70b", code: "llama-2-70b-chat"},
+      {name: "Mistral 8x7b", code: "mixtral-8x7b-instruct"},
+      {name: "Perplexity Online 70b", code: "pplx-70b-online"},
+      {name: "Perplexity Online 7b", code: "pplx-7b-online"},
+      {name: "Llama Code 70b", code: "codellama-34b-instruct"},
+      {name: "Llama Code 34b", code: "codellama-70b-instruct"},
+      ],
+    "deepmind": [
+      {name: "Gemini Pro", code: "gemini-pro"}
+      ],
   }
-
-    // {name: , code: },
 
   function handleSubmit(values: Values) {
     const parsedValues:ParsedValues = {
-      ...values,
+      conversation: [
+        {role: 'user', content: values.prompt}
+      ],
+      api: values.api,
+      model: values.model,
       temperature: parseFloat(values.temperature),
+      stream: values.stream
     }
-    // console.log(parsedValues)
     showToast({ title: "Submitted" });
     push(<Answer data={parsedValues} />)
   }
 
   // add icons to the llms
-  // add option to filter the models by using the llm
-
-  // <Action title="Push" onAction={() => handleSubmit(values)} />
   // <Form.Dropdown.Item value="anthropic" title="Anthropic" />
-
+  
   return (
     <Form
       actions={
@@ -69,24 +73,23 @@ export default function Command() {
       }
       // enableDrafts={true}
     >
-      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" />
+      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true}/>
 
       <Form.Dropdown
-      id="company"
-      title="Company"
-      value={selectedCompany}
-      onChange={(company) => {
-        setSelectedCompany(company as string);
+      id="api"
+      title="API"
+      value={selectedAPI}
+      onChange={(api) => {
+        setSelectedAPI(api as string);
       }}
       >
         <Form.Dropdown.Item value="openai" title="Open AI" />
-        <Form.Dropdown.Item value="deepmind" title="Deep Mind" />
-        <Form.Dropdown.Item value="meta" title="Meta" />
         <Form.Dropdown.Item value="perplexity" title="Perplexity" />
+        <Form.Dropdown.Item value="deepmind" title="Deep Mind" />
       </Form.Dropdown>
 
       <Form.Dropdown id="model" title="Model">
-        {companyToModels[selectedCompany].map((model: Model) => (
+        {APItoModels[selectedAPI].map((model: Model) => (
           <Form.Dropdown.Item key={model.code} value={model.code} title={model.name} />
         ))}
       </Form.Dropdown>
@@ -98,3 +101,5 @@ export default function Command() {
     </Form>
   );
 }
+// streaming had before useEffect: 
+// dynamic function for streaming option not working
