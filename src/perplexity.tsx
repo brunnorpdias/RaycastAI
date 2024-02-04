@@ -1,6 +1,8 @@
 import { API_KEYS } from './enums';
 import fetch from 'node-fetch';
-import fs from 'fs';
+// import axios from 'axios';
+import readline from 'readline';
+import { Readable } from 'stream';
 
 type Data = {
   conversation: Array<{role: string, content: string}>;
@@ -11,10 +13,25 @@ type Data = {
   stream: boolean;
 };
 
-export async function PplxAPI(
-  { data }: { data: Data },
-  onResponse: (response: string, status: string) => void
-) {
+type Response = {
+  id: string,
+  model: string,
+  created: number,
+  usage: {
+    prompt_tokens: number,
+    completion_tokens: number,
+    total_tokens: number
+  },
+  object: string,
+  choices: Array<{
+      index: number,
+      finish_reason: string,
+      message: {role: string, content: string},
+      delta: {role: string, content: string}
+    }>
+}
+
+export async function PplxAPI(data: Data, onResponse: (response: string, status: string) => void) {
   const options = {
     method: 'POST',
     headers: {
@@ -24,84 +41,48 @@ export async function PplxAPI(
     },
     body: JSON.stringify({
       model: data.model,
-      // messages: [
-      //   {role: 'system', content: 'Be precise and concise.'},
-      //   {role: 'user', content: data.prompt}
-      // ],
+      // messages: [ {role: 'system', content: 'Be precise and concise.'}, {role: 'user', content: data.prompt} ],
       messages: data.conversation,
       temperature: data.temperature,
       stream: data.stream
     })
   };
   
-  const response = await fetch('https://api.perplexity.ai/chat/completions', options);
   if (data.stream) {
-    // Ensure response.body exists and is not null
-    if (response.body) {
-      // Using the async iterator to read chunks from the stream
-      const reader = response.body.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          // Assuming value is a Uint8Array, you might need to convert it
-          // depending on your requirements. For text, you can use TextDecoder.
-          console.log(new TextDecoder().decode(value));
+    (async () => {          // Immediately Invoked Function Expression (IIFE)
+    const res = await fetch('https://api.perplexity.ai/chat/completions', options);
+    if (res.body) {
+      // Converts the response body to a readable stream. 'Readable.from' is a method to create a readable stream from a given input.
+      const stream = Readable.from(res.body);
+      
+      // Creates a readline interface from the stream. This allows us to read the stream line by line.
+      const rl = readline.createInterface({ input: stream });
+
+      // Event listener for the 'line' event, which is triggered every time a line is read from the stream.
+      rl.on('line', (line) => {
+        if (line.startsWith('data: ')) {
+          try {
+            // Parsing the JSON from the line, assuming the line is in the format 'data: <json>', and removing 'data: ' to parse the JSON string.
+            const json: Response = JSON.parse(line.replace('data: ', '').trim());
+            
+            if (json.choices[0].finish_reason === null) {
+              onResponse(json.choices[0].delta.content, 'streaming');
+            } else {
+              onResponse(json.choices[0].delta.content, 'done');
+            }
+
+          } catch (e) {
+            console.error(e);
+          }
         }
-      } catch (e) {
-        console.error('Stream reading failed:', e);
-      } finally {
-        reader.releaseLock();
+      });
+      // Awaiting the 'close' event of the readline interface, which signals that all lines have been processed.
+      await new Promise((resolve) => rl.on('close', resolve));
       }
-    }
+    })();
   } else {
-    console.log('here');
-    console.log(response);
-    const message = response.choices[0].message.content;
-    console.log(message)
-    onResponse(message, 'done');
+    const res = await fetch('https://api.perplexity.ai/chat/completions', options);
+    const json = await res.json() as Response;
+    onResponse(json.choices[0].message.content, 'done');
   }
-
-
-
-
-  // if (data.stream) {
-  //   for await (const chunk of response) {
-  //     console.log(chunk);
-  //   }
-  // }
-
-  // fetch('https://api.perplexity.ai/chat/completions', options)
-  // .then(res => res.text())
-  // .then(text => text.substring(text.indexOf('{'), text.lastIndexOf('}')))
-  // .then(jsonString => {
-  //   console.log(jsonString);
-  //   return jsonString;
-  // })
-  // .then(jsonString => JSON.parse(jsonString))
-  // .then(json => console.log(json.choices))
-
-  //  const response = apiResponse.text();
-  //  console.log(response);
-  //  const jsonString = response.substring(response.indexOf("{"));
-
-  //  // Parse the JSON string to an object
-  //  const jsonObject = JSON.parse(jsonString);
-
-  //  console.log(jsonObject)
-  //  })
-  // fetch('https://api.perplexity.ai/chat/completions', options)
-  // .then(res => res.json())
-  // .then(json => console.log(json))
-  // .catch(err => console.error('error:' + err));
-
-  //     if (data.stream) {
-  //       // for (const chunk of response) {
-  //       //   console.log(chunk);
-  //       // };
-  //     } else {
-  //       const message = response.choices[0].message.content;
-  //       console.log(message)
-  //       onResponse(message, 'done');
-  //     }
 }

@@ -23,7 +23,6 @@ export default function NewEntry ({ data }: { data: Data }) {
       ...data,
       conversation: [...data.conversation, {role: 'user', content: prompt}]
     }
-    console.log(newData);
     showToast({ title: "Submitted" });
     push(<Answer data={newData} />)
   }

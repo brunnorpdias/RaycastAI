@@ -13,11 +13,7 @@ type Data = {
 // define type of completion to eliminate type problem
 
 // change name to streaming and copy the static version as well (don't forget to change it in answer.tsx)
-export async function OpenAPI ( 
-  { data }: { data: Data },
-  onResponse: (response: string, status: string) => void
-) {
-  
+export async function OpenAPI (data: Data, onResponse: (response: string, status: string) => void) {
   const openai = new OpenAI(
       {apiKey: API_KEYS.OPENAI}
   );

@@ -12,6 +12,7 @@ type Data = {
   // instructions: string;
   temperature: number;
   stream: boolean;
+  timestamp: number;
 };
 
 export default function Command({ data }: { data: Data }) {
@@ -63,15 +64,22 @@ export default function Command({ data }: { data: Data }) {
 
   return (
     <Detail
+      // navigationTitle
       markdown={response}
       actions={
         <ActionPanel>
-          <Action
+          <ActionPanel.Section title="Copy">
+            <Action.CopyToClipboard title='Copy Response' content={response} />
+            <Action.CopyToClipboard title='Copy Data' content={JSON.stringify(updatedData?.conversation)} />
+          </ActionPanel.Section>
+          <ActionPanel.Section title="Conversation">
+            <Action
             title="New Entry"
             onAction={() => {
               push(<NewEntry data={updatedData} />)
             }}
-          />
+            />
+          </ActionPanel.Section>
         </ActionPanel>
       }
     />

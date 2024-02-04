@@ -22,8 +22,10 @@
     "@google/generative-ai": "^0.2.0",
     "@raycast/api": "^1.66.1",
     "axios": "^1.6.7",
+    "date-fns": "^3.3.1",
+    "eventsource": "^2.0.2",
     "llamaai": "^1.0.4",
-    "node-fetch": "^3.3.2",
+    "node-fetch": "^2.7.0",
     "openai": "^4.26.0"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/api";
 import Answer from './answer';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 type Values = {
   prompt: string;
@@ -18,13 +18,13 @@ type ParsedValues = {
   // instructions: string;
   temperature: number;
   stream: boolean;
+  timestamp: number;
 };
 
 export default function Command () {
   const { push } = useNavigation();
   // change to a better name: const [query, setQuery] = useState('');
   const [selectedAPI, setSelectedAPI] = useState<string>('openai'); // default
-  const [streamingValue, setStreamingValue] = useState<boolean>(true);
 
   type API = "openai" | "deepmind" | "perplexity";
   type Model = { name: string, code: string };
@@ -55,7 +55,8 @@ export default function Command () {
       api: values.api,
       model: values.model,
       temperature: parseFloat(values.temperature),
-      stream: values.stream
+      stream: values.stream,
+      timestamp: Date.now()
     }
     showToast({ title: "Submitted" });
     push(<Answer data={parsedValues} />)
