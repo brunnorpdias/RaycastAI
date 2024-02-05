@@ -8,6 +8,7 @@ type Data = {
   // instructions: string;
   temperature: number;
   stream: boolean;
+  timestamp: number;
 };
 
 type Values = {
@@ -36,7 +37,7 @@ export default function NewEntry ({ data }: { data: Data }) {
       }
       // enableDrafts={true}
     >
-      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" />
+      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
     </Form>
   );
 }

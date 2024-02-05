@@ -1,4 +1,4 @@
-import { Detail, showToast, useNavigation, ActionPanel, Action } from "@raycast/api";
+import { Detail, showToast, useNavigation, ActionPanel, Action, Cache } from "@raycast/api";
 import { OpenAPI } from './openAI';
 import { DMindAPI } from './deepmind';
 import { PplxAPI } from './perplexity';
@@ -39,8 +39,8 @@ export default function Command({ data }: { data: Data }) {
       } else if (data.api === 'perplexity') {
         // llama is open source and don't have an api, so I'll run it from perplexity
         await PplxAPI(data, onResponse);
-      } else if (data.api === 'deepmind' && !data.stream) {
-        // await DMindApi(data, onResponse);
+      } else if (data.api === 'deepmind') {
+        await DMindAPI(data, onResponse);
         // const x = await DMindAPI(data);
         // setResponse(x);
       };
@@ -59,6 +59,9 @@ export default function Command({ data }: { data: Data }) {
         conversation: [...data.conversation, {role: 'assistant', content: response}]
       }
       setUpdatedData(temp);
+      // const cache = new Cache();
+      // cache.set((temp.timestamp).toString(), JSON.stringify(temp));
+      // console.log(cache.get(temp.timestamp.toString()));
     };
   }, [status]);
 

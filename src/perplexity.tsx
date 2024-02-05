@@ -11,6 +11,7 @@ type Data = {
   // instructions: string;
   temperature: number;
   stream: boolean;
+  timestamp: number;
 };
 
 type Response = {

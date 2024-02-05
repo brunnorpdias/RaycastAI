@@ -8,6 +8,7 @@ type Data = {
   // instructions: string;
   temperature: number;
   stream: boolean;
+  timestamp: number;
 };
 
 // define type of completion to eliminate type problem
