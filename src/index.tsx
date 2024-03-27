@@ -31,26 +31,24 @@ export default function Command () {
   type Model = { name: string, code: string };
 
   const APItoModels: Record<API, Model[]> = {
+    "anthropic": [
+      {name: "Claude 3 Haiku", code: "claude-3-haiku-20240307"},
+      {name: "Claude 3 Sonnet", code: "claude-3-sonnet-20240229"},
+      {name: "Claude 3 Opus", code: "claude-3-opus-20240229"},
+    ],
     "openai": [
-      {name: "GPT 4", code: "gpt-4-0125-preview"},
       {name: "GPT 3.5", code:  "gpt-3.5-turbo-1106"},
+      {name: "GPT 4", code: "gpt-4-0125-preview"},
     ],
     "perplexity": [
-      {name: "Llama 2 70b", code: "llama-2-70b-chat"},
       {name: "Mistral 8x7b", code: "mixtral-8x7b-instruct"},
-      {name: "Perplexity Online 70b", code: "pplx-70b-online"},
-      {name: "Perplexity Online 7b", code: "pplx-7b-online"},
-      {name: "Llama Code 70b", code: "codellama-34b-instruct"},
-      {name: "Llama Code 34b", code: "codellama-70b-instruct"},
+      {name: "Sonar Medium", code: "sonar-medium-chat"},
+      {name: "Sonar Medium Online", code: "sonar-medium-online"},
+      {name: "Llama Code 70b", code: "codellama-70b-instruct"},
     ],
     "deepmind": [
       {name: "Gemini Pro", code: "gemini-pro"}
     ],
-    "anthropic": [
-      {name: "Claude 3 Opus", code: "claude-3-opus-20240229"},
-      {name: "Claude 3 Sonnet", code: "claude-3-sonnet-20240229"},
-      {name: "Claude 3 Haiku", code: "claude-3-haiku-20240307"}
-    ]
   }
 
   function handleSubmit(values: Values) {
@@ -90,8 +88,8 @@ export default function Command () {
         setSelectedAPI(api as string);
       }}
       >
-        <Form.Dropdown.Item value="openai" title="Open AI" icon="openai-logo.svg" />
         <Form.Dropdown.Item value="anthropic" title="Anthropic" icon="anthropic-icon.png" />
+        <Form.Dropdown.Item value="openai" title="Open AI" icon="openai-logo.svg" />
         <Form.Dropdown.Item value="perplexity" title="Perplexity" icon="perplexity-logo.svg" />
         <Form.Dropdown.Item value="deepmind" title="Deep Mind" icon="deepmind-logo.svg" />
       </Form.Dropdown>
