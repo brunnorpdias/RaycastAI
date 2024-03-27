@@ -15,7 +15,7 @@ type Values = {
   prompt: string
 }
 
-export default function NewEntry ({ data }: { data: Data }) {
+export default function NewEntry ({ data }: { data: Data }, editPrompt: string) {
   const { push } = useNavigation();
 
   function handleSubmit(values: Values) {

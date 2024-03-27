@@ -1,7 +1,8 @@
-import { Detail, showToast, useNavigation, ActionPanel, Action, Cache } from "@raycast/api";
+import { Detail, showToast, useNavigation, ActionPanel, Action } from "@raycast/api";
 import { OpenAPI } from './openAI';
 import { DMindAPI } from './deepmind';
 import { PplxAPI } from './perplexity';
+import { Anthropic } from './anthropic';
 import NewEntry from './newentry';
 import { useEffect, useState } from 'react';
 
@@ -19,7 +20,7 @@ export default function Command({ data }: { data: Data }) {
   const [startTime, setStartTime] = useState(0);
   const [response, setResponse] = useState('');
   const [status, setStatus] = useState('');
-  const [updatedData, setUpdatedData] = useState<Data>();
+  const [newData, setNewData] = useState<Data>(data);
   const { push } = useNavigation();
 
   useEffect(() => {
@@ -36,13 +37,16 @@ export default function Command({ data }: { data: Data }) {
     const fetchData = async () => {
       if (data.api === 'openai') {
         await OpenAPI(data, onResponse);
+      } else if (data.api === 'anthropic') {
+        // let response: string = await Anthropic(data);
+        // setResponse(response);
+        // setStatus("done");
+        Anthropic(data, onResponse);
       } else if (data.api === 'perplexity') {
-        // llama is open source and don't have an api, so I'll run it from perplexity
+        // llama is open source and doesn't have an api, so I'll run it using perplexity
         await PplxAPI(data, onResponse);
       } else if (data.api === 'deepmind') {
         await DMindAPI(data, onResponse);
-        // const x = await DMindAPI(data);
-        // setResponse(x);
       };
     };
     fetchData();
@@ -58,10 +62,7 @@ export default function Command({ data }: { data: Data }) {
         ...data,
         conversation: [...data.conversation, {role: 'assistant', content: response}]
       }
-      setUpdatedData(temp);
-      // const cache = new Cache();
-      // cache.set((temp.timestamp).toString(), JSON.stringify(temp));
-      // console.log(cache.get(temp.timestamp.toString()));
+      setNewData(temp);
     };
   }, [status]);
 
@@ -71,21 +72,28 @@ export default function Command({ data }: { data: Data }) {
       markdown={response}
       actions={
         <ActionPanel>
-          <ActionPanel.Section title="Copy">
             <Action.CopyToClipboard title='Copy Response' content={response} />
-            <Action.CopyToClipboard title='Copy Data' content={JSON.stringify(updatedData?.conversation)} />
-          </ActionPanel.Section>
-          <ActionPanel.Section title="Conversation">
             <Action
-            title="New Entry"
-            onAction={() => {
-              push(<NewEntry data={updatedData} />)
-            }}
+              title="New Entry"
+              onAction={() => {
+                push(<NewEntry data={newData} />)
+              }}
             />
-          </ActionPanel.Section>
+            <Action.CopyToClipboard
+              title='Copy Data'
+              content={JSON.stringify(newData?.conversation)}
+              shortcut={{ modifiers: ["cmd"], key: "c" }}
+            />
         </ActionPanel>
       }
     />
   )
 }
-
+/*
+    <Action
+      title='Rewrite Prompt'
+      onAction={() => {
+        push(<
+      }
+    />
+*/

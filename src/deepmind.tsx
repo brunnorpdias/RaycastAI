@@ -11,6 +11,7 @@ type Data = {
   timestamp: number;
 };
 
+// https://ai.google.dev/tutorials/web_quickstart#multi-turn-conversations-chat
 export async function DMindAPI (data: Data, onResponse: (response: string, status: string) => void) {
   const genAI = new GoogleGenerativeAI(API_KEYS.DEEPMIND);
   const model = genAI.getGenerativeModel({ model: data.model});
