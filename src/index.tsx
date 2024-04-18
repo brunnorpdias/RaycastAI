@@ -1,5 +1,5 @@
-// Navigation starts here and it's redirected to the page "answer.tsx"
-import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/api";
+// Navigation starts here and it's redirected to the page 'answer.tsx'
+import { Form, ActionPanel, Action, useNavigation, showToast } from '@raycast/api';
 import Answer from './answer';
 import { useState } from 'react';
 
@@ -13,7 +13,7 @@ type Values = {
 };
 
 type ParsedValues = {
-  conversation: Array<{role: string, content: string}>;
+  conversation: Array<{ role: string, content: string }>;
   api: string;
   model: string;
   // instructions: string;
@@ -22,39 +22,42 @@ type ParsedValues = {
   timestamp: number;
 };
 
-export default function Command () {
+export default function Command() {
   const { push } = useNavigation();
   // change to a better name: const [query, setQuery] = useState('');
-  const [selectedAPI, setSelectedAPI] = useState<string>('openai'); // default
+  const [selectedAPI, setSelectedAPI] = useState<string>('anthropic'); // default
 
-  type API = "openai" | "deepmind" | "perplexity" | "anthropic";
+  type API = 'openai' | 'deepmind' | 'perplexity' | 'anthropic';
   type Model = { name: string, code: string };
 
   const APItoModels: Record<API, Model[]> = {
-    "anthropic": [
-      {name: "Claude 3 Haiku", code: "claude-3-haiku-20240307"},
-      {name: "Claude 3 Sonnet", code: "claude-3-sonnet-20240229"},
-      {name: "Claude 3 Opus", code: "claude-3-opus-20240229"},
+    'anthropic': [
+      { name: 'Claude 3 Haiku', code: 'claude-3-haiku-20240307' },
+      { name: 'Claude 3 Sonnet', code: 'claude-3-sonnet-20240229' },
+      { name: 'Claude 3 Opus', code: 'claude-3-opus-20240229' },
     ],
-    "openai": [
-      {name: "GPT 3.5", code:  "gpt-3.5-turbo-1106"},
-      {name: "GPT 4", code: "gpt-4-0125-preview"},
+    'openai': [
+      { name: 'GPT 3.5', code: 'gpt-3.5-turbo' },
+      { name: 'GPT 4', code: 'gpt-4-turbo' },
     ],
-    "perplexity": [
-      {name: "Mistral 8x7b", code: "mixtral-8x7b-instruct"},
-      {name: "Sonar Medium", code: "sonar-medium-chat"},
-      {name: "Sonar Medium Online", code: "sonar-medium-online"},
-      {name: "Llama Code 70b", code: "codellama-70b-instruct"},
+    'perplexity': [
+      { name: 'Sonar Medium Online', code: 'sonar-medium-online' },
+      // { name: 'Mistral 8x7b', code: 'mixtral-8x7b-instruct' },
+      { name: 'Llama 3 8b', code: 'llama-3-8b-instruct' },
+      { name: 'Mistral 8x22b', code: 'mixtral-8x22b-instruct' },
+      { name: 'Llama 3 70b', code: 'llama-3-70b-instruct' },
+      // { name: 'Sonar Medium', code: 'sonar-medium-chat' },
+      // { name: 'Llama Code 70b', code: 'codellama-70b-instruct' },
     ],
-    "deepmind": [
-      {name: "Gemini Pro", code: "gemini-pro"}
+    'deepmind': [
+      { name: 'Gemini Pro', code: 'gemini-pro' }
     ],
   }
 
   function handleSubmit(values: Values) {
-    const parsedValues:ParsedValues = {
+    const parsedValues: ParsedValues = {
       conversation: [
-        {role: 'user', content: values.prompt}
+        { role: 'user', content: values.prompt }
       ],
       api: values.api,
       model: values.model,
@@ -62,48 +65,48 @@ export default function Command () {
       stream: values.stream,
       timestamp: Date.now()
     }
-    showToast({ title: "Submitted" });
+    showToast({ title: 'Submitted' });
     push(<Answer data={parsedValues} />)
   }
 
   // add icons to the llms
-  // <Form.Dropdown.Item value="anthropic" title="Anthropic" />
-  
+  // <Form.Dropdown.Item value='anthropic' title='Anthropic' />
+
   return (
     <Form
       actions={
         <ActionPanel>
-          <Action.SubmitForm title="Submit" onSubmit={handleSubmit} />
+          <Action.SubmitForm title='Submit' onSubmit={handleSubmit} />
         </ActionPanel>
       }
-      // enableDrafts={true}
+    // enableDrafts={true}
     >
-      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true}/>
+      <Form.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
 
       <Form.Dropdown
-      id="api"
-      title="API"
-      value={selectedAPI}
-      onChange={(api) => {
-        setSelectedAPI(api as string);
-      }}
+        id='api'
+        title='API'
+        value={selectedAPI}
+        onChange={(api) => {
+          setSelectedAPI(api as string);
+        }}
       >
-        <Form.Dropdown.Item value="anthropic" title="Anthropic" icon="anthropic-icon.png" />
-        <Form.Dropdown.Item value="openai" title="Open AI" icon="openai-logo.svg" />
-        <Form.Dropdown.Item value="perplexity" title="Perplexity" icon="perplexity-logo.svg" />
-        <Form.Dropdown.Item value="deepmind" title="Deep Mind" icon="deepmind-logo.svg" />
+        <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
+        <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
+        <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
+        <Form.Dropdown.Item value='deepmind' title='Deep Mind' icon='deepmind-logo.svg' />
       </Form.Dropdown>
 
-      <Form.Dropdown id="model" title="Model">
+      <Form.Dropdown id='model' title='Model'>
         {APItoModels[selectedAPI].map((model: Model) => (
           <Form.Dropdown.Item key={model.code} value={model.code} title={model.name} />
         ))}
       </Form.Dropdown>
 
       <Form.Separator />
-      <Form.TextField id="temperature" defaultValue="0.7" placeholder="0.7" />
+      <Form.TextField id='temperature' defaultValue='0.7' placeholder='0.7' />
 
-      <Form.Checkbox id="stream" title="Streaming" label="Streaming or static response" defaultValue={true} />
+      <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} />
     </Form>
   );
 }
