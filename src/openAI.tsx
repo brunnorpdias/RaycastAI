@@ -1,8 +1,9 @@
 import OpenAI from "openai";
+import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from './enums';
 
 type Data = {
-  conversation: Array<{role: string, content: string}>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   api: string;
   model: string;
   // instructions: string;
@@ -11,27 +12,21 @@ type Data = {
   timestamp: number;
 };
 
-// define type of completion to eliminate type problem
-
-// change name to streaming and copy the static version as well (don't forget to change it in answer.tsx)
-export async function OpenAPI (data: Data, onResponse: (response: string, status: string) => void) {
+export async function OpenAPI(data: Data, onResponse: (response: string, status: string) => void) {
   const openai = new OpenAI(
-      {apiKey: API_KEYS.OPENAI}
+    { apiKey: API_KEYS.OPENAI }
   );
 
   const completion = await openai.chat.completions.create({
     model: data.model,
     messages: data.conversation,
-    // [
-    //   { role: "system", content: "You are a helpful assistant." },
-    //   { role: "user", content: data.conversation[0].content },
-    // ],
     temperature: data.temperature,
     stream: data.stream,
   });
 
   if (data.stream) {
-    for await (const chunk of completion) {
+    const streamCompletion = completion as AsyncIterable<ChatCompletionChunk>;
+    for await (const chunk of streamCompletion) {
       if (typeof chunk.choices[0].delta.content === "string") {
         onResponse(chunk.choices[0].delta.content, "streaming");
       };
@@ -42,6 +37,7 @@ export async function OpenAPI (data: Data, onResponse: (response: string, status
       };
     }
   } else {
-    onResponse(completion.choices[0].message.content, 'done');
+    const chatCompletion = completion as ChatCompletion;
+    onResponse(chatCompletion.choices[0].message.content as string, 'done');
   }
 }

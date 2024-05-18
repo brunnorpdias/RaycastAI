@@ -5,7 +5,7 @@ import readline from 'readline';
 import { Readable } from 'stream';
 
 type Data = {
-  conversation: Array<{role: string, content: string}>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   api: string;
   model: string;
   // instructions: string;
@@ -25,11 +25,11 @@ type Response = {
   },
   object: string,
   choices: Array<{
-      index: number,
-      finish_reason: string,
-      message: {role: string, content: string},
-      delta: {role: string, content: string}
-    }>
+    index: number,
+    finish_reason: string,
+    message: { role: string, content: string },
+    delta: { role: string, content: string }
+  }>
 }
 
 export async function PplxAPI(data: Data, onResponse: (response: string, status: string) => void) {
@@ -48,37 +48,37 @@ export async function PplxAPI(data: Data, onResponse: (response: string, status:
       stream: data.stream
     })
   };
-  
+
   if (data.stream) {
     (async () => {          // Immediately Invoked Function Expression (IIFE)
-    const res = await fetch('https://api.perplexity.ai/chat/completions', options);
-    if (res.body) {
-      // Converts the response body to a readable stream. 'Readable.from' is a method to create a readable stream from a given input.
-      const stream = Readable.from(res.body);
-      
-      // Creates a readline interface from the stream. This allows us to read the stream line by line.
-      const rl = readline.createInterface({ input: stream });
+      const res = await fetch('https://api.perplexity.ai/chat/completions', options);
+      if (res.body) {
+        // Converts the response body to a readable stream. 'Readable.from' is a method to create a readable stream from a given input.
+        const stream = Readable.from(res.body);
 
-      // Event listener for the 'line' event, which is triggered every time a line is read from the stream.
-      rl.on('line', (line) => {
-        if (line.startsWith('data: ')) {
-          try {
-            // Parsing the JSON from the line, assuming the line is in the format 'data: <json>', and removing 'data: ' to parse the JSON string.
-            const json: Response = JSON.parse(line.replace('data: ', '').trim());
-            
-            if (json.choices[0].finish_reason === null) {
-              onResponse(json.choices[0].delta.content, 'streaming');
-            } else {
-              onResponse(json.choices[0].delta.content, 'done');
+        // Creates a readline interface from the stream. This allows us to read the stream line by line.
+        const rl = readline.createInterface({ input: stream });
+
+        // Event listener for the 'line' event, which is triggered every time a line is read from the stream.
+        rl.on('line', (line) => {
+          if (line.startsWith('data: ')) {
+            try {
+              // Parsing the JSON from the line, assuming the line is in the format 'data: <json>', and removing 'data: ' to parse the JSON string.
+              const json: Response = JSON.parse(line.replace('data: ', '').trim());
+
+              if (json.choices[0].finish_reason === null) {
+                onResponse(json.choices[0].delta.content, 'streaming');
+              } else {
+                onResponse(json.choices[0].delta.content, 'done');
+              }
+
+            } catch (e) {
+              console.error(e);
             }
-
-          } catch (e) {
-            console.error(e);
           }
-        }
-      });
-      // Awaiting the 'close' event of the readline interface, which signals that all lines have been processed.
-      await new Promise((resolve) => rl.on('close', resolve));
+        });
+        // Awaiting the 'close' event of the readline interface, which signals that all lines have been processed.
+        await new Promise((resolve) => rl.on('close', resolve));
       }
     })();
   } else {

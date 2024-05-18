@@ -13,7 +13,7 @@ type Values = {
 };
 
 type ParsedValues = {
-  conversation: Array<{ role: string, content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   api: string;
   model: string;
   // instructions: string;
@@ -25,32 +25,34 @@ type ParsedValues = {
 export default function Command() {
   const { push } = useNavigation();
   // change to a better name: const [query, setQuery] = useState('');
-  const [selectedAPI, setSelectedAPI] = useState<string>('anthropic'); // default
+  const [selectedAPI, setSelectedAPI] = useState<API>('groq'); // default
 
-  type API = 'openai' | 'deepmind' | 'perplexity' | 'anthropic';
+  type API = 'openai' | 'deepmind' | 'perplexity' | 'anthropic' | 'groq';
   type Model = { name: string, code: string };
 
   const APItoModels: Record<API, Model[]> = {
+    'groq': [
+      { name: 'LLaMA3 8b', code: 'llama3-8b-8192' },
+      { name: 'LLaMA3 70b', code: 'llama3-70b-8192' }
+    ],
+    'openai': [
+      // { name: 'GPT 3.5', code: 'gpt-3.5-turbo' },
+      { name: 'GPT 4o', code: 'gpt-4o' },
+    ],
     'anthropic': [
       { name: 'Claude 3 Haiku', code: 'claude-3-haiku-20240307' },
       { name: 'Claude 3 Sonnet', code: 'claude-3-sonnet-20240229' },
       { name: 'Claude 3 Opus', code: 'claude-3-opus-20240229' },
     ],
-    'openai': [
-      { name: 'GPT 3.5', code: 'gpt-3.5-turbo' },
-      { name: 'GPT 4', code: 'gpt-4-turbo' },
+    'deepmind': [
+      { name: 'Gemini 1.5 Flash', code: 'gemini-1.5-flash' },
+      { name: 'Gemini 1.5 Pro', code: 'gemini-1.5-pro' },
+      { name: 'Gemini Pro', code: 'gemini-pro' },
     ],
     'perplexity': [
-      { name: 'Sonar Medium Online', code: 'sonar-medium-online' },
-      // { name: 'Mistral 8x7b', code: 'mixtral-8x7b-instruct' },
+      { name: 'Sonar Large Online', code: 'llama-3-sonar-large-32k-online' },
       { name: 'Llama 3 8b', code: 'llama-3-8b-instruct' },
-      { name: 'Mistral 8x22b', code: 'mixtral-8x22b-instruct' },
       { name: 'Llama 3 70b', code: 'llama-3-70b-instruct' },
-      // { name: 'Sonar Medium', code: 'sonar-medium-chat' },
-      // { name: 'Llama Code 70b', code: 'codellama-70b-instruct' },
-    ],
-    'deepmind': [
-      { name: 'Gemini Pro', code: 'gemini-pro' }
     ],
   }
 
@@ -88,11 +90,12 @@ export default function Command() {
         title='API'
         value={selectedAPI}
         onChange={(api) => {
-          setSelectedAPI(api as string);
+          setSelectedAPI(api as API);
         }}
       >
-        <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
+        <Form.Dropdown.Item value='groq' title='Groq' icon='groq-icon.png' />
         <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
+        <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
         <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
         <Form.Dropdown.Item value='deepmind' title='Deep Mind' icon='deepmind-logo.svg' />
       </Form.Dropdown>
