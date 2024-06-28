@@ -27,7 +27,7 @@ export default function Command() {
   // change to a better name: const [query, setQuery] = useState('');
   const [selectedAPI, setSelectedAPI] = useState<API>('groq'); // default
 
-  type API = 'openai' | 'deepmind' | 'perplexity' | 'anthropic' | 'groq';
+  type API = 'openai' | 'perplexity' | 'anthropic' | 'groq';
   type Model = { name: string, code: string };
 
   const APItoModels: Record<API, Model[]> = {
@@ -40,14 +40,10 @@ export default function Command() {
       { name: 'GPT 4o', code: 'gpt-4o' },
     ],
     'anthropic': [
+      { name: 'Claude 3.5 Sonnet', code: 'claude-3-5-sonnet-20240620' },
       { name: 'Claude 3 Haiku', code: 'claude-3-haiku-20240307' },
       { name: 'Claude 3 Sonnet', code: 'claude-3-sonnet-20240229' },
       { name: 'Claude 3 Opus', code: 'claude-3-opus-20240229' },
-    ],
-    'deepmind': [
-      { name: 'Gemini 1.5 Flash', code: 'gemini-1.5-flash' },
-      { name: 'Gemini 1.5 Pro', code: 'gemini-1.5-pro' },
-      { name: 'Gemini Pro', code: 'gemini-pro' },
     ],
     'perplexity': [
       { name: 'Sonar Large Online', code: 'llama-3-sonar-large-32k-online' },
@@ -97,7 +93,6 @@ export default function Command() {
         <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
         <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
         <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
-        <Form.Dropdown.Item value='deepmind' title='Deep Mind' icon='deepmind-logo.svg' />
       </Form.Dropdown>
 
       <Form.Dropdown id='model' title='Model'>

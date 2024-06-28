@@ -1,11 +1,10 @@
 import { Detail, showToast, useNavigation, ActionPanel, Action } from "@raycast/api";
 import { GroqAPI } from './groq';
 import { OpenAPI } from './openAI';
-import { DMindAPI } from './deepmind';
 import { PplxAPI } from './perplexity';
 import { Anthropic } from './anthropic';
 import NewEntry from './newentry';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 type Data = {
   conversation: Array<{ role: 'user' | 'assistant', content: string }>;
@@ -22,6 +21,7 @@ export default function Answer({ data }: { data: Data }) {
   const [response, setResponse] = useState('');
   const [status, setStatus] = useState('');
   const [newData, setNewData] = useState<Data>(data);
+  const hasRunRef = useRef(false);
   const { push } = useNavigation();
 
   useEffect(() => {
@@ -31,28 +31,26 @@ export default function Answer({ data }: { data: Data }) {
   }, [startTime]);
 
   useEffect(() => {
-    const onResponse = (apiResponse: string, apiStatus: string) => {
-      setStatus(apiStatus);
-      setResponse((prevResponse) => prevResponse + apiResponse);
-    };
-    const fetchData = async () => {
-      if (data.api === 'openai') {
-        await OpenAPI(data, onResponse);
-      } else if (data.api === 'anthropic') {
-        // let response: string = await Anthropic(data);
-        // setResponse(response);
-        // setStatus("done");
-        Anthropic(data, onResponse);
-      } else if (data.api === 'perplexity') {
-        // llama is open source and doesn't have an api, so I'll run it using perplexity
-        await PplxAPI(data, onResponse);
-      } else if (data.api === 'deepmind') {
-        await DMindAPI(data, onResponse);
-      } else if (data.api === 'groq') {
-        GroqAPI(data, onResponse);
+    if (!hasRunRef.current) {
+      hasRunRef.current = true;
+      const onResponse = (apiResponse: string, apiStatus: string) => {
+        setStatus(apiStatus);
+        setResponse((prevResponse) => prevResponse + apiResponse);
       };
-    };
-    fetchData();
+      const fetchData = async () => {
+        if (data.api === 'openai') {
+          await OpenAPI(data, onResponse);
+        } else if (data.api === 'anthropic') {
+          Anthropic(data, onResponse);
+        } else if (data.api === 'perplexity') {
+          // llama is open source and doesn't have an api, so I'll run it using perplexity
+          await PplxAPI(data, onResponse);
+        } else if (data.api === 'groq') {
+          GroqAPI(data, onResponse);
+        };
+      };
+      fetchData();
+    }
   }, [data]);
 
   useEffect(() => {
