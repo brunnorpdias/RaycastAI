@@ -2,20 +2,20 @@ import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/ap
 import Answer from './answer';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
   api: string;
   model: string;
-  // instructions: string;
   temperature: number;
   stream: boolean;
   timestamp: number;
+  status: string;
 };
 
 type Values = {
   prompt: string
 }
 
-export default function NewEntry({ data }: { data: Data }, editPrompt: string) {
+export default function NewEntry({ data }: { data: Data }) {
   const { push } = useNavigation();
 
   function handleSubmit(values: Values) {
@@ -37,7 +37,8 @@ export default function NewEntry({ data }: { data: Data }, editPrompt: string) {
       }
     // enableDrafts={true}
     >
-      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
+      <Form.TextArea
+        id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
     </Form>
   );
 }

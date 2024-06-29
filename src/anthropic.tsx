@@ -3,17 +3,16 @@ import { MessageStreamEvent } from '@anthropic-ai/sdk/resources';
 import { Message } from '@anthropic-ai/sdk/resources';
 import { API_KEYS } from './enums';
 
-type Data = {
+type DataAnthropic = {
   conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   api: string;
   model: string;
-  // instructions: string;
   temperature: number;
   stream: boolean;
   timestamp: number;
 };
 
-export async function Anthropic(data: Data, onResponse: (response: string, status: string) => void) {
+export async function Anthropic(data: DataAnthropic, onResponse: (response: string, status: string) => void) {
   const client = new AnthropicAPI({
     apiKey: API_KEYS.ANTHROPIC,
   });

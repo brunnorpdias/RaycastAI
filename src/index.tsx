@@ -1,26 +1,29 @@
 // Navigation starts here and it's redirected to the page 'answer.tsx'
-import { Form, ActionPanel, Action, useNavigation, showToast } from '@raycast/api';
+import { Form, ActionPanel, Action, useNavigation, showToast, Cache } from '@raycast/api';
 import Answer from './answer';
+// import Cache from './cache';
+import List from './list';
+import instructions from '../instructions.json';
 import { useState } from 'react';
 
 type Values = {
   prompt: string;
   api: string;
   model: string;
-  // instructions: string;
   temperature: string;
   stream: boolean;
 };
 
 type ParsedValues = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
   api: string;
   model: string;
-  // instructions: string;
   temperature: number;
   stream: boolean;
   timestamp: number;
+  status: string;
 };
+
 
 export default function Command() {
   const { push } = useNavigation();
@@ -32,12 +35,12 @@ export default function Command() {
 
   const APItoModels: Record<API, Model[]> = {
     'groq': [
+      { name: 'LLaMA3 70b', code: 'llama3-70b-8192' },
       { name: 'LLaMA3 8b', code: 'llama3-8b-8192' },
-      { name: 'LLaMA3 70b', code: 'llama3-70b-8192' }
     ],
     'openai': [
-      // { name: 'GPT 3.5', code: 'gpt-3.5-turbo' },
       { name: 'GPT 4o', code: 'gpt-4o' },
+      // { name: 'GPT 3.5', code: 'gpt-3.5-turbo' },
     ],
     'anthropic': [
       { name: 'Claude 3.5 Sonnet', code: 'claude-3-5-sonnet-20240620' },
@@ -55,13 +58,15 @@ export default function Command() {
   function handleSubmit(values: Values) {
     const parsedValues: ParsedValues = {
       conversation: [
+        { role: 'system', content: instructions.text },
         { role: 'user', content: values.prompt }
       ],
       api: values.api,
       model: values.model,
       temperature: parseFloat(values.temperature),
       stream: values.stream,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      status: 'streaming',
     }
     showToast({ title: 'Submitted' });
     push(<Answer data={parsedValues} />)
@@ -75,9 +80,19 @@ export default function Command() {
       actions={
         <ActionPanel>
           <Action.SubmitForm title='Submit' onSubmit={handleSubmit} />
+          <Action
+            title='Cache'
+            onAction={async () => {
+              const cache = new Cache();
+              const cached = cache.get("lastConversation");
+              if (cached) {
+                const cachedData: ParsedValues = JSON.parse(cached);
+                push(<List data={cachedData} />)
+              }
+            }}
+          />
         </ActionPanel>
       }
-    // enableDrafts={true}
     >
       <Form.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
 

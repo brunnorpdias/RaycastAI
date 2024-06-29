@@ -3,10 +3,9 @@ import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from './enums';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
   api: string;
   model: string;
-  // instructions: string;
   temperature: number;
   stream: boolean;
   timestamp: number;
