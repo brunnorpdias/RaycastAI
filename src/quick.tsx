@@ -1,7 +1,6 @@
 // Navigation starts here and it's redirected to the page 'answer.tsx'
-import { Form, ActionPanel, Action, useNavigation, showToast, Cache } from '@raycast/api';
-import Answer from './answer';
-// import Cache from './cache';
+import { Form, ActionPanel, Action, useNavigation, Cache } from '@raycast/api';
+import Chat from './chat';
 import List from './list';
 import instructions from '../instructions.json';
 import { useState } from 'react';
@@ -21,9 +20,7 @@ type ParsedValues = {
   temperature: number;
   stream: boolean;
   timestamp: number;
-  status: string;
 };
-
 
 export default function Command() {
   const { push } = useNavigation();
@@ -63,17 +60,13 @@ export default function Command() {
       ],
       api: values.api,
       model: values.model,
-      temperature: parseFloat(values.temperature),
+      temperature: 0.7,
       stream: values.stream,
       timestamp: Date.now(),
-      status: 'streaming',
     }
-    showToast({ title: 'Submitted' });
-    push(<Answer data={parsedValues} />)
+    // showToast({ title: 'Submitted' });
+    push(<Chat data={parsedValues} />)
   }
-
-  // add icons to the llms
-  // <Form.Dropdown.Item value='anthropic' title='Anthropic' />
 
   return (
     <Form
@@ -115,9 +108,6 @@ export default function Command() {
           <Form.Dropdown.Item key={model.code} value={model.code} title={model.name} />
         ))}
       </Form.Dropdown>
-
-      <Form.Separator />
-      <Form.TextField id='temperature' defaultValue='0.7' placeholder='0.7' />
 
       <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} />
     </Form>

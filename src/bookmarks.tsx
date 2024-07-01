@@ -9,7 +9,6 @@ type Data = {
   temperature: number;
   stream: boolean;
   timestamp: number;
-  status: string;
 };
 
 type Item = {
@@ -33,6 +32,7 @@ export default function Command() {
         for (const key of Object.keys(temp)) {
           // setBookmarks(JSON.parse(temp));
           const parsedItems: Item = JSON.parse(temp[key]);
+          // console.log(parsedItems)
           parsedBookmarks[key] = {
             title: parsedItems.title,
             data: parsedItems.data

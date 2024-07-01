@@ -1,38 +1,21 @@
 import { Detail, showToast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
-import { GroqAPI } from './groq';
-import { OpenAPI } from './openAI';
-import { PplxAPI } from './perplexity';
-import { Anthropic } from './anthropic';
-import NewEntry from './newentry';
 import { useEffect, useState, useRef } from 'react';
-
-// Import section for the title-making when bookmarking the chat
-import { API_KEYS } from "./enums/index";
-import Groq from "groq-sdk";
-const groqTitleModel = 'llama3-8b-8192';
+import { Assistant } from './fetch/openAI';
+import NewEntry from './newentry';
 
 type Data = {
+  assistant: string;
   conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
-  api: string;
+  instructions: string;
+  files: string[];
   model: string;
   temperature: number;
-  stream: boolean;
   timestamp: number;
-  status: string;
+  assistantID: string;
+  threadID: string;
 };
 
-// Anthropic has a different type, since it doesn't support system messages yet
-type DataAnthropic = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
-  api: string;
-  model: string;
-  temperature: number;
-  stream: boolean;
-  timestamp: number;
-  status: string;
-};
-
-export default function Answer({ data }: { data: Data }) {
+export default function Thread({ data }: { data: Data }) {
   const [startTime, setStartTime] = useState(0);
   const [response, setResponse] = useState('');
   const [status, setStatus] = useState('');
@@ -61,19 +44,7 @@ export default function Answer({ data }: { data: Data }) {
     };
 
     const fetchData = async () => {
-      if (data.api === 'openai') {
-        await OpenAPI(data, onResponse);
-      } else if (data.api === 'anthropic') {
-        // Anthropic has a different type, since it doesn't support system messages yet
-        const conversationAnthropic = data.conversation.slice(1) as DataAnthropic["conversation"];
-        const dataAnthropic: DataAnthropic = { ...data, conversation: conversationAnthropic }
-        Anthropic(dataAnthropic, onResponse);
-      } else if (data.api === 'perplexity') {
-        // llama is open source and doesn't have an api, so I'll run it using perplexity
-        await PplxAPI(data, onResponse);
-      } else if (data.api === 'groq') {
-        GroqAPI(data, onResponse);
-      };
+      await Assistant(data, onResponse);
     };
 
     fetchData();
@@ -94,7 +65,6 @@ export default function Answer({ data }: { data: Data }) {
       const cache = new Cache();
       cache.clear();
       cache.set('lastConversation', JSON.stringify(temp))
-      // console.log(cache.get('lastConversation'))
     };
   }, [status]);
 
@@ -109,13 +79,13 @@ export default function Answer({ data }: { data: Data }) {
             icon={Icon.Paragraph}
             content={response}
           />
-          <Action
-            title="New Entry"
-            icon={Icon.Plus}
-            onAction={() => {
-              push(<NewEntry data={newData} />)
-            }}
-          />
+          {/* <Action */}
+          {/*   title="New Entry" */}
+          {/*   icon={Icon.Plus} */}
+          {/*   onAction={() => { */}
+          {/*     push(<NewEntry data={newData} />) */}
+          {/*   }} */}
+          {/* /> */}
           <Action
             title="Summarise"
             icon={Icon.ShortParagraph}
@@ -130,8 +100,7 @@ export default function Answer({ data }: { data: Data }) {
                   { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that" }
                 ]
               }
-
-              APIrequest(temp);
+              push(<Thread data={temp} />)
             }}
           />
           <Action
@@ -148,29 +117,7 @@ export default function Answer({ data }: { data: Data }) {
                   { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so" }
                 ]
               }
-
-              APIrequest(temp);
-            }}
-          />
-          <Action
-            title="Bookmark"
-            icon={Icon.Bookmark}
-            onAction={async () => {
-              await LocalStorage.clear();
-              const groq = new Groq({ apiKey: API_KEYS.GROQ });
-              const chat = await groq.chat.completions.create({
-                messages: [
-                  ...newData.conversation.slice(1),
-                  { role: 'user', content: 'Give a title to this conversation without mentioning so' }
-                ],
-                model: groqTitleModel
-              });
-              const title = chat.choices[0]?.message.content
-              await LocalStorage.setItem(
-                `${newData.timestamp}`,
-                `{"title": ${title}, "data": ${JSON.stringify(newData)}}`
-              );
-              console.log(await LocalStorage.allItems())
+              push(<Thread data={temp} />)
             }}
           />
           <Action.CopyToClipboard
@@ -192,3 +139,4 @@ export default function Answer({ data }: { data: Data }) {
       }
     />
 */
+

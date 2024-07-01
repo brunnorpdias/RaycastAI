@@ -1,7 +1,7 @@
 import AnthropicAPI from '@anthropic-ai/sdk';
 import { MessageStreamEvent } from '@anthropic-ai/sdk/resources';
 import { Message } from '@anthropic-ai/sdk/resources';
-import { API_KEYS } from './enums';
+import { API_KEYS } from '../enums';
 
 type DataAnthropic = {
   conversation: Array<{ role: 'user' | 'assistant', content: string }>;

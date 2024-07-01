@@ -9,7 +9,6 @@ type Data = {
   temperature: number;
   stream: boolean;
   timestamp: number;
-  status: string;
 };
 
 export default function List({ data }: { data: Data }) {

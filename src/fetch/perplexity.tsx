@@ -1,4 +1,4 @@
-import { API_KEYS } from './enums';
+import { API_KEYS } from '../enums';
 import fetch from 'node-fetch';
 // import axios from 'axios';
 import readline from 'readline';

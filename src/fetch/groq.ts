@@ -1,5 +1,5 @@
 // "use strict";
-import { API_KEYS } from "./enums/index";
+import { API_KEYS } from "../enums/index";
 const Groq = require("groq-sdk");
 
 type Data = {
