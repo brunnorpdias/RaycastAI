@@ -1,7 +1,7 @@
 // Navigation starts here and it's redirected to the page 'answer.tsx'
 import { Form, ActionPanel, Action, useNavigation, Cache } from '@raycast/api';
 import Chat from './chat';
-import List from './list';
+import List from './detail';
 import instructions from '../instructions.json';
 import { useState } from 'react';
 

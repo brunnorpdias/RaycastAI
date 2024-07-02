@@ -1,6 +1,6 @@
 import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import List from "./list";
+import List from "./detail";
 
 type Data = {
   conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;

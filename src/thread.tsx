@@ -1,18 +1,17 @@
 import { Detail, showToast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
 import { useEffect, useState, useRef } from 'react';
-import { Assistant } from './fetch/openAI';
+import * as OpenAI from './fetch/openAI';
 import NewEntry from './newentry';
 
 type Data = {
-  assistant: string;
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   instructions: string;
-  files: string[];
   model: string;
   temperature: number;
   timestamp: number;
   assistantID: string;
   threadID: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 export default function Thread({ data }: { data: Data }) {
@@ -22,6 +21,17 @@ export default function Thread({ data }: { data: Data }) {
   const [newData, setNewData] = useState<Data>(data);
   const hasRunRef = useRef(false);
   const { push } = useNavigation();
+
+  const onResponse = (apiResponse: string, apiStatus: string) => {
+    setStatus(apiStatus);
+    setResponse((prevResponse) => prevResponse + apiResponse);
+  };
+
+  async function APIrequest(data: Data) {
+    hasRunRef.current = true;
+    await OpenAI.NewThreadMessage(data);
+    await OpenAI.RunThread(data, onResponse);
+  }
 
   useEffect(() => {
     if (startTime === 0) {
@@ -35,26 +45,11 @@ export default function Thread({ data }: { data: Data }) {
     }
   }, [data]);
 
-  function APIrequest(data: Data) {
-    hasRunRef.current = true;
-
-    const onResponse = (apiResponse: string, apiStatus: string) => {
-      setStatus(apiStatus);
-      setResponse((prevResponse) => prevResponse + apiResponse);
-    };
-
-    const fetchData = async () => {
-      await Assistant(data, onResponse);
-    };
-
-    fetchData();
-  }
-
   useEffect(() => {
     // add waiting status
     if (status === 'done') {
       const endTime = Date.now();
-      const duration = Math.round((endTime - startTime) / 1000);
+      const duration = Math.round((endTime - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
       const temp: Data = {
         ...data,

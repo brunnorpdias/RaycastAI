@@ -50,7 +50,7 @@ export default function Chat({ data }: { data: Data }) {
     }
   }, [data]);
 
-  function APIrequest(data: Data) {
+  async function APIrequest(data: Data) {
     hasRunRef.current = true;
 
     const onResponse = (apiResponse: string, apiStatus: string) => {
@@ -58,30 +58,26 @@ export default function Chat({ data }: { data: Data }) {
       setResponse((prevResponse) => prevResponse + apiResponse);
     };
 
-    const fetchData = async () => {
-      if (data.api === 'openai') {
-        await OpenAPI(data, onResponse);
-      } else if (data.api === 'anthropic') {
-        // Anthropic has a different type, since it doesn't support system messages yet
-        const conversationAnthropic = data.conversation.slice(1) as DataAnthropic["conversation"];
-        const dataAnthropic: DataAnthropic = { ...data, conversation: conversationAnthropic }
-        Anthropic(dataAnthropic, onResponse);
-      } else if (data.api === 'perplexity') {
-        // llama is open source and doesn't have an api, so I'll run it using perplexity
-        await PplxAPI(data, onResponse);
-      } else if (data.api === 'groq') {
-        GroqAPI(data, onResponse);
-      };
+    if (data.api === 'openai') {
+      await OpenAPI(data, onResponse);
+    } else if (data.api === 'anthropic') {
+      // Anthropic has a different type, since it doesn't support system messages yet
+      const conversationAnthropic = data.conversation.slice(1) as DataAnthropic["conversation"];
+      const dataAnthropic: DataAnthropic = { ...data, conversation: conversationAnthropic }
+      Anthropic(dataAnthropic, onResponse);
+    } else if (data.api === 'perplexity') {
+      // llama is open source and doesn't have an api, so I'll run it using perplexity
+      await PplxAPI(data, onResponse);
+    } else if (data.api === 'groq') {
+      GroqAPI(data, onResponse);
     };
-
-    fetchData();
   }
 
   useEffect(() => {
     // add waiting status
     if (status === 'done') {
       const endTime = Date.now();
-      const duration = Math.round((endTime - startTime) / 1000);
+      const duration = Math.round((endTime - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
       const temp: Data = {
         ...data,

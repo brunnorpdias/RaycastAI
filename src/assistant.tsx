@@ -1,10 +1,9 @@
 // Navigation starts here and it's redirected to the page 'answer.tsx'
-import { Form, ActionPanel, Action, useNavigation, showToast } from '@raycast/api';
+import { Form, ActionPanel, Action, useNavigation, showToast, Toast } from '@raycast/api';
 import fs from 'fs';
-import OpenAI from "openai";
-import { API_KEYS } from './enums';
 import Thread from './thread';
-import instructions from '../instructions.json';
+import * as OpenAI from './fetch/openAI';
+// import instructions from '../instructions.json';
 
 type Values = {
   assistant: string;
@@ -15,15 +14,14 @@ type Values = {
 };
 
 type ParsedValues = {
-  assistant: string;
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   instructions: string;
-  files: string[];
   model: string;
   temperature: number;
   timestamp: number;
   assistantID: string;
   threadID: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 const model = 'gpt-4o';
@@ -32,29 +30,48 @@ export default function Command() {
   const { push } = useNavigation();
 
   async function handleSubmit(values: Values) {
-    const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-    const emptyThread = await openai.beta.threads.create();
-
     let parsedValues: ParsedValues = {
-      assistant: values.assistant,
       conversation: [
-        { role: 'system', content: instructions.text },
+        // { role: 'system', content: instructions.text },
         { role: 'user', content: values.prompt }
       ],
       instructions: `${values.instructions}`,
-      files: values.files.filter((file: any) => fs.existsSync(file) && fs.lstatSync(file).isFile()),
-      // model: values.model,
       model: model,
       temperature: parseFloat(values.temperature),
       timestamp: Date.now(),
       assistantID: '',
-      threadID: emptyThread.id,
+      threadID: '',
+      attachments: [],
     }
 
-    console.log(parsedValues.threadID);
-    showToast({ title: 'Submitted' });
-    console.log(JSON.stringify(parsedValues));
-    push(<Thread data={parsedValues} />)
+    const filePaths = values.files.filter((file: any) => fs.existsSync(file) && fs.lstatSync(file).isFile());
+
+    if (values.assistant == 'PDFanalyser') {
+      parsedValues.assistantID = 'asst_ASOeu7rF6Ry6p73RsRaQ789p';
+      if (filePaths) {
+        // Save thread in a local database
+        const fileIDs = await OpenAI.UploadFiles(filePaths);
+        if (fileIDs?.length) {
+          for (let fileID of fileIDs) {
+            parsedValues.attachments?.push({ file_id: fileID, tools: [{ type: 'file_search' }] })
+            // parsedValues.attachments?.push({ file_id: fileID })
+          };
+        }
+      }
+
+      // Create a thread, but leave the messages to be included later
+      const newThread = await OpenAI.CreateThread();
+      parsedValues.threadID = newThread.id;
+    } else {
+      // else if coding assistant...
+    }
+
+    if (parsedValues.threadID) {
+      showToast({ title: 'Thread Created' });
+      push(<Thread data={parsedValues} />)
+    } else {
+      showToast({ title: 'Thread Creation Failed', style: Toast.Style.Failure });
+    }
   }
 
   return (
@@ -65,8 +82,9 @@ export default function Command() {
         </ActionPanel>
       }
     >
+      {/* Use assistants from openai list assistants fetching */}
       <Form.Dropdown id='assistant' title='Assistant'>
-        <Form.Dropdown.Item key='analyser' value='analyser' title='Document Analyser' />
+        <Form.Dropdown.Item key='analyser' value='PDFanalyser' title='Document Analyser' />
         {/* <Form.Dropdown.Item key='coding' value='Your jobs is to help the user with his coding project' title='Coding' /> */}
       </Form.Dropdown>
 
