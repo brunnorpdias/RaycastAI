@@ -1,5 +1,5 @@
 import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/api";
-import Chat from './chat';
+import Answer from './chat_answer';
 
 type Data = {
   conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
@@ -23,8 +23,8 @@ export default function NewEntry({ data }: { data: Data }) {
       ...data,
       conversation: [...data.conversation, { role: 'user', content: prompt }]
     }
-    showToast({ title: "Submitted" });
-    push(<Chat data={newData} />)
+    // showToast({ title: "Submitted" });
+    push(<Answer data={newData} />)
   }
 
   return (

@@ -1,23 +1,25 @@
 import { Detail, showToast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
 import { useEffect, useState, useRef } from 'react';
 import * as OpenAI from './fetch/openAI';
-import NewEntry from './newentry';
+// import NewEntry from './assistant_newentry';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
-  instructions: string;
   model: string;
+  instructions: string;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   temperature: number;
   timestamp: number;
   assistantID: string;
   threadID: string;
+  runID: string;
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
-export default function Thread({ data }: { data: Data }) {
+export default function Answer({ data }: { data: Data }) {
   const [startTime, setStartTime] = useState(0);
   const [response, setResponse] = useState('');
   const [status, setStatus] = useState('');
+  const [runID, setRunID] = useState('');
   const [newData, setNewData] = useState<Data>(data);
   const hasRunRef = useRef(false);
   const { push } = useNavigation();
@@ -30,7 +32,10 @@ export default function Thread({ data }: { data: Data }) {
   async function APIrequest(data: Data) {
     hasRunRef.current = true;
     await OpenAI.NewThreadMessage(data);
-    await OpenAI.RunThread(data, onResponse);
+    const temp = await OpenAI.RunThread(data, onResponse);
+    if (temp) {
+      setRunID(temp);
+    }
   }
 
   useEffect(() => {
@@ -47,28 +52,35 @@ export default function Thread({ data }: { data: Data }) {
 
   useEffect(() => {
     // add waiting status
-    if (status === 'done') {
+    if (status === 'done' && runID) {
       const endTime = Date.now();
       const duration = Math.round((endTime - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
       const temp: Data = {
         ...data,
-        conversation: [...data.conversation, { role: 'assistant', content: response }]
+        conversation: [...data.conversation, { role: 'assistant', content: response }],
+        runID: runID,
       }
       setNewData(temp);
 
-      const cache = new Cache();
-      cache.clear();
-      cache.set('lastConversation', JSON.stringify(temp))
+      // const cache = new Cache();
+      // cache.clear();
+      // cache.set('lastConversation', JSON.stringify(temp))
+      // add three conversations to cache (different for assistant and chat)
     };
-  }, [status]);
+  }, [status, runID]);
 
   return (
     <Detail
-      // navigationTitle
       markdown={response}
       actions={
         <ActionPanel>
+          <Action
+            title="print data"
+            onAction={() => {
+              console.log(newData)
+            }}
+          />
           <Action.CopyToClipboard
             title='Copy Response'
             icon={Icon.Paragraph}
@@ -95,7 +107,7 @@ export default function Thread({ data }: { data: Data }) {
                   { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that" }
                 ]
               }
-              push(<Thread data={temp} />)
+              push(<Answer data={temp} />)
             }}
           />
           <Action
@@ -112,7 +124,7 @@ export default function Thread({ data }: { data: Data }) {
                   { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so" }
                 ]
               }
-              push(<Thread data={temp} />)
+              push(<Answer data={temp} />)
             }}
           />
           <Action.CopyToClipboard
@@ -121,17 +133,16 @@ export default function Thread({ data }: { data: Data }) {
             content={JSON.stringify(newData?.conversation)}
             shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
+          {/* <Action */}
+          {/*   title='Rewrite Prompt' */}
+          {/*   onAction={() => { */}
+          {/*   }} */}
+          {/* /> */}
         </ActionPanel>
       }
     />
   )
 }
-/*
-    <Action
-      title='Rewrite Prompt'
-      onAction={() => {
-        push(<
-      }
-    />
-*/
+
+
 

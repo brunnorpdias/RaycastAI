@@ -1,7 +1,7 @@
 // Navigation starts here and it's redirected to the page 'answer.tsx'
 import { Form, ActionPanel, Action, useNavigation, showToast, Toast } from '@raycast/api';
 import fs from 'fs';
-import Thread from './thread';
+import Answer from './assistant_answer';
 import * as OpenAI from './fetch/openAI';
 // import instructions from '../instructions.json';
 
@@ -14,13 +14,14 @@ type Values = {
 };
 
 type ParsedValues = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
-  instructions: string;
   model: string;
+  instructions: string;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   temperature: number;
   timestamp: number;
   assistantID: string;
   threadID: string;
+  runID: string;
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
@@ -31,16 +32,17 @@ export default function Command() {
 
   async function handleSubmit(values: Values) {
     let parsedValues: ParsedValues = {
+      model: model,
+      instructions: `${values.instructions}`,
       conversation: [
         // { role: 'system', content: instructions.text },
         { role: 'user', content: values.prompt }
       ],
-      instructions: `${values.instructions}`,
-      model: model,
       temperature: parseFloat(values.temperature),
       timestamp: Date.now(),
       assistantID: '',
       threadID: '',
+      runID: '',
       attachments: [],
     }
 
@@ -68,7 +70,7 @@ export default function Command() {
 
     if (parsedValues.threadID) {
       showToast({ title: 'Thread Created' });
-      push(<Thread data={parsedValues} />)
+      push(<Answer data={parsedValues} />)
     } else {
       showToast({ title: 'Thread Creation Failed', style: Toast.Style.Failure });
     }

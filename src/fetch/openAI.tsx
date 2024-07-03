@@ -14,21 +14,19 @@ type Data = {
 };
 
 type DataAssistant = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
-  instructions: string;
   model: string;
+  instructions: string;
+  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
   temperature: number;
   timestamp: number;
   assistantID: string;
   threadID: string;
+  runID: string;
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-  // [{file_id:"", tools: [{type: 'file_search'}]}],
 };
 
 export async function OpenAPI(data: Data, onResponse: (response: string, status: string) => void) {
-  const openai = new OpenAI(
-    { apiKey: API_KEYS.OPENAI }
-  );
+  const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
   const completion = await openai.chat.completions.create({
     model: data.model,
@@ -89,7 +87,7 @@ export async function UploadFiles(filePaths: string[]) {
       numFilesUploaded++;
       showToast({ title: `File Uploaded (${numFilesUploaded}/${fileStreams.length})`, style: Toast.Style.Animated })
     };
-    showToast({ title: 'File Uploading Done' });
+    showToast({ title: 'File Upload Done' });
     return fileIDs;
   }
   return null;
@@ -99,7 +97,8 @@ export async function NewThreadMessage(data: DataAssistant) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
   const lastMessage = data.conversation[data.conversation.length - 1];
-  const threadMessages = await openai.beta.threads.messages.create(
+  // const threadMessages =
+  const newMessage = await openai.beta.threads.messages.create(
     data.threadID,
     {
       role: lastMessage.role,
@@ -107,15 +106,19 @@ export async function NewThreadMessage(data: DataAssistant) {
       attachments: data.attachments
     }
   );
-  console.log(threadMessages);
+  // console.log(threadMessages);
 }
 
 export async function RunThread(data: DataAssistant, onResponse: (response: string, status: string) => void) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-
   const stream = await openai.beta.threads.runs.create(
     data.threadID,
-    { assistant_id: data.assistantID, stream: true }
+    {
+      assistant_id: data.assistantID,
+      stream: true,
+      model: data.model,
+      additional_instructions: data.instructions,
+    }
   );
 
   if (data.attachments?.length) {
@@ -128,6 +131,7 @@ export async function RunThread(data: DataAssistant, onResponse: (response: stri
       if (chunk.data.delta.content) {
         if (chunk.data.delta.content[0].type === 'text' && chunk.data.delta.content[0].text?.value) {
           onResponse(chunk.data.delta.content[0].text.value, "streaming");
+          console.log(JSON.stringify(chunk))
           if (!streamingStarted) {
             showToast({ title: 'Streaming', style: Toast.Style.Animated });
             streamingStarted = true;
@@ -137,9 +141,15 @@ export async function RunThread(data: DataAssistant, onResponse: (response: stri
       }
     };
 
-    if (chunk.event === 'thread.message.completed') {
+    if (chunk.event === 'thread.run.failed') {
+      showToast({ title: 'Thread Run Failed', style: Toast.Style.Failure });
+      break
+    }
+
+    if (chunk.event === 'thread.run.completed') {
       onResponse('', 'done');
-      break;
+      // console.log(`run_id: ${chunk.data.id}`)
+      return chunk.data.id
     };
   }
 }

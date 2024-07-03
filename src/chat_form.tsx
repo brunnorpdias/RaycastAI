@@ -1,7 +1,8 @@
 // Navigation starts here and it's redirected to the page 'answer.tsx'
 import { Form, ActionPanel, Action, useNavigation, Cache } from '@raycast/api';
-import Chat from './chat';
-import List from './detail';
+import Answer from './chat_answer';
+// import Bookmarks from './chat_bookmarks';
+import Detail from './chat_bookmarkDetail'
 import instructions from '../instructions.json';
 import { useState } from 'react';
 
@@ -65,7 +66,7 @@ export default function Command() {
       timestamp: Date.now(),
     }
     // showToast({ title: 'Submitted' });
-    push(<Chat data={parsedValues} />)
+    push(<Answer data={parsedValues} />)
   }
 
   return (
@@ -80,7 +81,7 @@ export default function Command() {
               const cached = cache.get("lastConversation");
               if (cached) {
                 const cachedData: ParsedValues = JSON.parse(cached);
-                push(<List data={cachedData} />)
+                push(<Detail data={cachedData} />)
               }
             }}
           />

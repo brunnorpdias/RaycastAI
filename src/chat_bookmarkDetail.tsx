@@ -1,5 +1,5 @@
 import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
-import NewEntry from "./newentry";
+import NewEntry from "./chat_newentry";
 import { useEffect, useState } from "react";
 
 type Data = {
@@ -11,7 +11,7 @@ type Data = {
   timestamp: number;
 };
 
-export default function List({ data }: { data: Data }) {
+export default function Detail({ data }: { data: Data }) {
   const { push } = useNavigation();
   const [newData, setNewData] = useState<Data>();
 

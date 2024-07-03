@@ -13,20 +13,20 @@ type ExtensionPreferences = {}
 declare type Preferences = ExtensionPreferences
 
 declare namespace Preferences {
-  /** Preferences accessible in the `quick` command */
-  export type Quick = ExtensionPreferences & {}
-  /** Preferences accessible in the `assistant` command */
-  export type Assistant = ExtensionPreferences & {}
-  /** Preferences accessible in the `bookmarks` command */
-  export type Bookmarks = ExtensionPreferences & {}
+  /** Preferences accessible in the `chat_form` command */
+  export type ChatForm = ExtensionPreferences & {}
+  /** Preferences accessible in the `assistant_form` command */
+  export type AssistantForm = ExtensionPreferences & {}
+  /** Preferences accessible in the `chat_bookmarks` command */
+  export type ChatBookmarks = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
-  /** Arguments passed to the `quick` command */
-  export type Quick = {}
-  /** Arguments passed to the `assistant` command */
-  export type Assistant = {}
-  /** Arguments passed to the `bookmarks` command */
-  export type Bookmarks = {}
+  /** Arguments passed to the `chat_form` command */
+  export type ChatForm = {}
+  /** Arguments passed to the `assistant_form` command */
+  export type AssistantForm = {}
+  /** Arguments passed to the `chat_bookmarks` command */
+  export type ChatBookmarks = {}
 }
 

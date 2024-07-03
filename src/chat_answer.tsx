@@ -3,7 +3,7 @@ import { GroqAPI } from './fetch/groq';
 import { OpenAPI } from './fetch/openAI';
 import { PplxAPI } from './fetch/perplexity';
 import { Anthropic } from './fetch/anthropic';
-import NewEntry from './newentry';
+import NewEntry from './chat_newentry';
 import { useEffect, useState, useRef } from 'react';
 
 // Import section for the title-making when bookmarking the chat

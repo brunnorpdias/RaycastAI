@@ -1,6 +1,6 @@
 import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import List from "./detail";
+import Detail from "./chat_bookmarkDetail";
 
 type Data = {
   conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
@@ -19,7 +19,7 @@ type Bookmarks = {
   [id: string]: Item;
 }
 
-export default function Command() {
+export default function Bookmarks() {
   const { push } = useNavigation();
   const [bookmarks, setBookmarks] = useState<Bookmarks>();
 
@@ -61,7 +61,7 @@ export default function Command() {
                     icon={Icon.AppWindow}
                     onAction={() => {
                       // console.log(typeof item.data.conversation);
-                      push(<List data={item.data} />)
+                      push(<Detail data={item.data} />)
                     }}
                   />
                 </ActionPanel>
