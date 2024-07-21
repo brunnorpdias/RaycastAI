@@ -1,4 +1,4 @@
-import AnthropicAPI from '@anthropic-ai/sdk';
+import { Anthropic } from '@anthropic-ai/sdk';
 import { MessageStreamEvent } from '@anthropic-ai/sdk/resources';
 import { Message } from '@anthropic-ai/sdk/resources';
 import { API_KEYS } from '../enums';
@@ -12,8 +12,8 @@ type DataAnthropic = {
   timestamp: number;
 };
 
-export async function Anthropic(data: DataAnthropic, onResponse: (response: string, status: string) => void) {
-  const client = new AnthropicAPI({
+export async function AnthropicAPI(data: DataAnthropic, onResponse: (response: string, status: string) => void) {
+  const client = new Anthropic({
     apiKey: API_KEYS.ANTHROPIC,
   });
 

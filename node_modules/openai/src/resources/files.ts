@@ -1,14 +1,13 @@
 // File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-import * as Core from '../core';
 import { APIResource } from '../resource';
 import { isRequestOptions } from '../core';
-import { type Response } from '../_shims/index';
 import { sleep } from '../core';
 import { APIConnectionTimeoutError } from '../error';
+import * as Core from '../core';
 import * as FilesAPI from './files';
-import { type Uploadable, multipartFormRequestOptions } from '../core';
 import { Page } from '../pagination';
+import { type Response } from '../_shims/index';
 
 export class Files extends APIResource {
   /**
@@ -21,15 +20,21 @@ export class Files extends APIResource {
    * [Assistants Tools guide](https://platform.openai.com/docs/assistants/tools) for
    * details.
    *
-   * The Fine-tuning API only supports `.jsonl` files.
+   * The Fine-tuning API only supports `.jsonl` files. The input also has certain
+   * required formats for fine-tuning
+   * [chat](https://platform.openai.com/docs/api-reference/fine-tuning/chat-input) or
+   * [completions](https://platform.openai.com/docs/api-reference/fine-tuning/completions-input)
+   * models.
    *
-   * The Batch API only supports `.jsonl` files up to 100 MB in size.
+   * The Batch API only supports `.jsonl` files up to 100 MB in size. The input also
+   * has a specific required
+   * [format](https://platform.openai.com/docs/api-reference/batch/request-input).
    *
    * Please [contact us](https://help.openai.com/) if you need to increase these
    * storage limits.
    */
   create(body: FileCreateParams, options?: Core.RequestOptions): Core.APIPromise<FileObject> {
-    return this._client.post('/files', multipartFormRequestOptions({ body, ...options }));
+    return this._client.post('/files', Core.multipartFormRequestOptions({ body, ...options }));
   }
 
   /**
@@ -182,7 +187,7 @@ export interface FileCreateParams {
   /**
    * The File object (not file name) to be uploaded.
    */
-  file: Uploadable;
+  file: Core.Uploadable;
 
   /**
    * The intended purpose of the uploaded file.
@@ -194,7 +199,7 @@ export interface FileCreateParams {
    * [Batch API](https://platform.openai.com/docs/guides/batch), and "fine-tune" for
    * [Fine-tuning](https://platform.openai.com/docs/api-reference/fine-tuning).
    */
-  purpose: 'assistants' | 'batch' | 'fine-tune';
+  purpose: 'assistants' | 'batch' | 'fine-tune' | 'vision';
 }
 
 export interface FileListParams {

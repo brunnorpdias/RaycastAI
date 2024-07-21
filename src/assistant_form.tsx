@@ -1,5 +1,5 @@
 // Navigation starts here and it's redirected to the page 'answer.tsx'
-import { Form, ActionPanel, Action, useNavigation, showToast, Toast } from '@raycast/api';
+import { Form as Raycastform, ActionPanel, Action, useNavigation, showToast, Toast } from '@raycast/api';
 import fs from 'fs';
 import Answer from './assistant_answer';
 import * as OpenAI from './fetch/openAI';
@@ -16,7 +16,7 @@ type Values = {
 type ParsedValues = {
   model: string;
   instructions: string;
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
   temperature: number;
   timestamp: number;
   assistantID: string;
@@ -27,7 +27,7 @@ type ParsedValues = {
 
 const model = 'gpt-4o';
 
-export default function Command() {
+export default function AssistantForm() {
   const { push } = useNavigation();
 
   async function handleSubmit(values: Values) {
@@ -36,7 +36,7 @@ export default function Command() {
       instructions: `${values.instructions}`,
       conversation: [
         // { role: 'system', content: instructions.text },
-        { role: 'user', content: values.prompt }
+        { role: 'user', content: values.prompt, timestamp: Date.now() }
       ],
       temperature: parseFloat(values.temperature),
       timestamp: Date.now(),
@@ -77,7 +77,7 @@ export default function Command() {
   }
 
   return (
-    <Form
+    <Raycastform
       actions={
         <ActionPanel>
           <Action.SubmitForm title='Submit' onSubmit={handleSubmit} />
@@ -85,16 +85,16 @@ export default function Command() {
       }
     >
       {/* Use assistants from openai list assistants fetching */}
-      <Form.Dropdown id='assistant' title='Assistant'>
-        <Form.Dropdown.Item key='analyser' value='PDFanalyser' title='Document Analyser' />
+      <Raycastform.Dropdown id='assistant' title='Assistant'>
+        <Raycastform.Dropdown.Item key='analyser' value='PDFanalyser' title='Document Analyser' />
         {/* <Form.Dropdown.Item key='coding' value='Your jobs is to help the user with his coding project' title='Coding' /> */}
-      </Form.Dropdown>
+      </Raycastform.Dropdown>
 
-      <Form.TextArea id='instructions' title='Instructions' placeholder='What do you want the assistant to do' />
-      <Form.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
+      <Raycastform.TextArea id='instructions' title='Instructions' placeholder='What do you want the assistant to do' />
+      <Raycastform.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
 
-      <Form.TextField id='temperature' title='Temperature' defaultValue='0.7' placeholder='0.7' />
-      <Form.FilePicker id='files' allowMultipleSelection={true} />
-    </Form>
+      <Raycastform.TextField id='temperature' title='Temperature' defaultValue='0.7' placeholder='0.7' />
+      <Raycastform.FilePicker id='files' allowMultipleSelection={true} />
+    </Raycastform>
   );
 }

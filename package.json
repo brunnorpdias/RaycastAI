@@ -12,21 +12,9 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "chat_form",
-      "title": "Quick Question",
-      "description": "Sends the request to the server",
-      "mode": "view"
-    },
-    {
-      "name": "assistant_form",
-      "title": "Assistant",
-      "description": "Work on complex problems and files",
-      "mode": "view"
-    },
-    {
-      "name": "chat_bookmarks",
-      "title": "View Bookmarks",
-      "description": "View all bookmarked conversations",
+      "name": "index",
+      "title": "Select Function",
+      "description": "Sends the request to chat or assistant, or view saved conversations",
       "mode": "view"
     }
   ],

@@ -1,9 +1,9 @@
 import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import Detail from "./chat_bookmarkDetail";
+import Detail from "./conversation_detail";
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
   api: string;
   model: string;
   temperature: number;
@@ -15,6 +15,7 @@ type Item = {
   title: string,
   data: Data
 }
+
 type Bookmarks = {
   [id: string]: Item;
 }
@@ -64,6 +65,7 @@ export default function Bookmarks() {
                       push(<Detail data={item.data} />)
                     }}
                   />
+                  {/* await LocalStorage.clear(); */}
                 </ActionPanel>
               }
             />
@@ -79,3 +81,4 @@ export default function Bookmarks() {
     );
   }
 }
+

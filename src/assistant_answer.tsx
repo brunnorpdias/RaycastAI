@@ -6,7 +6,7 @@ import * as OpenAI from './fetch/openAI';
 type Data = {
   model: string;
   instructions: string;
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
   temperature: number;
   timestamp: number;
   assistantID: string;
@@ -58,7 +58,7 @@ export default function Answer({ data }: { data: Data }) {
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
       const temp: Data = {
         ...data,
-        conversation: [...data.conversation, { role: 'assistant', content: response }],
+        conversation: [...data.conversation, { role: 'assistant', content: response, timestamp: Date.now() }],
         runID: runID,
       }
       setNewData(temp);
@@ -104,7 +104,7 @@ export default function Answer({ data }: { data: Data }) {
                 ...data,
                 conversation: [
                   ...data.conversation,
-                  { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that" }
+                  { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that", timestamp: Date.now() }
                 ]
               }
               push(<Answer data={temp} />)
@@ -121,7 +121,7 @@ export default function Answer({ data }: { data: Data }) {
                 ...data,
                 conversation: [
                   ...data.conversation,
-                  { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so" }
+                  { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so", timestamp: Date.now() }
                 ]
               }
               push(<Answer data={temp} />)
@@ -131,7 +131,6 @@ export default function Answer({ data }: { data: Data }) {
             title='Copy Data'
             icon={Icon.Download}
             content={JSON.stringify(newData?.conversation)}
-            shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
           {/* <Action */}
           {/*   title='Rewrite Prompt' */}

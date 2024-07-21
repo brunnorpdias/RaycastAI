@@ -5,7 +5,7 @@ import readline from 'readline';
 import { Readable } from 'stream';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
   api: string;
   model: string;
   temperature: number;

@@ -1,8 +1,8 @@
 // File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-import * as Core from '../../../core';
 import { APIResource } from '../../../resource';
 import { isRequestOptions } from '../../../core';
+import * as Core from '../../../core';
 import * as JobsAPI from './jobs';
 import * as CheckpointsAPI from './checkpoints';
 import { CursorPage, type CursorPageParams } from '../../../pagination';
@@ -311,6 +311,11 @@ export interface JobCreateParams {
    *
    * Your dataset must be formatted as a JSONL file. Additionally, you must upload
    * your file with the purpose `fine-tune`.
+   *
+   * The contents of the file should differ depending on if the model uses the
+   * [chat](https://platform.openai.com/docs/api-reference/fine-tuning/chat-input) or
+   * [completions](https://platform.openai.com/docs/api-reference/fine-tuning/completions-input)
+   * format.
    *
    * See the [fine-tuning guide](https://platform.openai.com/docs/guides/fine-tuning)
    * for more details.

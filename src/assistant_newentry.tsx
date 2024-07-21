@@ -4,7 +4,7 @@ import Answer from './assistant_answer';
 type Data = {
   model: string;
   instructions: string;
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
   temperature: number;
   timestamp: number;
   assistantID: string;
@@ -24,7 +24,7 @@ export default function NewEntry({ data }: { data: Data }) {
     const prompt = values.prompt;
     const newData: Data = {
       ...data,
-      conversation: [...data.conversation, { role: 'user', content: prompt }]
+      conversation: [...data.conversation, { role: 'user', content: prompt, timestamp: Date.now() }]
     }
     // showToast({ title: "Submitted" });
     push(<Answer data={newData} />)

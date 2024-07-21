@@ -3,7 +3,7 @@ import NewEntry from "./chat_newentry";
 import { useEffect, useState } from "react";
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
   api: string;
   model: string;
   temperature: number;
@@ -57,4 +57,5 @@ export default function Detail({ data }: { data: Data }) {
     );
   }
 }
+
 

@@ -3,7 +3,7 @@ import { API_KEYS } from "../enums/index";
 const Groq = require("groq-sdk");
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
   api: string;
   model: string;
   temperature: number;
@@ -11,13 +11,17 @@ type Data = {
   timestamp: number;
 };
 
+type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
+
 const groq = new Groq({
   apiKey: API_KEYS.GROQ
 });
 
 export async function GroqAPI(data: Data, onResponse: (response: string, status: string) => void) {
+  const messages = data.conversation.map(({ timestamp, ...rest }) => rest) as Messages;
+
   const chat = groq.chat.completions.create({
-    messages: data.conversation,
+    messages: messages,
     model: data.model,
     temperature: data.temperature,
     stream: data.stream

@@ -1,8 +1,8 @@
 // File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-import * as Core from '../../../core';
 import { APIResource } from '../../../resource';
 import { isRequestOptions } from '../../../core';
+import * as Core from '../../../core';
 import * as VectorStoresAPI from './vector-stores';
 import * as FileBatchesAPI from './file-batches';
 import * as FilesAPI from './files';
@@ -201,6 +201,12 @@ export interface VectorStoreDeleted {
 
 export interface VectorStoreCreateParams {
   /**
+   * The chunking strategy used to chunk the file(s). If not set, will use the `auto`
+   * strategy. Only applicable if `file_ids` is non-empty.
+   */
+  chunking_strategy?: VectorStoreCreateParams.Auto | VectorStoreCreateParams.Static;
+
+  /**
    * The expiration policy for a vector store.
    */
   expires_after?: VectorStoreCreateParams.ExpiresAfter;
@@ -227,6 +233,43 @@ export interface VectorStoreCreateParams {
 }
 
 export namespace VectorStoreCreateParams {
+  /**
+   * The default strategy. This strategy currently uses a `max_chunk_size_tokens` of
+   * `800` and `chunk_overlap_tokens` of `400`.
+   */
+  export interface Auto {
+    /**
+     * Always `auto`.
+     */
+    type: 'auto';
+  }
+
+  export interface Static {
+    static: Static.Static;
+
+    /**
+     * Always `static`.
+     */
+    type: 'static';
+  }
+
+  export namespace Static {
+    export interface Static {
+      /**
+       * The number of tokens that overlap between chunks. The default value is `400`.
+       *
+       * Note that the overlap must not exceed half of `max_chunk_size_tokens`.
+       */
+      chunk_overlap_tokens: number;
+
+      /**
+       * The maximum number of tokens in each chunk. The default value is `800`. The
+       * minimum value is `100` and the maximum value is `4096`.
+       */
+      max_chunk_size_tokens: number;
+    }
+  }
+
   /**
    * The expiration policy for a vector store.
    */

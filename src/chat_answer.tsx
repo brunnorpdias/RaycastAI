@@ -1,18 +1,13 @@
-import { Detail, showToast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
+import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
+import * as OpenAPI from './fetch/openAI';
+import { AnthropicAPI } from './fetch/anthropic';
 import { GroqAPI } from './fetch/groq';
-import { OpenAPI } from './fetch/openAI';
 import { PplxAPI } from './fetch/perplexity';
-import { Anthropic } from './fetch/anthropic';
 import NewEntry from './chat_newentry';
 import { useEffect, useState, useRef } from 'react';
 
-// Import section for the title-making when bookmarking the chat
-import { API_KEYS } from "./enums/index";
-import Groq from "groq-sdk";
-const groqTitleModel = 'llama3-70b-8192';
-
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
   api: string;
   model: string;
   temperature: number;
@@ -29,6 +24,9 @@ type DataAnthropic = {
   stream: boolean;
   timestamp: number;
 };
+
+type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
+
 
 export default function Chat({ data }: { data: Data }) {
   const [startTime, setStartTime] = useState(0);
@@ -59,12 +57,12 @@ export default function Chat({ data }: { data: Data }) {
     };
 
     if (data.api === 'openai') {
-      await OpenAPI(data, onResponse);
+      await OpenAPI.RunChat(data, onResponse);
     } else if (data.api === 'anthropic') {
       // Anthropic has a different type, since it doesn't support system messages yet
       const conversationAnthropic = data.conversation.slice(1) as DataAnthropic["conversation"];
       const dataAnthropic: DataAnthropic = { ...data, conversation: conversationAnthropic }
-      Anthropic(dataAnthropic, onResponse);
+      AnthropicAPI(dataAnthropic, onResponse);
     } else if (data.api === 'perplexity') {
       // llama is open source and doesn't have an api, so I'll run it using perplexity
       await PplxAPI(data, onResponse);
@@ -76,19 +74,45 @@ export default function Chat({ data }: { data: Data }) {
   useEffect(() => {
     // add waiting status
     if (status === 'done') {
+      const tempData: Data = {
+        ...data,
+        conversation: [...data.conversation, { role: 'assistant', content: response, timestamp: Date.now() }]
+      };
+      setNewData(tempData);
+
+      showToast({ title: 'Saving to Cache', style: Toast.Style.Animated });
+      const cache = new Cache();
+      const cachedChatsString = cache.get('cachedChats');
+      const cachedChats = cachedChatsString ? JSON.parse(cachedChatsString) : [];
+      if (cachedChats.length > 0) {
+        // Substitute chats with the same timestamp
+        // const updatedCachedChats = cachedChats.filter((chat: Data) => chat.timestamp !== tempData.timestamp)
+        for (let i = 0; i < cachedChats.length; i++) {
+          console.log(cachedChats[i].timestamp)
+          if (cachedChats[i].timestamp == tempData.timestamp) {
+            cachedChats.splice(i, 1);
+            // console.log(`removed item #${i}`)
+          }
+        }
+        console.log(`\n`)
+
+        // Remove any repeated items (new entries of the same conversation)
+        if (cachedChats.length >= 10) {
+          const newCachedChats = cachedChats.slice(1).concat(tempData);
+          cache.set('cachedChats', JSON.stringify(newCachedChats));
+        } else {
+          const newCachedChats = cachedChats.concat(tempData);
+          cache.set('cachedChats', JSON.stringify(newCachedChats));
+        }
+
+      } else {
+        const list = [tempData];
+        cache.set('cachedChats', JSON.stringify(list));
+      }
+
       const endTime = Date.now();
       const duration = Math.round((endTime - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
-      const temp: Data = {
-        ...data,
-        conversation: [...data.conversation, { role: 'assistant', content: response }]
-      }
-      setNewData(temp);
-
-      const cache = new Cache();
-      cache.clear();
-      cache.set('lastConversation', JSON.stringify(temp))
-      // console.log(cache.get('lastConversation'))
     };
   }, [status]);
 
@@ -103,6 +127,7 @@ export default function Chat({ data }: { data: Data }) {
             icon={Icon.Paragraph}
             content={response}
           />
+
           <Action
             title="New Entry"
             icon={Icon.Plus}
@@ -110,6 +135,7 @@ export default function Chat({ data }: { data: Data }) {
               push(<NewEntry data={newData} />)
             }}
           />
+
           <Action
             title="Summarise"
             icon={Icon.ShortParagraph}
@@ -121,12 +147,13 @@ export default function Chat({ data }: { data: Data }) {
                 ...data,
                 conversation: [
                   ...data.conversation,
-                  { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that" }
+                  { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that", timestamp: Date.now() }
                 ]
               }
               push(<Chat data={temp} />)
             }}
           />
+
           <Action
             title="Main points"
             icon={Icon.BulletPoints}
@@ -138,42 +165,39 @@ export default function Chat({ data }: { data: Data }) {
                 ...data,
                 conversation: [
                   ...data.conversation,
-                  { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so" }
+                  { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so", timestamp: Date.now() }
                 ]
               }
               push(<Chat data={temp} />)
             }}
           />
+
           <Action
             title="Bookmark"
             icon={Icon.Bookmark}
+            shortcut={{ modifiers: ["cmd"], key: "d" }}
             onAction={async () => {
-              await LocalStorage.clear();
-              const groq = new Groq({ apiKey: API_KEYS.GROQ });
-              const chat = await groq.chat.completions.create({
-                messages: [
-                  ...newData.conversation.slice(1),
-                  {
-                    role: 'user',
-                    content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. Mention names, places, and other remarkable things'
-                  }
-                ],
-                model: groqTitleModel
-              });
-              const title = chat.choices[0]?.message.content
+              // Filter out system role and remove timestamp
+              const filteredMessages = newData.conversation
+                .filter(({ role }) => role === 'user' || role === 'assistant')
+                .map(({ timestamp, ...rest }) => rest) as Messages;
+
+              const title = await OpenAPI.TitleConversation(filteredMessages);
+              if (await LocalStorage.getItem<string>(`${newData.timestamp}`)) {
+                LocalStorage.removeItem(`${newData.timestamp}`);
+              };
               await LocalStorage.setItem(
                 `${newData.timestamp}`,
                 JSON.stringify({ title: title, data: newData }),
               );
-              // console.log(await LocalStorage.allItems())
               showToast({ title: 'Bookmarked' });
             }}
           />
+
           <Action.CopyToClipboard
             title='Copy Data'
             icon={Icon.Download}
             content={JSON.stringify(newData?.conversation)}
-            shortcut={{ modifiers: ["cmd"], key: "c" }}
           />
         </ActionPanel>
       }

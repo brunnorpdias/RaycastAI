@@ -5,7 +5,7 @@ import { API_KEYS } from '../enums';
 import fs from 'fs';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
   api: string;
   model: string;
   temperature: number;
@@ -25,12 +25,16 @@ type DataAssistant = {
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
-export async function OpenAPI(data: Data, onResponse: (response: string, status: string) => void) {
+type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
+
+
+export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
+  const messages = data.conversation.map(({ timestamp, ...rest }) => rest);
 
   const completion = await openai.chat.completions.create({
     model: data.model,
-    messages: data.conversation,
+    messages: messages,
     temperature: data.temperature,
     stream: data.stream,
   });
@@ -76,7 +80,7 @@ export async function UploadFiles(filePaths: string[]) {
     const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
     const fileIDs = [];
 
-    showToast({ title: `File Upload Started`, style: Toast.Style.Animated })
+    showToast({ title: 'File Upload Started', style: Toast.Style.Animated })
     let numFilesUploaded = 0;
     for (let fileStream of fileStreams) {
       const file = await openai.files.create({
@@ -93,12 +97,12 @@ export async function UploadFiles(filePaths: string[]) {
   return null;
 }
 
+
 export async function NewThreadMessage(data: DataAssistant) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
   const lastMessage = data.conversation[data.conversation.length - 1];
-  // const threadMessages =
-  const newMessage = await openai.beta.threads.messages.create(
+  await openai.beta.threads.messages.create(
     data.threadID,
     {
       role: lastMessage.role,
@@ -108,6 +112,7 @@ export async function NewThreadMessage(data: DataAssistant) {
   );
   // console.log(threadMessages);
 }
+
 
 export async function RunThread(data: DataAssistant, onResponse: (response: string, status: string) => void) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
@@ -152,4 +157,21 @@ export async function RunThread(data: DataAssistant, onResponse: (response: stri
       return chunk.data.id
     };
   }
+}
+
+
+export async function TitleConversation(messages: Messages) {
+  showToast({ title: 'Creating a title', style: Toast.Style.Animated })
+  const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
+  const chat = await openai.chat.completions.create({
+    messages: [
+      ...messages,
+      {
+        role: 'user',
+        content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.'
+      }
+    ],
+    model: 'gpt-4o-mini'
+  });
+  return chat.choices[0]?.message.content
 }

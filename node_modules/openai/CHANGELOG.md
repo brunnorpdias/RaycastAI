@@ -1,5 +1,156 @@
 # Changelog
 
+## 4.52.7 (2024-07-11)
+
+Full Changelog: [v4.52.6...v4.52.7](https://github.com/openai/openai-node/compare/v4.52.6...v4.52.7)
+
+### Documentation
+
+* **examples:** update example values ([#933](https://github.com/openai/openai-node/issues/933)) ([92512ab](https://github.com/openai/openai-node/commit/92512abcd7ab5d7c452dfae007c3a25041062656))
+
+## 4.52.6 (2024-07-11)
+
+Full Changelog: [v4.52.5...v4.52.6](https://github.com/openai/openai-node/compare/v4.52.5...v4.52.6)
+
+### Chores
+
+* **ci:** also run workflows for PRs targeting `next` ([#931](https://github.com/openai/openai-node/issues/931)) ([e3f979a](https://github.com/openai/openai-node/commit/e3f979ae94b2252b9552d1e03de5b92d398a3e28))
+
+## 4.52.5 (2024-07-10)
+
+Full Changelog: [v4.52.4...v4.52.5](https://github.com/openai/openai-node/compare/v4.52.4...v4.52.5)
+
+### Bug Fixes
+
+* **vectorStores:** correctly handle missing `files` in `uploadAndPoll()` ([#926](https://github.com/openai/openai-node/issues/926)) ([945fca6](https://github.com/openai/openai-node/commit/945fca646b02b52bbc9163cb51f5d87e7db8afd6))
+
+## 4.52.4 (2024-07-08)
+
+Full Changelog: [v4.52.3...v4.52.4](https://github.com/openai/openai-node/compare/v4.52.3...v4.52.4)
+
+### Refactors
+
+* **examples:** removedduplicated 'messageDelta' streaming event. ([#909](https://github.com/openai/openai-node/issues/909)) ([7b0b3d2](https://github.com/openai/openai-node/commit/7b0b3d2e228532fca19f49390a2831a1abac72a4))
+
+## 4.52.3 (2024-07-02)
+
+Full Changelog: [v4.52.2...v4.52.3](https://github.com/openai/openai-node/compare/v4.52.2...v4.52.3)
+
+### Chores
+
+* minor change to tests ([#916](https://github.com/openai/openai-node/issues/916)) ([b8a33e3](https://github.com/openai/openai-node/commit/b8a33e31697b52d733f28d9380e0c02a2d179474))
+
+## 4.52.2 (2024-06-28)
+
+Full Changelog: [v4.52.1...v4.52.2](https://github.com/openai/openai-node/compare/v4.52.1...v4.52.2)
+
+### Chores
+
+* gitignore test server logs ([#914](https://github.com/openai/openai-node/issues/914)) ([6316720](https://github.com/openai/openai-node/commit/6316720c3fdd0422965ae3890275062bc0fe3c2b))
+
+## 4.52.1 (2024-06-25)
+
+Full Changelog: [v4.52.0...v4.52.1](https://github.com/openai/openai-node/compare/v4.52.0...v4.52.1)
+
+### Chores
+
+* **doc:** clarify service tier default value ([#908](https://github.com/openai/openai-node/issues/908)) ([e4c8100](https://github.com/openai/openai-node/commit/e4c8100c7732bdc336b52a48d09945782c0fa2a3))
+* **internal:** minor reformatting ([#911](https://github.com/openai/openai-node/issues/911)) ([78c9377](https://github.com/openai/openai-node/commit/78c9377fcd563645081629a89f3fda2c1ff4e175))
+* **internal:** re-order some imports ([#904](https://github.com/openai/openai-node/issues/904)) ([dbd5c40](https://github.com/openai/openai-node/commit/dbd5c4053ba2f255dfc56676ced5b30381843c75))
+
+## 4.52.0 (2024-06-18)
+
+Full Changelog: [v4.51.0...v4.52.0](https://github.com/openai/openai-node/compare/v4.51.0...v4.52.0)
+
+### Features
+
+* **api:** add service tier argument for chat completions ([#900](https://github.com/openai/openai-node/issues/900)) ([91e6651](https://github.com/openai/openai-node/commit/91e66514037a8d6f9c39d3c96cd5769885925a4b))
+
+## 4.51.0 (2024-06-12)
+
+Full Changelog: [v4.50.0...v4.51.0](https://github.com/openai/openai-node/compare/v4.50.0...v4.51.0)
+
+### Features
+
+* **api:** updates ([#894](https://github.com/openai/openai-node/issues/894)) ([b58f5a1](https://github.com/openai/openai-node/commit/b58f5a1344f631dac0fb8ecfa4fbae49af070189))
+
+## 4.50.0 (2024-06-10)
+
+Full Changelog: [v4.49.1...v4.50.0](https://github.com/openai/openai-node/compare/v4.49.1...v4.50.0)
+
+### Features
+
+* support `application/octet-stream` request bodies ([#892](https://github.com/openai/openai-node/issues/892)) ([51661c8](https://github.com/openai/openai-node/commit/51661c8068d4990df6916becb6bb85353b54ef4d))
+
+## 4.49.1 (2024-06-07)
+
+Full Changelog: [v4.49.0...v4.49.1](https://github.com/openai/openai-node/compare/v4.49.0...v4.49.1)
+
+### Bug Fixes
+
+* remove erroneous thread create argument ([#889](https://github.com/openai/openai-node/issues/889)) ([a9f898e](https://github.com/openai/openai-node/commit/a9f898ee109a0b35a672e41c6497f3a75eff7734))
+
+## 4.49.0 (2024-06-06)
+
+Full Changelog: [v4.48.3...v4.49.0](https://github.com/openai/openai-node/compare/v4.48.3...v4.49.0)
+
+### Features
+
+* **api:** updates ([#887](https://github.com/openai/openai-node/issues/887)) ([359eeb3](https://github.com/openai/openai-node/commit/359eeb33b08b371451f216d1e21dd3334ec15f36))
+
+## 4.48.3 (2024-06-06)
+
+Full Changelog: [v4.48.2...v4.48.3](https://github.com/openai/openai-node/compare/v4.48.2...v4.48.3)
+
+### Chores
+
+* **internal:** minor refactor of tests ([#884](https://github.com/openai/openai-node/issues/884)) ([0b71f2b](https://github.com/openai/openai-node/commit/0b71f2b2cb67e5714476b6f63b4ef93a0140bff2))
+
+## 4.48.2 (2024-06-05)
+
+Full Changelog: [v4.48.1...v4.48.2](https://github.com/openai/openai-node/compare/v4.48.1...v4.48.2)
+
+### Chores
+
+* **internal:** minor change to tests ([#881](https://github.com/openai/openai-node/issues/881)) ([5e2d608](https://github.com/openai/openai-node/commit/5e2d608ca9a2bcb3f261ad13c848d327b60b6fb1))
+
+## 4.48.1 (2024-06-04)
+
+Full Changelog: [v4.48.0...v4.48.1](https://github.com/openai/openai-node/compare/v4.48.0...v4.48.1)
+
+### Bug Fixes
+
+* resolve typescript issue ([1129707](https://github.com/openai/openai-node/commit/11297073b1a370fc9c8676446f939a48071999b2))
+
+## 4.48.0 (2024-06-03)
+
+Full Changelog: [v4.47.3...v4.48.0](https://github.com/openai/openai-node/compare/v4.47.3...v4.48.0)
+
+### Features
+
+* **api:** updates ([#874](https://github.com/openai/openai-node/issues/874)) ([295c248](https://github.com/openai/openai-node/commit/295c2486005f6f1eb81cbbd6994b4382801d0707))
+
+## 4.47.3 (2024-05-31)
+
+Full Changelog: [v4.47.2...v4.47.3](https://github.com/openai/openai-node/compare/v4.47.2...v4.47.3)
+
+### Bug Fixes
+
+* allow git imports for pnpm ([#873](https://github.com/openai/openai-node/issues/873)) ([9da9809](https://github.com/openai/openai-node/commit/9da98090e80cbe988a3d695e4c9b57439080ec3e))
+
+
+### Documentation
+
+* **azure:** update example and readme to use Entra ID ([#857](https://github.com/openai/openai-node/issues/857)) ([722eff1](https://github.com/openai/openai-node/commit/722eff1a7aeaa2ce3c40301709db61258c9afa16))
+
+## 4.47.2 (2024-05-28)
+
+Full Changelog: [v4.47.1...v4.47.2](https://github.com/openai/openai-node/compare/v4.47.1...v4.47.2)
+
+### Documentation
+
+* **readme:** add bundle size badge ([#869](https://github.com/openai/openai-node/issues/869)) ([e252132](https://github.com/openai/openai-node/commit/e2521327b7b4f5abe97e4c58c417b37d00079ef8))
+
 ## 4.47.1 (2024-05-14)
 
 Full Changelog: [v4.47.0...v4.47.1](https://github.com/openai/openai-node/compare/v4.47.0...v4.47.1)

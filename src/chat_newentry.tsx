@@ -2,7 +2,7 @@ import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/ap
 import Answer from './chat_answer';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
   api: string;
   model: string;
   temperature: number;
@@ -21,7 +21,7 @@ export default function NewEntry({ data }: { data: Data }) {
     const prompt = values.prompt;
     const newData: Data = {
       ...data,
-      conversation: [...data.conversation, { role: 'user', content: prompt }]
+      conversation: [...data.conversation, { role: 'user', content: prompt, timestamp: Date.now() }]
     }
     // showToast({ title: "Submitted" });
     push(<Answer data={newData} />)
