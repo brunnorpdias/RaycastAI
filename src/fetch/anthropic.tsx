@@ -3,23 +3,29 @@ import { MessageStreamEvent } from '@anthropic-ai/sdk/resources';
 import { Message } from '@anthropic-ai/sdk/resources';
 import { API_KEYS } from '../enums';
 
-type DataAnthropic = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
-  api: string;
-  model: string;
+type Data = {
+  id: number;
   temperature: number;
-  stream: boolean;
-  timestamp: number;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  model: string;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
-export async function AnthropicAPI(data: DataAnthropic, onResponse: (response: string, status: string) => void) {
-  const client = new Anthropic({
-    apiKey: API_KEYS.ANTHROPIC,
-  });
+export async function AnthropicAPI(data: Data, onResponse: (response: string, status: string) => void) {
+  const messages = data.conversation.map(({ timestamp, ...rest }) => rest);
+  const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
 
   const msg = await client.messages.create({
-    messages: data.conversation,
     model: data.model,
+    system: data.systemMessage,
+    messages: messages,
     max_tokens: 4096,
     temperature: data.temperature,
     stream: data.stream,

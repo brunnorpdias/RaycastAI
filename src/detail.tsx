@@ -2,30 +2,41 @@ import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@
 import NewEntry from "./chat_newentry";
 import { useEffect, useState } from "react";
 
+// type ParsedData = {
+//   type: 'chat' | 'assistant',
+//   timestamp: number,
+//   conversation: Array<{ role: 'user' | 'assistant', content: string }>,
+//   stringData: string
+// }
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
-  api: string;
-  model: string;
+  id: number;
   temperature: number;
-  stream: boolean;
-  timestamp: number;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  model: string;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 export default function Detail({ data }: { data: Data }) {
   const { push } = useNavigation();
-  const [newData, setNewData] = useState<Data>();
+  const [parsedData, setParsedData] = useState<Data>();
 
   useEffect(() => {
     if (data) {
-      setNewData(data)
+      setParsedData(data)
     }
   }, [data])
 
-  if (newData) {
+  if (parsedData) {
     return (
       <RaycastList isShowingDetail>
         {data.conversation
-          .filter(item => item.role !== 'system')
           .map((item, index) => (
             <RaycastList.Item
               key={`#${index}`}
@@ -40,7 +51,7 @@ export default function Detail({ data }: { data: Data }) {
                     title="New Entry"
                     icon={Icon.Plus}
                     onAction={() => {
-                      push(<NewEntry data={newData} />)
+                      push(<NewEntry data={data} />)
                     }}
                   />
                 </ActionPanel>

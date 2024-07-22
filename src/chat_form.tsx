@@ -11,14 +11,31 @@ type Values = {
   stream: boolean;
 };
 
+// type ParsedValues = {
+//   model: string;
+//   api: string;
+//   systemMessage: string;
+//   conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+//   temperature: number;
+//   stream: boolean;
+//   timestamp: number;
+// };
+
 type ParsedValues = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
-  api: string;
-  model: string;
+  id: number;
   temperature: number;
-  stream: boolean;
-  timestamp: number;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  model: string;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
+
 
 export default function ChatForm() {
   const { push } = useNavigation();
@@ -53,15 +70,13 @@ export default function ChatForm() {
 
   function handleSubmit(values: Values) {
     const parsedValues: ParsedValues = {
-      conversation: [
-        { role: 'system', content: instructions.text, timestamp: Date.now() },
-        { role: 'user', content: values.prompt, timestamp: Date.now() }
-      ],
-      api: values.api,
+      id: Date.now(),
       model: values.model,
+      api: values.api,
+      systemMessage: instructions.text,
+      conversation: [{ role: 'user', content: values.prompt, timestamp: Date.now() }],
       temperature: 0.7,
       stream: values.stream,
-      timestamp: Date.now(),
     }
     // showToast({ title: 'Submitted' });
     push(<Answer data={parsedValues} />)

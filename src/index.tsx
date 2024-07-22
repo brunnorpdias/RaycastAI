@@ -2,6 +2,7 @@ import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@
 import ChatForm from './chat_form';
 import AssistantForm from "./assistant_form";
 import Bookmarks from "./bookmarks";
+import Cache from "./cache";
 
 
 export default function Index() {
@@ -11,6 +12,7 @@ export default function Index() {
     <RaycastList filtering={false} >
       <RaycastList.Item
         title={"Chat"}
+        subtitle={"Create a quick chat with different llms"}
         icon={Icon.Message}
         actions={
           <ActionPanel>
@@ -24,8 +26,10 @@ export default function Index() {
           </ActionPanel>
         }
       />
+
       <RaycastList.Item
         title={"Assistant"}
+        subtitle={"Get help with a project or analysing documents"}
         icon={Icon.Upload}
         actions={
           <ActionPanel>
@@ -39,16 +43,35 @@ export default function Index() {
           </ActionPanel>
         }
       />
+
       <RaycastList.Item
-        title={"Bookmarked Chats and Assistants"}
-        icon={Icon.Sidebar}
+        title={"Bookmarks"}
+        subtitle={"View bookmarked chats and assistant threads"}
+        icon={Icon.Bookmark}
         actions={
           <ActionPanel>
             <Action
               title="Open Bookmarks"
-              icon={Icon.Sidebar}
+              icon={Icon.Bookmark}
               onAction={() => {
                 push(<Bookmarks />)
+              }}
+            />
+          </ActionPanel>
+        }
+      />
+
+      <RaycastList.Item
+        title={"Cache"}
+        subtitle={"View cached chats and assistant threads"}
+        icon={Icon.Sidebar}
+        actions={
+          <ActionPanel>
+            <Action
+              title="Open Cache"
+              icon={Icon.Sidebar}
+              onAction={() => {
+                push(<Cache />)
               }}
             />
           </ActionPanel>

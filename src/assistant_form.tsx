@@ -14,14 +14,17 @@ type Values = {
 };
 
 type ParsedValues = {
-  model: string;
-  instructions: string;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  id: number;
   temperature: number;
-  timestamp: number;
-  assistantID: string;
-  threadID: string;
-  runID: string;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  model: string;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
@@ -39,7 +42,7 @@ export default function AssistantForm() {
         { role: 'user', content: values.prompt, timestamp: Date.now() }
       ],
       temperature: parseFloat(values.temperature),
-      timestamp: Date.now(),
+      id: Date.now(),
       assistantID: '',
       threadID: '',
       runID: '',

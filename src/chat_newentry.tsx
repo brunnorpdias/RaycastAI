@@ -1,18 +1,26 @@
-import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/api";
+import { Form, ActionPanel, Action, useNavigation } from "@raycast/api";
+import { useState, useEffect, useRef } from "react";
 import Answer from './chat_answer';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
-  api: string;
-  model: string;
+  id: number;
   temperature: number;
-  stream: boolean;
-  timestamp: number;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  model: string;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 type Values = {
   prompt: string
 }
+
 
 export default function NewEntry({ data }: { data: Data }) {
   const { push } = useNavigation();
@@ -27,6 +35,7 @@ export default function NewEntry({ data }: { data: Data }) {
     push(<Answer data={newData} />)
   }
 
+
   return (
     <Form
       actions={
@@ -34,10 +43,8 @@ export default function NewEntry({ data }: { data: Data }) {
           <Action.SubmitForm title="Submit" onSubmit={handleSubmit} />
         </ActionPanel>
       }
-    // enableDrafts={true}
     >
-      <Form.TextArea
-        id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
+      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
     </Form>
   );
 }

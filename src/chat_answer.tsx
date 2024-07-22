@@ -7,22 +7,18 @@ import NewEntry from './chat_newentry';
 import { useEffect, useState, useRef } from 'react';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
-  api: string;
-  model: string;
+  id: number;
   temperature: number;
-  stream: boolean;
-  timestamp: number;
-};
-
-// Anthropic has a different type, since it doesn't support system messages yet
-type DataAnthropic = {
-  conversation: Array<{ role: 'user' | 'assistant', content: string }>;
-  api: string;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
   model: string;
-  temperature: number;
-  stream: boolean;
-  timestamp: number;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
@@ -56,19 +52,20 @@ export default function Chat({ data }: { data: Data }) {
       setResponse((prevResponse) => prevResponse + apiResponse);
     };
 
-    if (data.api === 'openai') {
-      await OpenAPI.RunChat(data, onResponse);
-    } else if (data.api === 'anthropic') {
-      // Anthropic has a different type, since it doesn't support system messages yet
-      const conversationAnthropic = data.conversation.slice(1) as DataAnthropic["conversation"];
-      const dataAnthropic: DataAnthropic = { ...data, conversation: conversationAnthropic }
-      AnthropicAPI(dataAnthropic, onResponse);
-    } else if (data.api === 'perplexity') {
-      // llama is open source and doesn't have an api, so I'll run it using perplexity
-      await PplxAPI(data, onResponse);
-    } else if (data.api === 'groq') {
-      GroqAPI(data, onResponse);
-    };
+    switch (data.api) {
+      case 'openai':
+        await OpenAPI.RunChat(data, onResponse);
+        break;
+      case 'anthropic':
+        await AnthropicAPI(data, onResponse);
+        break;
+      case 'groq':
+        await GroqAPI(data, onResponse);
+        break;
+      case 'perplexity':
+        await PplxAPI(data, onResponse);
+        break;
+    }
   }
 
   useEffect(() => {
@@ -88,13 +85,13 @@ export default function Chat({ data }: { data: Data }) {
         // Substitute chats with the same timestamp
         // const updatedCachedChats = cachedChats.filter((chat: Data) => chat.timestamp !== tempData.timestamp)
         for (let i = 0; i < cachedChats.length; i++) {
-          console.log(cachedChats[i].timestamp)
-          if (cachedChats[i].timestamp == tempData.timestamp) {
+          // console.log(cachedChats[i].timestamp)
+          if (cachedChats[i].id == tempData.id) {
             cachedChats.splice(i, 1);
             // console.log(`removed item #${i}`)
           }
         }
-        console.log(`\n`)
+        // console.log(`\n`)
 
         // Remove any repeated items (new entries of the same conversation)
         if (cachedChats.length >= 10) {
@@ -115,6 +112,7 @@ export default function Chat({ data }: { data: Data }) {
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
     };
   }, [status]);
+
 
   return (
     <Detail
@@ -183,11 +181,11 @@ export default function Chat({ data }: { data: Data }) {
                 .map(({ timestamp, ...rest }) => rest) as Messages;
 
               const title = await OpenAPI.TitleConversation(filteredMessages);
-              if (await LocalStorage.getItem<string>(`${newData.timestamp}`)) {
-                LocalStorage.removeItem(`${newData.timestamp}`);
+              if (await LocalStorage.getItem<string>(`${newData.id}`)) {
+                LocalStorage.removeItem(`${newData.id}`);
               };
               await LocalStorage.setItem(
-                `${newData.timestamp}`,
+                `${newData.id}`,
                 JSON.stringify({ title: title, data: newData }),
               );
               showToast({ title: 'Bookmarked' });

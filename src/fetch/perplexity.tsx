@@ -5,12 +5,18 @@ import readline from 'readline';
 import { Readable } from 'stream';
 
 type Data = {
-  conversation: Array<{ role: 'user' | 'assistant' | 'system', content: string, timestamp: number }>;
-  api: string;
-  model: string;
+  id: number;
   temperature: number;
-  stream: boolean;
-  timestamp: number;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  model: string;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
+  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 type Response = {

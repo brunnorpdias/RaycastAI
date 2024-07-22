@@ -2,14 +2,17 @@ import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/ap
 import Answer from './assistant_answer';
 
 type Data = {
-  model: string;
-  instructions: string;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  id: number;
   temperature: number;
-  timestamp: number;
-  assistantID: string;
-  threadID: string;
-  runID: string;
+  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  model: string;
+  api?: string;
+  systemMessage?: string;
+  instructions?: string;
+  stream?: boolean;
+  assistantID?: string;
+  threadID?: string;
+  runID?: string;
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
