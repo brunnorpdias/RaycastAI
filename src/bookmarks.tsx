@@ -1,6 +1,7 @@
 import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
 import Detail from "./detail";
+import { format as DateFormat } from "date-fns";
 
 type Data = {
   id: number;
@@ -17,14 +18,8 @@ type Data = {
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
-type Item = {
-  title: string,
-  data: Data
-}
+type Bookmarks = Array<{ title: string, data: Data }>;
 
-type Bookmarks = {
-  [id: string]: Item;
-}
 
 export default function Bookmarks() {
   const { push } = useNavigation();
@@ -32,21 +27,9 @@ export default function Bookmarks() {
 
   useEffect(() => {
     async function RetrieveStorage() {
-      const temp = await LocalStorage.allItems();
-      // console.log(temp)
-      if (temp) {
-        let parsedBookmarks: Bookmarks = {};
-        for (const key of Object.keys(temp)) {
-          // setBookmarks(JSON.parse(temp));
-          const parsedItems: Item = JSON.parse(temp[key]);
-          // console.log(parsedItems)
-          parsedBookmarks[key] = {
-            title: parsedItems.title,
-            data: parsedItems.data
-          }
-        }
-        setBookmarks(parsedBookmarks);
-        // console.log(JSON.stringify(parsedBookmarks));
+      const stringData = await LocalStorage.getItem('bookmarks') as string;
+      if (stringData) {
+        setBookmarks(JSON.parse(stringData));
       }
     }
 
@@ -56,11 +39,13 @@ export default function Bookmarks() {
   if (bookmarks) {
     return (
       <RaycastList>
-        {Object.values(bookmarks)
-          .map((item: Item, index) => (
+        {bookmarks
+          .sort((a, b) => b.data.conversation.slice(-1)[0].timestamp - a.data.conversation.slice(-1)[0].timestamp)
+          .map((item, index) => (
             <RaycastList.Item
               key={`${index}`}
               title={`${item.title}`}
+              subtitle={DateFormat(item.data.conversation.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
@@ -72,6 +57,18 @@ export default function Bookmarks() {
                     }}
                   />
                   {/* await LocalStorage.clear(); */}
+                  <Action
+                    title="Delete Item"
+                    icon={Icon.Trash}
+                    shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                    onAction={async () => {
+                      const deleteID = item.data.id;
+                      const newBookmarks = bookmarks.filter(bookmark => bookmark.data.id !== deleteID);
+                      setBookmarks(newBookmarks);
+                      await LocalStorage.removeItem('bookmarks');
+                      LocalStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
+                    }}
+                  />
                 </ActionPanel>
               }
             />
@@ -82,7 +79,7 @@ export default function Bookmarks() {
   } else {
     return (
       <RaycastList>
-        <RaycastList.EmptyView title="No conversation data" description="Start a new conversation to see it here." />
+        <RaycastList.EmptyView title="No conversation data" description="Bookmark a conversation to see it here." />
       </RaycastList>
     );
   }

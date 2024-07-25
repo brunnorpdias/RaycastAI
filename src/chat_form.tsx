@@ -58,8 +58,9 @@ export default function ChatForm() {
       { name: 'Claude 3 Opus', code: 'claude-3-opus-20240229' },
     ],
     'groq': [
-      { name: 'LLaMA3 8b', code: 'llama3-8b-8192' },
-      { name: 'LLaMA3 70b', code: 'llama3-70b-8192' },
+      { name: 'LLaMA 8b', code: 'llama-3.1-8b-instant' },
+      { name: 'LLaMA 70b', code: 'llama-3.1-70b-versatile' },
+      { name: 'LLaMA 405b', code: 'llama-3.1-405b-reasoning' },
     ],
     'perplexity': [
       { name: 'Sonar Large Online', code: 'llama-3-sonar-large-32k-online' },

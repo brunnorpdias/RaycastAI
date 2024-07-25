@@ -1,5 +1,6 @@
 import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
+import { format as DateFormat } from "date-fns";
 import Detail from "./detail";
 
 type Data = {
@@ -17,7 +18,7 @@ type Data = {
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
-type CachedChats = Data[];
+type DataList = Data[];
 
 // type ParsedCacheChats = Array<{
 //   type: 'chat' | 'assistant',
@@ -29,12 +30,12 @@ type CachedChats = Data[];
 
 export default function Cache() {
   const { push } = useNavigation();
-  const [cache, setCache] = useState<CachedChats>();
+  const [cache, setCache] = useState<DataList>();
 
   useEffect(() => {
-    const cache = new RaycastCache();
-    const cachedChatsString = cache.get('cachedChats');
-    const cachedChats: CachedChats = cachedChatsString ? JSON.parse(cachedChatsString) : [];
+    const raycastCache = new RaycastCache();
+    const cachedChatsString = raycastCache.get('cachedChats');
+    const cachedChats: DataList = cachedChatsString ? JSON.parse(cachedChatsString) : [];
 
     // if (cachedChats) {
     //   const parsedCacheChats: ParsedCacheChats = cachedChats.map(chat => ({
@@ -52,12 +53,12 @@ export default function Cache() {
     return (
       <RaycastList>
         {Object.values(cache)
-          .reverse()
+          .sort((a, b) => b.conversation.slice(-1)[0].timestamp - a.conversation.slice(-1)[0].timestamp)
           .map((item, index) => (
             <RaycastList.Item
               key={`${index}`} //// CHANGE TO TIMESTAMP
               title={`${item.conversation[0].content}`}
-              subtitle={new Date(item.id).toString()}
+              subtitle={DateFormat(item.conversation.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
@@ -68,7 +69,20 @@ export default function Cache() {
                       push(<Detail data={item} />)
                     }}
                   />
-                  {/* await LocalStorage.clear(); */}
+
+                  <Action
+                    title="Delete Item"
+                    icon={Icon.Trash}
+                    shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                    onAction={() => {
+                      const deleteID = item.id;
+                      const newCache = cache.filter(conversation => conversation.id !== deleteID);
+                      setCache(newCache);
+                      const raycastCache = new RaycastCache();
+                      raycastCache.set('cachedChats', JSON.stringify(newCache))
+                    }}
+                  />
+
                 </ActionPanel>
               }
             />

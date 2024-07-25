@@ -13,7 +13,7 @@
   "commands": [
     {
       "name": "index",
-      "title": "Select Function",
+      "title": "Dashboard",
       "description": "Sends the request to chat or assistant, or view saved conversations",
       "mode": "view"
     }

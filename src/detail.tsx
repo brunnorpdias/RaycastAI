@@ -47,6 +47,12 @@ export default function Detail({ data }: { data: Data }) {
               }
               actions={
                 <ActionPanel>
+                  <Action.CopyToClipboard
+                    title="Copy"
+                    icon={Icon.CopyClipboard}
+                    content={item.content}
+                  />
+
                   <Action
                     title="New Entry"
                     icon={Icon.Plus}

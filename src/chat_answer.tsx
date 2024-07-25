@@ -23,6 +23,8 @@ type Data = {
 
 type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
 
+type Bookmarks = Array<{ title: string, data: Data }>;
+
 
 export default function Chat({ data }: { data: Data }) {
   const [startTime, setStartTime] = useState(0);
@@ -78,8 +80,8 @@ export default function Chat({ data }: { data: Data }) {
       setNewData(tempData);
 
       showToast({ title: 'Saving to Cache', style: Toast.Style.Animated });
-      const cache = new Cache();
-      const cachedChatsString = cache.get('cachedChats');
+      const raycastCache = new Cache();
+      const cachedChatsString = raycastCache.get('cachedChats');
       const cachedChats = cachedChatsString ? JSON.parse(cachedChatsString) : [];
       if (cachedChats.length > 0) {
         // Substitute chats with the same timestamp
@@ -96,15 +98,15 @@ export default function Chat({ data }: { data: Data }) {
         // Remove any repeated items (new entries of the same conversation)
         if (cachedChats.length >= 10) {
           const newCachedChats = cachedChats.slice(1).concat(tempData);
-          cache.set('cachedChats', JSON.stringify(newCachedChats));
+          raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
         } else {
           const newCachedChats = cachedChats.concat(tempData);
-          cache.set('cachedChats', JSON.stringify(newCachedChats));
+          raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
         }
 
       } else {
         const list = [tempData];
-        cache.set('cachedChats', JSON.stringify(list));
+        raycastCache.set('cachedChats', JSON.stringify(list));
       }
 
       const endTime = Date.now();
@@ -181,14 +183,29 @@ export default function Chat({ data }: { data: Data }) {
                 .map(({ timestamp, ...rest }) => rest) as Messages;
 
               const title = await OpenAPI.TitleConversation(filteredMessages);
-              if (await LocalStorage.getItem<string>(`${newData.id}`)) {
-                LocalStorage.removeItem(`${newData.id}`);
+
+              if (title) {
+                const stringData = await LocalStorage.getItem('bookmarks') as string;
+                let bookmarks: Bookmarks;
+                if (stringData) {
+                  bookmarks = JSON.parse(stringData);
+                  const idList = bookmarks.map(bookmark => bookmark.data.id);
+                  if (newData.id in idList) {
+                    bookmarks = bookmarks.filter(bookmark => bookmark.data.id !== newData.id);
+                  };
+                } else {
+                  bookmarks = [];
+                };
+
+                const newBookmark = { title: title, data: newData }
+                const newBookmarks: Bookmarks = bookmarks.concat(newBookmark);
+                LocalStorage.removeItem('bookmarks');
+                await LocalStorage.setItem(
+                  'bookmarks',
+                  JSON.stringify(newBookmarks),
+                );
+                showToast({ title: 'Bookmarked' });
               };
-              await LocalStorage.setItem(
-                `${newData.id}`,
-                JSON.stringify({ title: title, data: newData }),
-              );
-              showToast({ title: 'Bookmarked' });
             }}
           />
 
