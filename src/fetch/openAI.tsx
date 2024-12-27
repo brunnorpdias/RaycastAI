@@ -27,16 +27,20 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
   const conversation = data.conversation.map(({ timestamp, ...rest }) => rest);
   let messages: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
 
-  if (data.systemMessage) {
+  // this need to change when o1 starts to accept sys messages
+  if (data.systemMessage && data.model != 'o1' && data.model != 'o1-mini') {
     messages = [
       { role: 'system', content: data.systemMessage },
       ...conversation
     ];
   } else {
-    messages = conversation;
+    messages = [
+      { role: 'developer', content: data.systemMessage },
+      ...conversation
+    ];
   }
 
-  const completion = await openai.chat.completions.create({
+  let completion = await openai.chat.completions.create({
     model: data.model,
     messages: messages,
     temperature: data.temperature,
@@ -90,6 +94,11 @@ export async function UploadFiles(filePaths: string[]) {
     const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
     const fileIDs = [];
 
+    // INSTEAD OF UPLOADING ONE FILE AT A TIME, I CAN JUST CREATE A VECTOR WITH THE FILES AND UPLOAD ONE THING AND NAME IT
+    //
+    //
+    //
+    //
     showToast({ title: 'File Upload Started', style: Toast.Style.Animated })
     let numFilesUploaded = 0;
     for (let fileStream of fileStreams) {
@@ -149,7 +158,6 @@ export async function RunThread(data: Data, onResponse: (response: string, statu
         if (chunk.data.delta.content) {
           if (chunk.data.delta.content[0].type === 'text' && chunk.data.delta.content[0].text?.value) {
             onResponse(chunk.data.delta.content[0].text.value, "streaming");
-            console.log(JSON.stringify(chunk))
             if (!streamingStarted) {
               showToast({ title: 'Streaming', style: Toast.Style.Animated });
               streamingStarted = true;

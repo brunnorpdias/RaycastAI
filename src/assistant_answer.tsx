@@ -2,6 +2,7 @@ import { Detail, showToast, useNavigation, ActionPanel, Action, Cache, Icon, Loc
 import { useEffect, useState, useRef } from 'react';
 import * as OpenAI from './fetch/openAI';
 // import NewEntry from './assistant_newentry';
+// ADD NEW PROMPT
 
 type Data = {
   id: number;
@@ -78,12 +79,12 @@ export default function Answer({ data }: { data: Data }) {
       markdown={response}
       actions={
         <ActionPanel>
-          <Action
-            title="print data"
-            onAction={() => {
-              console.log(newData)
-            }}
-          />
+          {/* <Action */}
+          {/*   title="print data" */}
+          {/*   onAction={() => { */}
+          {/*     console.log(newData) */}
+          {/*   }} */}
+          {/* /> */}
           <Action.CopyToClipboard
             title='Copy Response'
             icon={Icon.Paragraph}

@@ -19,10 +19,13 @@
     }
   ],
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18"
   },
+  "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.19.0",
+    "@eslint/config-array": "^0.18.0",
+    "@google/generative-ai": "^0.17.0",
     "@mistralai/mistralai": "^0.0.10",
     "@raycast/api": "^1.66.1",
     "axios": "^1.6.7",
@@ -35,17 +38,22 @@
     "openai": "^4.26.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.11.1",
     "@raycast/eslint-config": "^1.0.6",
     "@types/react": "18.2.27",
-    "eslint": "^8.51.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.36.1",
+    "globals": "^15.9.0",
     "prettier": "^3.0.3",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "typescript-eslint": "^8.7.0"
   },
   "scripts": {
     "build": "ray build -e dist",
     "dev": "ray develop",
     "fix-lint": "ray lint --fix",
     "lint": "ray lint",
-    "publish": "npx @raycast/api@latest publish"
+    "publish": "npx @raycast/api@latest publish",
+    "start": "node"
   }
 }

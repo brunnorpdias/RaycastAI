@@ -1,8 +1,10 @@
 import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
 import * as OpenAPI from './fetch/openAI';
 import { AnthropicAPI } from './fetch/anthropic';
+import * as DeepmindAPI from './fetch/deepmind';
 import { GroqAPI } from './fetch/groq';
 import { PplxAPI } from './fetch/perplexity';
+// import * as GoogleOpenAI from './fetch/google_openai';
 import NewEntry from './chat_newentry';
 import { useEffect, useState, useRef } from 'react';
 
@@ -61,6 +63,12 @@ export default function Chat({ data }: { data: Data }) {
       case 'anthropic':
         await AnthropicAPI(data, onResponse);
         break;
+      case 'deepmind':
+        await DeepmindAPI.RunChat(data, onResponse);
+        break;
+      // case 'google':
+      //   await GoogleOpenAI.RunChat(data, onResponse);
+      //   break;
       case 'groq':
         await GroqAPI(data, onResponse);
         break;
@@ -70,46 +78,64 @@ export default function Chat({ data }: { data: Data }) {
     }
   }
 
+  async function SaveToCache(data: Data) {
+    showToast({ title: 'Saving to Cache', style: Toast.Style.Animated });
+    const raycastCache = new Cache();
+    const cachedChatsString = raycastCache.get('cachedChats');
+    const cachedChats = cachedChatsString ? JSON.parse(cachedChatsString) : [];
+    if (cachedChats.length > 0) {
+      for (let i = 0; i < cachedChats.length; i++) {
+        if (cachedChats[i].id == data.id) {
+          cachedChats.splice(i, 1);
+        }
+      }
+      // Remove any repeated items (new entries of the same conversation)
+      if (cachedChats.length >= 15) {
+        const newCachedChats = cachedChats.slice(1).concat(data);
+        raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
+      } else {
+        const newCachedChats = cachedChats.concat(data);
+        raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
+      }
+    } else {
+      const list = [data];
+      raycastCache.set('cachedChats', JSON.stringify(list));
+    }
+  }
+
+  async function SubstituteBookmark(data: Data) {
+    // Filter out system role and remove timestamp
+    const filteredMessages = newData.conversation
+      .filter(({ role }) => role === 'user' || role === 'assistant')
+      .map(({ timestamp, ...rest }) => rest) as Messages;
+
+    const stringData = await LocalStorage.getItem('bookmarks');
+    if (typeof stringData !== 'string') return;
+
+    const bookmarks: Bookmarks = JSON.parse(stringData);
+    const bookmarkIndex = bookmarks.findIndex(bookmark => bookmark.data.id === data.id);
+    if (bookmarkIndex === -1) return false;
+
+    const title = await OpenAPI.TitleConversation(filteredMessages);
+    if (typeof title !== 'string') return;
+    bookmarks[bookmarkIndex] = { title, data };
+    LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+    showToast({ title: 'Bookmark re-saved', style: Toast.Style.Success })
+    return true;
+  }
+
   useEffect(() => {
     // add waiting status
     if (status === 'done') {
+      const endTime = Date.now();
       const tempData: Data = {
         ...data,
         conversation: [...data.conversation, { role: 'assistant', content: response, timestamp: Date.now() }]
       };
       setNewData(tempData);
+      SaveToCache(tempData);
+      SubstituteBookmark(tempData);
 
-      showToast({ title: 'Saving to Cache', style: Toast.Style.Animated });
-      const raycastCache = new Cache();
-      const cachedChatsString = raycastCache.get('cachedChats');
-      const cachedChats = cachedChatsString ? JSON.parse(cachedChatsString) : [];
-      if (cachedChats.length > 0) {
-        // Substitute chats with the same timestamp
-        // const updatedCachedChats = cachedChats.filter((chat: Data) => chat.timestamp !== tempData.timestamp)
-        for (let i = 0; i < cachedChats.length; i++) {
-          // console.log(cachedChats[i].timestamp)
-          if (cachedChats[i].id == tempData.id) {
-            cachedChats.splice(i, 1);
-            // console.log(`removed item #${i}`)
-          }
-        }
-        // console.log(`\n`)
-
-        // Remove any repeated items (new entries of the same conversation)
-        if (cachedChats.length >= 10) {
-          const newCachedChats = cachedChats.slice(1).concat(tempData);
-          raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
-        } else {
-          const newCachedChats = cachedChats.concat(tempData);
-          raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
-        }
-
-      } else {
-        const list = [tempData];
-        raycastCache.set('cachedChats', JSON.stringify(list));
-      }
-
-      const endTime = Date.now();
       const duration = Math.round((endTime - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
     };
@@ -144,9 +170,9 @@ export default function Chat({ data }: { data: Data }) {
               setResponse('')
 
               const temp: Data = {
-                ...data,
+                ...newData,
                 conversation: [
-                  ...data.conversation,
+                  ...newData.conversation,
                   { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that", timestamp: Date.now() }
                 ]
               }
@@ -162,9 +188,9 @@ export default function Chat({ data }: { data: Data }) {
               setResponse('')
 
               const temp: Data = {
-                ...data,
+                ...newData,
                 conversation: [
-                  ...data.conversation,
+                  ...newData.conversation,
                   { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so", timestamp: Date.now() }
                 ]
               }
@@ -177,35 +203,27 @@ export default function Chat({ data }: { data: Data }) {
             icon={Icon.Bookmark}
             shortcut={{ modifiers: ["cmd"], key: "d" }}
             onAction={async () => {
-              // Filter out system role and remove timestamp
-              const filteredMessages = newData.conversation
-                .filter(({ role }) => role === 'user' || role === 'assistant')
-                .map(({ timestamp, ...rest }) => rest) as Messages;
+              const bookmarkSubstituted = await SubstituteBookmark(newData);
+              if (bookmarkSubstituted !== undefined && !bookmarkSubstituted) {
+                const filteredMessages = newData.conversation
+                  .filter(({ role }) => role === 'user' || role === 'assistant')
+                  .map(({ timestamp, ...rest }) => rest) as Messages;
 
-              const title = await OpenAPI.TitleConversation(filteredMessages);
-
-              if (title) {
-                const stringData = await LocalStorage.getItem('bookmarks') as string;
-                let bookmarks: Bookmarks;
-                if (stringData) {
-                  bookmarks = JSON.parse(stringData);
-                  const idList = bookmarks.map(bookmark => bookmark.data.id);
-                  if (newData.id in idList) {
-                    bookmarks = bookmarks.filter(bookmark => bookmark.data.id !== newData.id);
-                  };
+                const title = await OpenAPI.TitleConversation(filteredMessages)
+                if (typeof title === 'string') {
+                  const stringData = await LocalStorage.getItem('bookmarks') as string;
+                  const bookmarks: Bookmarks = JSON.parse(stringData ?? '[]')
+                  const newBookmark = { title: title, data: newData }
+                  const newBookmarks: Bookmarks = bookmarks.concat(newBookmark);
+                  await LocalStorage.setItem(
+                    'bookmarks',
+                    JSON.stringify(newBookmarks),
+                  );
+                  showToast({ title: 'Bookmarked' });
                 } else {
-                  bookmarks = [];
-                };
-
-                const newBookmark = { title: title, data: newData }
-                const newBookmarks: Bookmarks = bookmarks.concat(newBookmark);
-                LocalStorage.removeItem('bookmarks');
-                await LocalStorage.setItem(
-                  'bookmarks',
-                  JSON.stringify(newBookmarks),
-                );
-                showToast({ title: 'Bookmarked' });
-              };
+                  showToast({ title: 'Bookmarking Failed', style: Toast.Style.Failure })
+                }
+              }
             }}
           />
 

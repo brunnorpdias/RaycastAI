@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
 import Detail from "./detail";
@@ -36,18 +36,9 @@ export default function Cache() {
     const raycastCache = new RaycastCache();
     const cachedChatsString = raycastCache.get('cachedChats');
     const cachedChats: DataList = cachedChatsString ? JSON.parse(cachedChatsString) : [];
-
-    // if (cachedChats) {
-    //   const parsedCacheChats: ParsedCacheChats = cachedChats.map(chat => ({
-    //     type: 'chat',
-    //     timestamp: chat.id,
-    //     conversation: chat.conversation.map(conversation => ({ role: conversation.role, content: conversation.content })),
-    //     stringData: JSON.stringify(chat)
-    //   }));
-    //
     setCache(cachedChats);
-    // }
   }, [])
+
 
   if (cache) {
     return (
@@ -80,6 +71,26 @@ export default function Cache() {
                       setCache(newCache);
                       const raycastCache = new RaycastCache();
                       raycastCache.set('cachedChats', JSON.stringify(newCache))
+                    }}
+                  />
+
+                  <Action
+                    title="Bookmark"
+                    shortcut={{ modifiers: ["cmd"], key: "d" }}
+                    onAction={async () => {
+                      // const filteredMessages = cache
+                      //   .map(datum  => datum.conversation)
+                      //   .flatMap(datum => datum.conversation)
+                      //   .filter(conversation => conversation.role === 'user' || role === 'assistant')
+                      //   .map(({ timestamp, ...rest }) => rest) as Messages;
+                      //
+                      // const title = await OpenAPI.TitleConversation(filteredMessages);
+                      //
+                      // await LocalStorage.setItem(
+                      //   'bookmarks',
+                      //   JSON.stringify(),
+                      // );
+                      // showToast({ title: 'Bookmarked' });
                     }}
                   />
 

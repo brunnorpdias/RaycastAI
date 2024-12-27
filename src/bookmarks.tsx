@@ -25,14 +25,14 @@ export default function Bookmarks() {
   const { push } = useNavigation();
   const [bookmarks, setBookmarks] = useState<Bookmarks>();
 
-  useEffect(() => {
-    async function RetrieveStorage() {
-      const stringData = await LocalStorage.getItem('bookmarks') as string;
-      if (stringData) {
-        setBookmarks(JSON.parse(stringData));
-      }
+  async function RetrieveStorage() {
+    const stringData = await LocalStorage.getItem('bookmarks') as string;
+    if (stringData) {
+      setBookmarks(JSON.parse(stringData));
     }
+  }
 
+  useEffect(() => {
     RetrieveStorage();
   }, [])
 
@@ -65,7 +65,6 @@ export default function Bookmarks() {
                       const deleteID = item.data.id;
                       const newBookmarks = bookmarks.filter(bookmark => bookmark.data.id !== deleteID);
                       setBookmarks(newBookmarks);
-                      await LocalStorage.removeItem('bookmarks');
                       LocalStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
                     }}
                   />

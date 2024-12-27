@@ -89,7 +89,15 @@ export default function AssistantForm() {
     >
       {/* Use assistants from openai list assistants fetching */}
       <Raycastform.Dropdown id='assistant' title='Assistant'>
-        <Raycastform.Dropdown.Item key='analyser' value='PDFanalyser' title='Document Analyser' />
+        <Raycastform.Dropdown.Item key='pdfAnalyser' value='PDFanalyser' title='Document Analyser' />
+        <Raycastform.Dropdown.Item key='cvAnalyser' value='CVanalyser' title='CV Analyser' />
+        <Raycastform.Dropdown.Item key='' value='' title='Coding Assistant' />
+        <Raycastform.Dropdown.Item key='' value='' title='Writing Tutor' />
+        <Raycastform.Dropdown.Item key='' value='' title='Writing Assistant' />
+        <Raycastform.Dropdown.Item key='' value='' title='Brainstorming Partner' />
+        <Raycastform.Dropdown.Item key='' value='' title='Decision Helper' />
+        <Raycastform.Dropdown.Item key='' value='' title='Mental Health Coach' />
+        <Raycastform.Dropdown.Item key='' value='' title='Career Coah' />
         {/* <Form.Dropdown.Item key='coding' value='Your jobs is to help the user with his coding project' title='Coding' /> */}
       </Raycastform.Dropdown>
 
