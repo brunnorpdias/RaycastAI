@@ -27,17 +27,14 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
   const conversation = data.conversation.map(({ timestamp, ...rest }) => rest);
   let messages: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
 
-  // this need to change when o1 starts to accept sys messages
-  if (data.systemMessage && data.model != 'o1' && data.model != 'o1-mini') {
+  const systemMessage = data.systemMessage;
+  if (systemMessage && typeof (systemMessage) == 'string') {
     messages = [
-      { role: 'system', content: data.systemMessage },
+      { role: 'system', content: systemMessage },
       ...conversation
     ];
   } else {
-    messages = [
-      { role: 'developer', content: data.systemMessage },
-      ...conversation
-    ];
+    messages = [...conversation];
   }
 
   const completion = await openai.chat.completions.create({
