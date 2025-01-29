@@ -40,7 +40,7 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
     ];
   }
 
-  let completion = await openai.chat.completions.create({
+  const completion = await openai.chat.completions.create({
     model: data.model,
     messages: messages,
     temperature: data.temperature,
@@ -101,7 +101,7 @@ export async function UploadFiles(filePaths: string[]) {
     //
     showToast({ title: 'File Upload Started', style: Toast.Style.Animated })
     let numFilesUploaded = 0;
-    for (let fileStream of fileStreams) {
+    for (const fileStream of fileStreams) {
       const file = await openai.files.create({
         file: fileStream,
         purpose: "assistants",
@@ -195,5 +195,7 @@ export async function TitleConversation(messages: Messages) {
     ],
     model: 'gpt-4o-mini'
   });
+
+  showToast({ title: 'Title created' });
   return chat.choices[0]?.message.content
 }

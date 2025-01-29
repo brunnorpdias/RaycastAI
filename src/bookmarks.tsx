@@ -23,12 +23,13 @@ type Bookmarks = Array<{ title: string, data: Data }>;
 
 export default function Bookmarks() {
   const { push } = useNavigation();
-  const [bookmarks, setBookmarks] = useState<Bookmarks>();
+  const [bookmarks, getBookmarks] = useState<Bookmarks>();
 
   async function RetrieveStorage() {
     const stringData = await LocalStorage.getItem('bookmarks') as string;
     if (stringData) {
-      setBookmarks(JSON.parse(stringData));
+      getBookmarks(JSON.parse(stringData));
+      // not good nomenclature, this is a setter, but it gets confusing with a function that sets the bookmarks
     }
   }
 
@@ -64,7 +65,7 @@ export default function Bookmarks() {
                     onAction={async () => {
                       const deleteID = item.data.id;
                       const newBookmarks = bookmarks.filter(bookmark => bookmark.data.id !== deleteID);
-                      setBookmarks(newBookmarks);
+                      getBookmarks(newBookmarks);
                       LocalStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
                     }}
                   />

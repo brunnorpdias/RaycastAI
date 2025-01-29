@@ -60,7 +60,8 @@ export default function ChatForm() {
     ],
     'deepmind': [
       { name: 'Gemini 2.0 Flash Experimental', code: 'models/gemini-2.0-flash-exp' },
-      { name: 'Gemini 1.5 Pro Experimental', code: 'models/gemini-exp-1206' },
+      { name: 'Gemini 2.0 Flash Thinking', code: 'models/gemini-2.0-flash-thinking-exp-01-21' },
+      { name: 'Gemini Experimental 1206', code: 'models/gemini-exp-1206' },
       { name: 'Gemini 1.5 Flash', code: 'models/gemini-1.5-flash' },
       { name: 'Gemini 1.5 Pro',  code: 'models/gemini-1.5-pro' },
     ],
