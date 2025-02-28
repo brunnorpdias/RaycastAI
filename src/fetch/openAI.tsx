@@ -37,12 +37,24 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
     messages = [...conversation];
   }
 
-  const completion = await openai.chat.completions.create({
-    model: data.model,
-    messages: messages,
-    temperature: data.temperature,
-    stream: data.stream,
-  });
+  let completion;
+  if (data.model == 'o3-mini') {
+    completion = await openai.chat.completions.create({
+      model: data.model,
+      reasoning_effort: "medium",
+      messages: messages,
+      temperature: data.temperature,
+      stream: data.stream,
+      store: true,
+    });
+  } else {
+    completion = await openai.chat.completions.create({
+      model: data.model,
+      messages: messages,
+      temperature: data.temperature,
+      stream: data.stream,
+    });
+  }
 
   let streaming = false;
   if (data.stream) {

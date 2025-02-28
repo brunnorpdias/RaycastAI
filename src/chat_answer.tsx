@@ -11,7 +11,15 @@ import { useEffect, useState, useRef } from 'react';
 type Data = {
   id: number;
   temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  conversation: Array<{
+    role: 'user' | 'assistant',
+    content: string | Array<{
+      type: 'text' | 'document' | 'image',
+      source?: object,
+      text?: string
+    }>,
+    timestamp?: number
+  }>;
   model: string;
   api?: string;
   systemMessage?: string;
@@ -20,7 +28,7 @@ type Data = {
   assistantID?: string;
   threadID?: string;
   runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
+  attachmentsDir: [string];
 };
 
 type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
