@@ -12,6 +12,7 @@ type Values = {
   temperature: string;
   stream: boolean;
   attachmentsDir: [string];
+  reasoning: 'low' | 'medium' | 'high';
 };
 
 type ParsedValues = {
@@ -35,6 +36,7 @@ type ParsedValues = {
   threadID?: string;
   runID?: string;
   attachmentsDir: [string];
+  reasoning: 'low' | 'medium' | 'high';
 };
 
 
@@ -49,7 +51,6 @@ export default function ChatForm() {
   const APItoModels: Record<API, Model[]> = {
     'anthropic': [
       { name: 'Claude 3.7 Sonnet', code: 'claude-3-7-sonnet-latest' },
-      { name: 'Claude 3.5 Sonnet', code: 'claude-3-5-sonnet-latest' },
       { name: 'Claude 3.5 Haiku', code: 'claude-3-5-haiku-20241022' },
     ],
     'openai': [
@@ -59,24 +60,18 @@ export default function ChatForm() {
       { name: 'GPT 4o Mini', code: 'gpt-4o-mini' },
     ],
     'deepmind': [
+      { name: 'Gemini 2.0 Flash', code: 'models/gemini-2.0-flash' },
+      { name: 'Gemini 2.0 Flash Thinking Experimental', code: 'models/gemini-2.0-flash-thinking-exp-01-21' },
       { name: 'Gemini 2.0 Flash Experimental', code: 'models/gemini-2.0-flash-exp' },
-      { name: 'Gemini 2.0 Flash Thinking', code: 'models/gemini-2.0-flash-thinking-exp-01-21' },
-      { name: 'Gemini Experimental 1206', code: 'models/gemini-exp-1206' },
-      { name: 'Gemini 1.5 Flash', code: 'models/gemini-1.5-flash' },
-      { name: 'Gemini 1.5 Pro', code: 'models/gemini-1.5-pro' },
-    ],
-    'groq': [
-      // { name: 'LLaMA 3.2 1b', code: 'llama-3.2-1b-preview' },
-      { name: 'LLaMA 3.2 3b', code: 'llama-3.2-1b-preview' },
-      // { name: 'LLaMA 3.2 11b', code: 'llama-3.2-11b-text-preview' },
-      { name: 'LLaMA 3.2 90b', code: 'llama-3.2-90b-text-preview' },
-      // { name: 'LLaMA 405b', code: 'llama-3.1-405b-reasoning' },
+      { name: 'Gemini 2.0 Pro Experimental', code: 'models/gemini-2.0-pro-exp-02-05' },
     ],
     'perplexity': [
-      { name: 'Sonar Large Online', code: 'llama-3.1-sonar-large-128k-online' },
-      { name: 'Sonar Huge Online', code: 'llama-3.1-sonar-huge-128k-online' },
-      { name: 'Llama 3.1 8b', code: 'llama-3.1-8b-instruct' },
-      { name: 'Llama 3.1 70b', code: 'llama-3.1-70b-instruct' },
+      { name: 'Sonar Deep Research', code: 'sonar-deep-research' },
+      { name: 'Sonar Reasoning Pro', code: 'sonar-reasoning-pro' },
+    ],
+    'groq': [
+      { name: 'LLaMA 3.2 3b', code: 'llama-3.2-1b-preview' },
+      { name: 'LLaMA 3.2 90b', code: 'llama-3.2-90b-text-preview' },
     ],
     // 'deepmind': [
     //   { name: 'Gemini 1.5 Flash', code: 'gemini-1.5-flash-002'},
@@ -150,6 +145,7 @@ export default function ChatForm() {
       temperature: Number(values.temperature),
       stream: values.stream,
       attachmentsDir: values.attachmentsDir,
+      reasoning: values.reasoning,
     }
     push(<Answer data={parsedValues} />)
   }
@@ -176,8 +172,8 @@ export default function ChatForm() {
         <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
         <Form.Dropdown.Item value='deepmind' title='Deepmind' icon='deepmind-icon.png' />
         {/* <Form.Dropdown.Item value='google' title='Google' icon='google-gemini-icon.png' /> */}
-        <Form.Dropdown.Item value='groq' title='Groq' icon='groq-icon.png' />
         <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
+        <Form.Dropdown.Item value='groq' title='Groq' icon='groq-icon.png' />
       </Form.Dropdown>
 
       <Form.Dropdown id='model' title='Model'>
@@ -195,9 +191,16 @@ export default function ChatForm() {
         <Form.Dropdown.Item value='writer' title='Writer and Writing Guide' />
       </Form.Dropdown>
 
+      <Form.Dropdown id='reasoning' title='Reasoning Effort' >
+        <Form.Dropdown.Item value='low' title='Low' />
+        <Form.Dropdown.Item value='medium' title='Medium' />
+        <Form.Dropdown.Item value='high' title='High' />
+      </Form.Dropdown>
+
       <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' />
 
       <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} />
+
       <Form.FilePicker id="attachmentsDir" />
     </Form>
   );
