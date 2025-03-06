@@ -1,5 +1,6 @@
 import { Anthropic } from '@anthropic-ai/sdk';
 import { MessageStreamEvent } from '@anthropic-ai/sdk/resources';
+import { showToast, Toast } from "@raycast/api";
 import { Message } from '@anthropic-ai/sdk/resources';
 import { API_KEYS } from '../enums';
 
@@ -25,31 +26,74 @@ type Data = {
   threadID?: string;
   runID?: string;
   attachmentsDir: [string];
+  reasoning: 'low' | 'medium' | 'high';
 };
 
 
 export async function AnthropicAPI(data: Data, onResponse: (response: string, status: string) => void) {
-  const messages = data.conversation.map(({ timestamp, ...rest }) => rest);
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
+  const messages = data.conversation.map(({ timestamp, ...rest }) => rest);
+  let thinking_budget: number;
+  let max_tokens: number;
 
-  const response = await client.messages.create({
+  switch (data.reasoning) {
+    case 'low':
+      thinking_budget = 0
+      max_tokens = 8192
+      break;
+    case 'medium':
+      thinking_budget = 16000
+      max_tokens = 27904
+      break
+    case 'high':
+      thinking_budget = 32000
+      max_tokens = 64000
+      break
+  }
+
+  let request = {
     model: data.model,
     system: data.systemMessage,
     messages: messages,
-    max_tokens: 4096,
+    max_tokens: max_tokens,
     temperature: data.temperature,
     stream: data.stream,
-  })
+  }
+
+  if (data.model == 'claude-3-7-sonnet-latest' && data.reasoning != 'low') {
+    request.thinking = {
+      type: "enabled",
+      budget_tokens: thinking_budget,
+    }
+  }
+
+  const response = await client.messages.create(request)
+  showToast({ title: 'Request sent', style: Toast.Style.Success })
+
+  let thinking_started = false;
+  let stream_started = false;
 
   if (data.stream == true) {
-    const streamMsg = response as AsyncIterable<MessageStreamEvent>;
-    for await (const chunk of streamMsg) {
-      // console.log(chunk);
-      if (chunk.type === 'content_block_delta') {
-        onResponse(chunk.delta.text, 'streaming');
-      }
-      if (chunk.type === 'content_block_stop') {
-        onResponse('', 'done');
+    const stream = response as AsyncIterable<MessageStreamEvent>;
+    for await (const chunk of stream) {
+      if (chunk.type === 'content_block_start') {
+        console.log(`\nStarting ${chunk.content_block.type} block...`);
+      } else if (chunk.type === 'content_block_delta') {
+        if (chunk.delta.type === 'thinking_delta') {
+          // console.log(`Thinking: ${chunk.delta.thinking}`);
+          if (!thinking_started) {
+            showToast({ title: 'Thinking...', style: Toast.Style.Animated })
+            thinking_started = true;
+          }
+        } else if (chunk.delta.type === 'text_delta') {
+          onResponse(chunk.delta.text, 'streaming');
+          if (!stream_started) {
+            showToast({ title: 'Streaming Text', style: Toast.Style.Animated })
+            stream_started = true;
+          }
+        }
+      } else if (chunk.type === 'content_block_stop') {
+        showToast({ title: 'Done', style: Toast.Style.Success })
       }
     }
   } else {
