@@ -39,7 +39,7 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
   }
 
   let completion;
-  if (data.model == 'o3-mini') {
+  if (data.model == 'o3-mini' || data.model == 'o1') {
     completion = await openai.chat.completions.create({
       model: data.model,
       reasoning_effort: data.reasoning,

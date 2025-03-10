@@ -93,7 +93,8 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
           }
         }
       } else if (chunk.type === 'content_block_stop') {
-        showToast({ title: 'Done', style: Toast.Style.Success })
+        onResponse('', 'done');
+        break;
       }
     }
   } else {

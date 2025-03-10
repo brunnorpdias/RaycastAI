@@ -45,7 +45,7 @@ export default function ChatForm() {
   // change to a better name: const [query, setQuery] = useState('');
   const [selectedAPI, setSelectedAPI] = useState<API>('anthropic'); // default
 
-  type API = 'perplexity' | 'openai' | 'deepmind' | 'anthropic' | 'groq';
+  type API = 'perplexity' | 'openai' | 'deepmind' | 'anthropic' | 'groq' | 'grok';
   type Model = { name: string, code: string };
 
   const APItoModels: Record<API, Model[]> = {
@@ -56,6 +56,7 @@ export default function ChatForm() {
     'openai': [
       { name: 'GPT 4o', code: 'gpt-4o' },
       { name: 'o3 mini', code: 'o3-mini' },
+      { name: 'o1', code: 'o1' },
       { name: 'GPT 4.5', code: 'gpt-4.5-preview' },
       { name: 'GPT 4o Mini', code: 'gpt-4o-mini' },
     ],
@@ -68,6 +69,9 @@ export default function ChatForm() {
     'perplexity': [
       { name: 'Sonar Deep Research', code: 'sonar-deep-research' },
       { name: 'Sonar Reasoning Pro', code: 'sonar-reasoning-pro' },
+    ],
+    'grok': [
+      { name: 'Grok 2', code: 'grok-2-latest' },
     ],
     'groq': [
       { name: 'LLaMA 3.2 3b', code: 'llama-3.2-1b-preview' },
@@ -174,6 +178,7 @@ export default function ChatForm() {
         {/* <Form.Dropdown.Item value='google' title='Google' icon='google-gemini-icon.png' /> */}
         <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
         <Form.Dropdown.Item value='groq' title='Groq' icon='groq-icon.png' />
+        <Form.Dropdown.Item value='grok' title='Grok' icon='groq-icon.png' />
       </Form.Dropdown>
 
       <Form.Dropdown id='model' title='Model'>

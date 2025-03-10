@@ -3,6 +3,7 @@ import * as OpenAPI from './fetch/openAI';
 import { AnthropicAPI } from './fetch/anthropic';
 import * as DeepmindAPI from './fetch/deepmind';
 import { GroqAPI } from './fetch/groq';
+import * as GrokAPI from './fetch/grok';
 import { PplxAPI } from './fetch/perplexity';
 // import * as GoogleOpenAI from './fetch/google_openai';
 import NewEntry from './chat_newentry';
@@ -79,6 +80,9 @@ export default function Chat({ data }: { data: Data }) {
       //   break;
       case 'groq':
         await GroqAPI(data, onResponse);
+        break;
+      case 'grok':
+        await GrokAPI.RunChat(data, onResponse);
         break;
       case 'perplexity':
         await PplxAPI(data, onResponse);
