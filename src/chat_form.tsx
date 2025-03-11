@@ -55,6 +55,7 @@ export default function ChatForm() {
     ],
     'openai': [
       { name: 'GPT 4o', code: 'gpt-4o' },
+      { name: 'GPT 4o Search', code: 'gpt-4o-search-preview' },
       { name: 'o3 mini', code: 'o3-mini' },
       { name: 'o1', code: 'o1' },
       { name: 'GPT 4.5', code: 'gpt-4.5-preview' },
@@ -69,6 +70,8 @@ export default function ChatForm() {
     'perplexity': [
       { name: 'Sonar Deep Research', code: 'sonar-deep-research' },
       { name: 'Sonar Reasoning Pro', code: 'sonar-reasoning-pro' },
+      { name: 'Sonar Pro', code: 'sonar-pro' },
+      { name: 'Sonar', code: 'sonar' },
     ],
     'grok': [
       { name: 'Grok 2', code: 'grok-2-latest' },

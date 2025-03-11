@@ -48,6 +48,12 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
       stream: data.stream,
       store: true,
     });
+  } else if (data.model == 'gpt-4o-search-preview') {
+    completion = await openai.chat.completions.create({
+      model: data.model,
+      messages: messages,
+      stream: data.stream,
+    });
   } else {
     completion = await openai.chat.completions.create({
       model: data.model,
