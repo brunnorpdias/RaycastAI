@@ -110,7 +110,7 @@ export default function ChatForm() {
     //conversation with attachment and not
 
     let messages: ParsedValues["conversation"];
-    if (values.attachmentsDir.length > 0 && values.agent == 'claude-3-7-sonnet-latest') {
+    if (values.attachmentsDir.length > 0 && values.model == 'claude-3-7-sonnet-latest') {
       const localPdfPath: string = values.attachmentsDir[0];  // limit of one file only, for now
       const arrayBuffer = await fs.readFile(localPdfPath);
       const pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
