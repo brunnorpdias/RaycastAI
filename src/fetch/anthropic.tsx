@@ -1,7 +1,5 @@
 import { Anthropic } from '@anthropic-ai/sdk';
-import { MessageStreamEvent } from '@anthropic-ai/sdk/resources';
 import { showToast, Toast } from "@raycast/api";
-import { Message } from '@anthropic-ai/sdk/resources';
 import { API_KEYS } from '../enums';
 
 
@@ -29,6 +27,18 @@ type Data = {
   reasoning: 'low' | 'medium' | 'high';
 };
 
+type AnthropicRequest = {
+  model: string,
+  system: string | undefined,
+  messages: object,
+  max_tokens: number,
+  temperature: number,
+  stream?: boolean,
+  thinking?: {
+    type: string,
+    budget_tokens: number,
+  },
+}
 
 export async function AnthropicAPI(data: Data, onResponse: (response: string, status: string) => void) {
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
@@ -51,7 +61,7 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
       break
   }
 
-  let request = {
+  let request: AnthropicRequest = {
     model: data.model,
     system: data.systemMessage,
     messages: messages,
@@ -67,39 +77,32 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
     }
   }
 
-  const response = await client.messages.create(request)
-  showToast({ title: 'Request sent', style: Toast.Style.Success })
-
-  let thinking_started = false;
-  let stream_started = false;
-
-  if (data.stream == true) {
-    const stream = response as AsyncIterable<MessageStreamEvent>;
+  if (data.stream) {
+    let thinking_started = false;
+    let stream_started = false;
+    const stream = client.messages.stream(request)
     for await (const chunk of stream) {
-      if (chunk.type === 'content_block_start') {
-        console.log(`\nStarting ${chunk.content_block.type} block...`);
-      } else if (chunk.type === 'content_block_delta') {
+      if (chunk.type === 'content_block_delta') {
         if (chunk.delta.type === 'thinking_delta') {
-          // console.log(`Thinking: ${chunk.delta.thinking}`);
+          console.log(`Thinking: ${chunk.delta.thinking}`);
           if (!thinking_started) {
             showToast({ title: 'Thinking...', style: Toast.Style.Animated })
-            thinking_started = true;
+            thinking_started = true
           }
         } else if (chunk.delta.type === 'text_delta') {
-          onResponse(chunk.delta.text, 'streaming');
+          onResponse(chunk.delta.text, 'streaming')
           if (!stream_started) {
-            showToast({ title: 'Streaming Text', style: Toast.Style.Animated })
-            stream_started = true;
+            showToast({ title: 'Streaming', style: Toast.Style.Animated })
+            stream_started = true
           }
         }
       } else if (chunk.type === 'content_block_stop') {
-        onResponse('', 'done');
-        break;
+        onResponse('', 'done')
       }
     }
   } else {
-    // const text: string | undefined = msg.content[0].text
-    const message = response as Message;
-    onResponse(message.content[0].text, 'done');
+    const msg = await client.messages.create(request)
+    console.log(msg)
+    onResponse(msg.content[0].text, 'done')
   }
 }
