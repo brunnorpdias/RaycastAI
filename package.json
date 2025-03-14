@@ -12,9 +12,15 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "index",
-      "title": "Dashboard",
-      "description": "Sends the request to chat or assistant, or view saved conversations",
+      "name": "chat_form",
+      "title": "Chat",
+      "description": "Talk with an LLM",
+      "mode": "view"
+    },
+    {
+      "name": "options",
+      "title": "Options",
+      "description": "Use an assistant or view saved conversations",
       "mode": "view"
     }
   ],
