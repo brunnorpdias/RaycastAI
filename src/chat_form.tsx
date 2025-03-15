@@ -172,7 +172,7 @@ export default function ChatForm() {
         {/* <Form.Dropdown.Item value='google' title='Google' icon='google-gemini-icon.png' /> */}
         <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
         <Form.Dropdown.Item value='groq' title='Groq' icon='groq-icon.png' />
-        <Form.Dropdown.Item value='grok' title='Grok' icon='groq-icon.png' />
+        <Form.Dropdown.Item value='grok' title='Grok' icon='grok-logo-icon.png' />
       </Form.Dropdown>
 
       <Form.Dropdown

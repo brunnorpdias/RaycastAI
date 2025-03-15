@@ -57,7 +57,7 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
       break
     case 'high':
       thinking_budget = 32000
-      max_tokens = 64000
+      max_tokens = 62000 // max limit is now 64000 for 3.7 but restricted to avoid api overload
       break
     default:
       thinking_budget = 0
@@ -79,6 +79,8 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
       type: "enabled",
       budget_tokens: thinking_budget,
     }
+  } else if (data.model === 'claude-3-7-haiku-latest') {
+    request.max_tokens = 8100 // limit is 8182
   }
 
   if (data.stream) {
