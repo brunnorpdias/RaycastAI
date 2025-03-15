@@ -17,7 +17,7 @@ type Data = {
   threadID?: string;
   runID?: string;
   attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-  reasoning: 'low' | 'medium' | 'high';
+  reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
 type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
@@ -38,11 +38,18 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
     messages = [...conversation];
   }
 
+  let reasoning_effort;
+  if (data.reasoning != 'none') {
+    reasoning_effort = data.reasoning;
+  } else {
+    reasoning_effort = undefined
+  }
+
   let completion;
   if (data.model == 'o3-mini' || data.model == 'o1') {
     completion = await openai.chat.completions.create({
       model: data.model,
-      reasoning_effort: data.reasoning,
+      reasoning_effort: reasoning_effort,
       messages: messages,
       temperature: data.temperature,
       stream: data.stream,

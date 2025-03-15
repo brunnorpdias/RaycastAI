@@ -24,7 +24,7 @@ type Data = {
   threadID?: string;
   runID?: string;
   attachmentsDir: [string];
-  reasoning: 'low' | 'medium' | 'high';
+  reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
 type AnthropicRequest = {
@@ -48,16 +48,20 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
 
   switch (data.reasoning) {
     case 'low':
-      thinking_budget = 0
-      max_tokens = 8192
+      thinking_budget = 8000
+      max_tokens = 16000
       break;
     case 'medium':
-      thinking_budget = 16000
-      max_tokens = 27904
+      thinking_budget = 20000
+      max_tokens = 40000
       break
     case 'high':
       thinking_budget = 32000
       max_tokens = 64000
+      break
+    default:
+      thinking_budget = 0
+      max_tokens = 52000
       break
   }
 
@@ -70,7 +74,7 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
     stream: data.stream,
   }
 
-  if (data.model == 'claude-3-7-sonnet-latest' && data.reasoning != 'low') {
+  if (data.model == 'claude-3-7-sonnet-latest' && ['low', 'medium', 'high'].includes(data.reasoning)) {
     request.thinking = {
       type: "enabled",
       budget_tokens: thinking_budget,

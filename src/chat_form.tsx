@@ -12,7 +12,7 @@ type Values = {
   temperature: string;
   stream: boolean;
   attachmentsDir: [string];
-  reasoning: 'low' | 'medium' | 'high';
+  reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
 type ParsedValues = {
@@ -36,14 +36,14 @@ type ParsedValues = {
   threadID?: string;
   runID?: string;
   attachmentsDir: [string];
-  reasoning: 'low' | 'medium' | 'high';
+  reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
 
 export default function ChatForm() {
   const { push } = useNavigation();
-  // change to a better name: const [query, setQuery] = useState('');
-  const [selectedAPI, setSelectedAPI] = useState<API>('anthropic'); // default
+  const [selectedAPI, setAPI] = useState<API>('anthropic');
+  const [selectedModel, setModel] = useState<string>('');
 
   type API = 'perplexity' | 'openai' | 'deepmind' | 'anthropic' | 'groq' | 'grok';
   type Model = { name: string, code: string };
@@ -108,9 +108,8 @@ export default function ChatForm() {
     }
 
     //conversation with attachment and not
-
     let messages: ParsedValues["conversation"];
-    if (values.attachmentsDir.length > 0 && values.model == 'claude-3-7-sonnet-latest') {
+    if (values.attachmentsDir && values.attachmentsDir.length > 0 && values.model == 'claude-3-7-sonnet-latest') {
       const localPdfPath: string = values.attachmentsDir[0];  // limit of one file only, for now
       const arrayBuffer = await fs.readFile(localPdfPath);
       const pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
@@ -137,20 +136,14 @@ export default function ChatForm() {
       messages = [{ role: 'user', content: values.prompt, timestamp: Date.now() }]
     }
 
-    // let messagesWithAttachment;
-    //   // const messagesWithAttachment: Data["conversation"]
-    //
-    //   // messages only support pdf's for now; can add images later on
-    //   messagesWithAttachment = messages.at(-1).content
-
     const parsedValues: ParsedValues = {
       id: Date.now(),
       model: values.model,
       api: values.api,
       systemMessage: systemMessage,
       conversation: messages,
-      temperature: Number(values.temperature),
-      stream: values.stream,
+      temperature: 1, //Number(values.temperature),
+      stream: true, //values.stream,
       attachmentsDir: values.attachmentsDir,
       reasoning: values.reasoning,
     }
@@ -171,9 +164,7 @@ export default function ChatForm() {
         id='api'
         title='API'
         value={selectedAPI}
-        onChange={(api) => {
-          setSelectedAPI(api as API);
-        }}
+        onChange={(api) => setAPI(api as API)}
       >
         <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
         <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
@@ -184,7 +175,11 @@ export default function ChatForm() {
         <Form.Dropdown.Item value='grok' title='Grok' icon='groq-icon.png' />
       </Form.Dropdown>
 
-      <Form.Dropdown id='model' title='Model'>
+      <Form.Dropdown
+        id='model'
+        title='Model'
+        onChange={(model) => setModel(model)}
+      >
         {APItoModels[selectedAPI].map((model: Model) => (
           <Form.Dropdown.Item key={model.code} value={model.code} title={model.name} />
         ))}
@@ -199,19 +194,21 @@ export default function ChatForm() {
         <Form.Dropdown.Item value='writer' title='Writer and Writing Guide' />
       </Form.Dropdown>
 
-      <Form.Dropdown id='reasoning' title='Reasoning Effort' >
-        <Form.Dropdown.Item value='low' title='Low' />
-        <Form.Dropdown.Item value='medium' title='Medium' />
-        <Form.Dropdown.Item value='high' title='High' />
-      </Form.Dropdown>
+      {['claude-3-7-sonnet-latest', 'o1', 'o3-mini'].includes(selectedModel) && (
+        <Form.Dropdown id='reasoning' title='Reasoning Effort' >
+          <Form.Dropdown.Item value='none' title='None' />
+          <Form.Dropdown.Item value='low' title='Low' />
+          <Form.Dropdown.Item value='medium' title='Medium' />
+          <Form.Dropdown.Item value='high' title='High' />
+        </Form.Dropdown>
+      )}
 
-      <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' />
+      {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
+      {/* <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} /> */}
 
-      <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} />
-
-      <Form.FilePicker id="attachmentsDir" />
+      {selectedModel === 'claude-3-7-sonnet-latest' && (
+        <Form.FilePicker id="attachmentsDir" />
+      )}
     </Form>
   );
 }
-// streaming had before useEffect: 
-// dynamic function for streaming option not working
