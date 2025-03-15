@@ -2,7 +2,7 @@
 import { Form as Raycastform, ActionPanel, Action, useNavigation, showToast, Toast } from '@raycast/api';
 import fs from 'fs';
 import Answer from './assistant_answer';
-import * as OpenAI from './fetch/openAI';
+import * as OpenAI from '../fetch/openAI';
 // import instructions from '../instructions.json';
 
 type Values = {
@@ -15,17 +15,27 @@ type Values = {
 
 type ParsedValues = {
   id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
+  conversation: Array<{
+    role: 'user' | 'assistant',
+    content: string | Array<{
+      type: 'text' | 'document' | 'image',
+      source?: object,
+      text?: string
+    }>,
+    timestamp?: number
+  }>;
   model: string;
   api?: string;
   systemMessage?: string;
-  instructions?: string;
+  reasoning?: 'none' | 'low' | 'medium' | 'high';
+  attachments?: [string];
+  temperature: number;
   stream?: boolean;
+  assistantInstructions?: string;
   assistantID?: string;
   threadID?: string;
   runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
+  assistantAttachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 const model = 'gpt-4o';
@@ -36,7 +46,7 @@ export default function AssistantForm() {
   async function handleSubmit(values: Values) {
     let parsedValues: ParsedValues = {
       model: model,
-      instructions: `${values.instructions}`,
+      assistantInstructions: `${values.instructions}`,
       conversation: [
         // { role: 'system', content: instructions.text },
         { role: 'user', content: values.prompt, timestamp: Date.now() }
@@ -46,7 +56,7 @@ export default function AssistantForm() {
       assistantID: '',
       threadID: '',
       runID: '',
-      attachments: [],
+      assistantAttachments: [],
     }
 
     const filePaths = values.files.filter((file: any) => fs.existsSync(file) && fs.lstatSync(file).isFile());
@@ -58,7 +68,7 @@ export default function AssistantForm() {
         const fileIDs = await OpenAI.UploadFiles(filePaths);
         if (fileIDs?.length) {
           for (let fileID of fileIDs) {
-            parsedValues.attachments?.push({ file_id: fileID, tools: [{ type: 'file_search' }] })
+            parsedValues.assistantAttachments?.push({ file_id: fileID, tools: [{ type: 'file_search' }] })
             // parsedValues.attachments?.push({ file_id: fileID })
           };
         }

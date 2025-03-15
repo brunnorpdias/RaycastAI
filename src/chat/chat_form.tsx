@@ -1,6 +1,6 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
 import Answer from './chat_answer';
-import instructions from '../instructions.json';
+import instructions from '../../instructions.json';
 import { useState } from 'react';
 import * as fs from 'fs/promises';
 
@@ -15,10 +15,9 @@ type Values = {
   reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
-type ParsedValues = {
+export type Data = {
   id: number;
-  temperature: number;
-  conversation: Array<{
+  messages: Array<{
     role: 'user' | 'assistant',
     content: string | Array<{
       type: 'text' | 'document' | 'image',
@@ -30,13 +29,15 @@ type ParsedValues = {
   model: string;
   api?: string;
   systemMessage?: string;
-  instructions?: string;
+  reasoning?: 'none' | 'low' | 'medium' | 'high';
+  attachments?: [string];
+  temperature: number;
   stream?: boolean;
+  assistantInstructions?: string;
   assistantID?: string;
   threadID?: string;
   runID?: string;
-  attachmentsDir: [string];
-  reasoning: 'none' | 'low' | 'medium' | 'high';
+  assistantAttachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 
@@ -50,8 +51,8 @@ export default function ChatForm() {
 
   const APItoModels: Record<API, Model[]> = {
     'anthropic': [
+      { name: 'Claude 3.5 Haiku', code: 'claude-3-5-haiku-latest' },
       { name: 'Claude 3.7 Sonnet', code: 'claude-3-7-sonnet-latest' },
-      { name: 'Claude 3.5 Haiku', code: 'claude-3-5-haiku-20241022' },
     ],
     'openai': [
       { name: 'GPT 4o', code: 'gpt-4o' },
@@ -108,7 +109,7 @@ export default function ChatForm() {
     }
 
     //conversation with attachment and not
-    let messages: ParsedValues["conversation"];
+    let messages: Data["messages"];
     if (values.attachmentsDir && values.attachmentsDir.length > 0 && values.model == 'claude-3-7-sonnet-latest') {
       const localPdfPath: string = values.attachmentsDir[0];  // limit of one file only, for now
       const arrayBuffer = await fs.readFile(localPdfPath);
@@ -136,15 +137,15 @@ export default function ChatForm() {
       messages = [{ role: 'user', content: values.prompt, timestamp: Date.now() }]
     }
 
-    const parsedValues: ParsedValues = {
+    const parsedValues: Data = {
       id: Date.now(),
       model: values.model,
       api: values.api,
       systemMessage: systemMessage,
-      conversation: messages,
+      messages: messages,
       temperature: 1, //Number(values.temperature),
       stream: true, //values.stream,
-      attachmentsDir: values.attachmentsDir,
+      attachments: values.attachmentsDir,
       reasoning: values.reasoning,
     }
     push(<Answer data={parsedValues} />)

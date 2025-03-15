@@ -2,23 +2,8 @@ import { showToast, Toast } from "@raycast/api";
 import OpenAI from "openai";
 import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
+import { type Data } from "../chat/chat_form";
 
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
-
-type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
 
 const openai = new OpenAI({
   apiKey: API_KEYS.DEEPMIND,
@@ -26,7 +11,12 @@ const openai = new OpenAI({
 });
 
 export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
-  const conversation = data.conversation.map(({ timestamp, ...rest }) => rest); // remove timestamp parameter
+  const conversation = data.messages.map(({ timestamp, ...msg }) => (
+    {
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }
+  ));
 
   let messages: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
   if (data.systemMessage) {

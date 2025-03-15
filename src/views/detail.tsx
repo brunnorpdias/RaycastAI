@@ -1,27 +1,7 @@
 import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
-import NewEntry from "./chat_newentry";
+import NewEntry from "../chat/chat_newentry";
 import { useEffect, useState } from "react";
-
-// type ParsedData = {
-//   type: 'chat' | 'assistant',
-//   timestamp: number,
-//   conversation: Array<{ role: 'user' | 'assistant', content: string }>,
-//   stringData: string
-// }
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
+import { type Data } from "../chat/chat_form";
 
 export default function Detail({ data }: { data: Data }) {
   const { push } = useNavigation();
@@ -36,21 +16,21 @@ export default function Detail({ data }: { data: Data }) {
   if (parsedData) {
     return (
       <RaycastList isShowingDetail>
-        {data.conversation
+        {data.messages
           .map((item, index) => (
             <RaycastList.Item
               key={`#${index}`}
               title={`${item.content}`}
               subtitle={`${item.role}`}
               detail={
-                <RaycastList.Item.Detail markdown={item.content} />
+                <RaycastList.Item.Detail markdown={item.content ? String(item.content) : "Not a string"} />
               }
               actions={
                 <ActionPanel>
                   <Action.CopyToClipboard
                     title="Copy"
                     icon={Icon.CopyClipboard}
-                    content={item.content}
+                    content={item.content ? String(item.content) : "Not a string"}
                   />
 
                   <Action

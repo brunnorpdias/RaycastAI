@@ -1,6 +1,6 @@
 import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
 // import ChatForm from './chat_form';
-import AssistantForm from "./assistant_form";
+import AssistantForm from "../assistant/assistant_form";
 import Bookmarks from "./bookmarks";
 import Cache from "./cache";
 

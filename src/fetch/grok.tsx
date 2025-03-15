@@ -2,23 +2,16 @@ import OpenAI from "openai";
 import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
 import { showToast, Toast } from "@raycast/api";
-
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
+import { type Data } from "../chat/chat_form";
 
 export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
+  const messages = data.messages.map(({ timestamp, ...msg }) => (
+    {
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }
+  ));
+
   const client = new OpenAI({
     apiKey: API_KEYS.GROK,
     baseURL: "https://api.x.ai/v1",
@@ -26,7 +19,7 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
 
   const completion = await client.chat.completions.create({
     model: "grok-2-latest",
-    messages: data.conversation,
+    messages: messages,
     stream: data.stream,
     temperature: data.temperature,
   });

@@ -2,22 +2,8 @@ import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, 
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
 import Detail from "./detail";
-import * as OpenAPI from "./fetch/openAI";
-
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
+import * as OpenAPI from "../fetch/openAI";
+import { type Data } from "../chat/chat_form";
 
 type DataList = Data[];
 
@@ -27,20 +13,21 @@ type Bookmarks = Bookmark[];
 // type ParsedCacheChats = Array<{
 //   type: 'chat' | 'assistant',
 //   timestamp: number,
-//   conversation: Array<{ role: 'user' | 'assistant', content: string }>,
+//   messages: Array<{ role: 'user' | 'assistant', content: string }>,
 //   stringData: string
 // }>;
 
 
 export default function Cache() {
   const { push } = useNavigation();
-  const [cache, getCache] = useState<DataList>();
+  const [cache, setCache] = useState<DataList>();
 
   useEffect(() => {
     const raycastCache = new RaycastCache();
     const cachedChatsString = raycastCache.get('cachedChats');
+    // Possibly problematic line that outputs the "[object]" when displaying the conversation name on cache
     const cachedChats: DataList = cachedChatsString ? JSON.parse(cachedChatsString) : [];
-    getCache(cachedChats);
+    setCache(cachedChats);
   }, [])
 
 
@@ -48,19 +35,19 @@ export default function Cache() {
     return (
       <RaycastList>
         {Object.values(cache)
-          .sort((a, b) => b.conversation.slice(-1)[0].timestamp - a.conversation.slice(-1)[0].timestamp)
+          .sort((a, b) => b.messages.slice(-1)[0].timestamp - a.messages.slice(-1)[0].timestamp)
           .map((cachedItem: Data, cacheIndex) => (
             <RaycastList.Item
               key={`${cacheIndex}`} //// CHANGE TO TIMESTAMP
-              title={`${cachedItem.conversation[0].content}`}
-              subtitle={DateFormat(cachedItem.conversation.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
+              title={`${cachedItem.messages[0].content}`}
+              subtitle={DateFormat(cachedItem.messages.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
                     title="View Conversation"
                     icon={Icon.AppWindow}
                     onAction={() => {
-                      // console.log(typeof cachedItem.data.conversation);
+                      // console.log(typeof cachedItem.data.messages);
                       push(<Detail data={cachedItem} />)
                     }}
                   />
@@ -71,8 +58,8 @@ export default function Cache() {
                     shortcut={{ modifiers: ["cmd"], key: "backspace" }}
                     onAction={() => {
                       const deleteID = cachedItem.id;
-                      const newCache = cache.filter(conversation => conversation.id !== deleteID);
-                      getCache(newCache);
+                      const newCache = cache.filter(messages => messages.id !== deleteID);
+                      setCache(newCache);
                       const raycastCache = new RaycastCache();
                       raycastCache.set('cachedChats', JSON.stringify(newCache))
                     }}
@@ -83,7 +70,7 @@ export default function Cache() {
                     icon={Icon.Bookmark}
                     shortcut={{ modifiers: ["cmd"], key: "d" }}
                     onAction={async () => {
-                      const title = await OpenAPI.TitleConversation(cachedItem.conversation);
+                      const title = await OpenAPI.TitleConversation(cachedItem.messages);
                       let newBookmark: Bookmark;
                       if (title) {
                         newBookmark = { title: title, data: cachedItem };

@@ -3,33 +3,24 @@ import OpenAI from "openai";
 import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
 import fs from 'fs';
+// import { Messages } from "openai/resources/chat/completions/messages";
+import { type Data } from "../chat/chat_form";
 
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-  reasoning: 'none' | 'low' | 'medium' | 'high';
-};
-
-type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
+type Messages = Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
 
 
 export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-  const conversation = data.conversation.map(({ timestamp, ...rest }) => rest);
-  let messages: Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+  const conversation = data.messages.map(({ timestamp, ...msg }) => (
+    {
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }
+  ));
 
+  let messages: Messages;
   const systemMessage = data.systemMessage;
-  if (systemMessage && typeof (systemMessage) == 'string') {
+  if (systemMessage && String(systemMessage)) {
     messages = [
       { role: 'system', content: systemMessage },
       ...conversation
@@ -98,13 +89,21 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
 export async function CreateThread(data?: Data) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
   let newThread;
+
   if (data) {
+    const conversation = data.messages.map(({ timestamp, ...msg }) => (
+      {
+        role: msg.role,
+        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+      }
+    ));
     newThread = await openai.beta.threads.create({
-      messages: data.conversation,
+      messages: conversation,
     });
   } else {
     newThread = await openai.beta.threads.create();
   }
+
   return newThread;
 }
 
@@ -142,16 +141,22 @@ export async function UploadFiles(filePaths: string[]) {
 
 
 export async function NewThreadMessage(data: Data) {
+  const conversation = data.messages.map(({ timestamp, ...msg }) => (
+    {
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }
+  ));
+
   if (data.threadID) {
     const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-
-    const lastMessage = data.conversation[data.conversation.length - 1];
+    const lastMessage = conversation[conversation.length - 1];
     await openai.beta.threads.messages.create(
       data.threadID,
       {
         role: lastMessage.role,
         content: lastMessage.content,
-        attachments: data.attachments
+        attachments: data.assistantAttachments,
       }
     );
     // console.log(threadMessages);
@@ -168,7 +173,7 @@ export async function RunThread(data: Data, onResponse: (response: string, statu
         assistant_id: data.assistantID,
         stream: true,
         model: data.model,
-        additional_instructions: data.instructions,
+        additional_instructions: data.assistantInstructions,
       }
     );
 

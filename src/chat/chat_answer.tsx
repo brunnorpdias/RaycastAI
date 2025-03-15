@@ -1,39 +1,16 @@
 import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
-import * as OpenAPI from './fetch/openAI';
-import { AnthropicAPI } from './fetch/anthropic';
-import * as DeepmindAPI from './fetch/deepmind';
-import { GroqAPI } from './fetch/groq';
-import * as GrokAPI from './fetch/grok';
-import { PplxAPI } from './fetch/perplexity';
+import * as OpenAPI from '../fetch/openAI';
+import { AnthropicAPI } from '../fetch/anthropic';
+import * as DeepmindAPI from '../fetch/deepmind';
+import { GroqAPI } from '../fetch/groq';
+import * as GrokAPI from '../fetch/grok';
+import { PplxAPI } from '../fetch/perplexity';
 // import * as GoogleOpenAI from './fetch/google_openai';
-import NewEntry from './chat_newentry';
+import NewEntry from '../chat/chat_newentry';
 import { useEffect, useState, useRef } from 'react';
-
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{
-    role: 'user' | 'assistant',
-    content: string | Array<{
-      type: 'text' | 'document' | 'image',
-      source?: object,
-      text?: string
-    }>,
-    timestamp?: number
-  }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachmentsDir: [string];
-};
+import { type Data } from "../chat/chat_form";
 
 type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
-
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
@@ -117,7 +94,7 @@ export default function Chat({ data }: { data: Data }) {
 
   async function SubstituteBookmark(data: Data) {
     // Filter out system role and remove timestamp
-    const filteredMessages = newData.conversation
+    const filteredMessages = newData.messages
       .filter(({ role }) => role === 'user' || role === 'assistant')
       .map(({ timestamp, ...rest }) => rest) as Messages;
 
@@ -142,7 +119,7 @@ export default function Chat({ data }: { data: Data }) {
       const endTime = Date.now();
       const tempData: Data = {
         ...data,
-        conversation: [...data.conversation, { role: 'assistant', content: response, timestamp: Date.now() }]
+        messages: [...data.messages, { role: 'assistant', content: response, timestamp: Date.now() }]
       };
       setNewData(tempData);
       SaveToCache(tempData);
@@ -183,8 +160,8 @@ export default function Chat({ data }: { data: Data }) {
 
               const temp: Data = {
                 ...newData,
-                conversation: [
-                  ...newData.conversation,
+                messages: [
+                  ...newData.messages,
                   { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that", timestamp: Date.now() }
                 ]
               }
@@ -201,8 +178,8 @@ export default function Chat({ data }: { data: Data }) {
 
               const temp: Data = {
                 ...newData,
-                conversation: [
-                  ...newData.conversation,
+                messages: [
+                  ...newData.messages,
                   { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so", timestamp: Date.now() }
                 ]
               }
@@ -217,7 +194,7 @@ export default function Chat({ data }: { data: Data }) {
             onAction={async () => {
               const bookmarkSubstituted = await SubstituteBookmark(newData);
               if (bookmarkSubstituted !== undefined && !bookmarkSubstituted) {
-                const filteredMessages = newData.conversation
+                const filteredMessages = newData.messages
                   .filter(({ role }) => role === 'user' || role === 'assistant')
                   .map(({ timestamp, ...rest }) => rest) as Messages;
 
@@ -242,7 +219,7 @@ export default function Chat({ data }: { data: Data }) {
           <Action.CopyToClipboard
             title='Copy Data'
             icon={Icon.Download}
-            content={JSON.stringify(newData?.conversation)}
+            content={JSON.stringify(newData?.messages)}
           />
         </ActionPanel>
       }

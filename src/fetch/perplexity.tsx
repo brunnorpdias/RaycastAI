@@ -3,21 +3,7 @@ import fetch from 'node-fetch';
 // import axios from 'axios';
 import readline from 'readline';
 import { Readable } from 'stream';
-
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
+import { type Data } from "../chat/chat_form";
 
 type Response = {
   id: string,
@@ -48,7 +34,7 @@ export async function PplxAPI(data: Data, onResponse: (response: string, status:
     body: JSON.stringify({
       model: data.model,
       // messages: [ {role: 'system', content: 'Be precise and concise.'}, {role: 'user', content: data.prompt} ],
-      messages: data.conversation,
+      messages: data.messages,
       temperature: data.temperature,
       stream: data.stream
     })

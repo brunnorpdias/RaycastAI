@@ -1,31 +1,8 @@
 import { Anthropic } from '@anthropic-ai/sdk';
+import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { showToast, Toast } from "@raycast/api";
 import { API_KEYS } from '../enums';
-
-
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{
-    role: 'user' | 'assistant',
-    content: string | Array<{
-      type: 'text' | 'document' | 'image',
-      source?: object,
-      text?: string
-    }>,
-    timestamp?: number
-  }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachmentsDir: [string];
-  reasoning: 'none' | 'low' | 'medium' | 'high';
-};
+import { type Data } from "../chat/chat_form";
 
 type AnthropicRequest = {
   model: string,
@@ -40,9 +17,10 @@ type AnthropicRequest = {
   },
 }
 
+
 export async function AnthropicAPI(data: Data, onResponse: (response: string, status: string) => void) {
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
-  const messages = data.conversation.map(({ timestamp, ...rest }) => rest);
+  const messages = data.messages.map(({ timestamp, ...rest }) => rest);
   let thinking_budget: number;
   let max_tokens: number;
 
@@ -74,19 +52,20 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
     stream: data.stream,
   }
 
-  if (data.model == 'claude-3-7-sonnet-latest' && ['low', 'medium', 'high'].includes(data.reasoning)) {
+  if (data.model === 'claude-3-7-sonnet-latest' && data.reasoning && ['low', 'medium', 'high'].includes(data.reasoning)) {
     request.thinking = {
       type: "enabled",
       budget_tokens: thinking_budget,
     }
-  } else if (data.model === 'claude-3-7-haiku-latest') {
+  } else if (data.model === 'claude-3-5-haiku-latest') {
     request.max_tokens = 8100 // limit is 8182
+    console.log(request.max_tokens)
   }
 
   if (data.stream) {
     let thinking_started = false;
     let stream_started = false;
-    const stream = client.messages.stream(request)
+    const stream = client.messages.stream(request as MessageCreateParamsBase)
     for await (const chunk of stream) {
       if (chunk.type === 'content_block_delta') {
         if (chunk.delta.type === 'thinking_delta') {
@@ -107,8 +86,11 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
       }
     }
   } else {
-    const msg = await client.messages.create(request)
-    console.log(msg)
-    onResponse(msg.content[0].text, 'done')
+    const msg = await client.messages.create(request as MessageCreateParamsBase)
+    if ('content' in msg && 'text' in msg.content[0]) {
+      onResponse(msg.content[0].text, 'done')
+    } else {
+      console.log("Error extracting messsage")
+    }
   }
 }

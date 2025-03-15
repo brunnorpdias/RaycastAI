@@ -1,21 +1,7 @@
 // "use strict";
 import { API_KEYS } from "../enums/index";
 const Groq = require("groq-sdk");
-
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
+import { type Data } from "../chat/chat_form";
 
 type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
 
@@ -24,7 +10,12 @@ const groq = new Groq({
 });
 
 export async function GroqAPI(data: Data, onResponse: (response: string, status: string) => void) {
-  const messages = data.conversation.map(({ timestamp, ...rest }) => rest) as Messages;
+  const messages = data.messages.map(({ timestamp, ...msg }) => (
+    {
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }
+  ));
 
   const chat = groq.chat.completions.create({
     messages: messages,

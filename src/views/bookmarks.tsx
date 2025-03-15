@@ -2,35 +2,21 @@ import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNaviga
 import { useEffect, useState } from "react";
 import Detail from "./detail";
 import { format as DateFormat } from "date-fns";
-
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
+import { type Data } from "../chat/chat_form";
 
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
 export default function Bookmarks() {
   const { push } = useNavigation();
-  const [bookmarks, getBookmarks] = useState<Bookmarks>();
+  const [bookmarks, setBookmarks] = useState<Bookmarks>();
 
   async function RetrieveStorage() {
     const stringData = await LocalStorage.getItem('bookmarks') as string;
     if (stringData) {
-      getBookmarks(JSON.parse(stringData));
-      // not good nomenclature, this is a setter, but it gets confusing with a function that sets the bookmarks
+      setBookmarks(JSON.parse(stringData));
     }
+    // else statement
   }
 
   useEffect(() => {
@@ -41,19 +27,19 @@ export default function Bookmarks() {
     return (
       <RaycastList>
         {bookmarks
-          .sort((a, b) => b.data.conversation.slice(-1)[0].timestamp - a.data.conversation.slice(-1)[0].timestamp)
+          .sort((a, b) => b.data.messages.slice(-1)[0].timestamp - a.data.messages.slice(-1)[0].timestamp)
           .map((item, index) => (
             <RaycastList.Item
               key={`${index}`}
               title={`${item.title}`}
-              subtitle={DateFormat(item.data.conversation.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
+              subtitle={DateFormat(item.data.messages.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
-                    title="View Conversation"
+                    title="View messages"
                     icon={Icon.AppWindow}
                     onAction={() => {
-                      // console.log(typeof item.data.conversation);
+                      // console.log(typeof item.data.messages);
                       push(<Detail data={item.data} />)
                     }}
                   />
@@ -65,7 +51,7 @@ export default function Bookmarks() {
                     onAction={async () => {
                       const deleteID = item.data.id;
                       const newBookmarks = bookmarks.filter(bookmark => bookmark.data.id !== deleteID);
-                      getBookmarks(newBookmarks);
+                      setBookmarks(newBookmarks);
                       LocalStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
                     }}
                   />
