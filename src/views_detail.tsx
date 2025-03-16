@@ -1,7 +1,8 @@
 import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
-import NewEntry from "../chat/chat_newentry";
+import NewEntry from "./chat_newentry";
+import Answer from "./chat_answer";
 import { useEffect, useState } from "react";
-import { type Data } from "../chat/chat_form";
+import { type Data } from "./chat_form";
 
 export default function Detail({ data }: { data: Data }) {
   const { push } = useNavigation();
@@ -40,6 +41,15 @@ export default function Detail({ data }: { data: Data }) {
                       push(<NewEntry data={data} />)
                     }}
                   />
+
+
+                  {/* <Action */}
+                  {/*   title="View message" */}
+                  {/*   icon={Icon.Text} */}
+                  {/*   onAction={() => { */}
+                  {/*     push(<Answer data={data} />) */}
+                  {/*   }} */}
+                  {/* /> */}
                 </ActionPanel>
               }
             />

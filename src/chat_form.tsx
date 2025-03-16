@@ -1,6 +1,6 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
 import Answer from './chat_answer';
-import instructions from '../../instructions.json';
+import instructions from '../instructions.json';
 import { useState } from 'react';
 import * as fs from 'fs/promises';
 

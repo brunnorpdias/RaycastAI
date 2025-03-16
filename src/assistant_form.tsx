@@ -2,8 +2,10 @@
 import { Form as Raycastform, ActionPanel, Action, useNavigation, showToast, Toast } from '@raycast/api';
 import fs from 'fs';
 import Answer from './assistant_answer';
-import * as OpenAI from '../fetch/openAI';
+import * as OpenAI from './fetch/openAI';
 // import instructions from '../instructions.json';
+//
+import { type Data } from './chat_form';
 
 type Values = {
   assistant: string;
@@ -13,41 +15,16 @@ type Values = {
   temperature: string;
 };
 
-type ParsedValues = {
-  id: number;
-  conversation: Array<{
-    role: 'user' | 'assistant',
-    content: string | Array<{
-      type: 'text' | 'document' | 'image',
-      source?: object,
-      text?: string
-    }>,
-    timestamp?: number
-  }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  reasoning?: 'none' | 'low' | 'medium' | 'high';
-  attachments?: [string];
-  temperature: number;
-  stream?: boolean;
-  assistantInstructions?: string;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  assistantAttachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
-
 const model = 'gpt-4o';
 
 export default function AssistantForm() {
   const { push } = useNavigation();
 
   async function handleSubmit(values: Values) {
-    let parsedValues: ParsedValues = {
+    let parsedValues: Data = {
       model: model,
       assistantInstructions: `${values.instructions}`,
-      conversation: [
+      messages: [
         // { role: 'system', content: instructions.text },
         { role: 'user', content: values.prompt, timestamp: Date.now() }
       ],

@@ -2,7 +2,7 @@ import { showToast, Toast } from "@raycast/api";
 import OpenAI from "openai";
 import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
-import { type Data } from "../chat/chat_form";
+import { type Data } from "../chat_form";
 
 
 const openai = new OpenAI({

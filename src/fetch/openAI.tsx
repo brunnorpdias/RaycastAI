@@ -4,7 +4,7 @@ import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
 import fs from 'fs';
 // import { Messages } from "openai/resources/chat/completions/messages";
-import { type Data } from "../chat/chat_form";
+import { type Data } from "../chat_form";
 
 type Messages = Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
 
@@ -211,12 +211,19 @@ export async function RunThread(data: Data, onResponse: (response: string, statu
 }
 
 
-export async function TitleConversation(messages: Messages) {
+export async function TitleConversation(data: Data) {
   showToast({ title: 'Creating a title', style: Toast.Style.Animated })
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
+  const conversation = data.messages.map(({ timestamp, ...msg }) => (
+    {
+      role: msg.role,
+      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+    }
+  ));
+
   const chat = await openai.chat.completions.create({
     messages: [
-      ...messages,
+      ...conversation,
       {
         role: 'user',
         content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.'

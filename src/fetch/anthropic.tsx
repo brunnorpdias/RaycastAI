@@ -2,7 +2,7 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { showToast, Toast } from "@raycast/api";
 import { API_KEYS } from '../enums';
-import { type Data } from "../chat/chat_form";
+import { type Data } from "../chat_form";
 
 type AnthropicRequest = {
   model: string,

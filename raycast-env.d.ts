@@ -15,14 +15,14 @@ declare type Preferences = ExtensionPreferences
 declare namespace Preferences {
   /** Preferences accessible in the `chat_form` command */
   export type ChatForm = ExtensionPreferences & {}
-  /** Preferences accessible in the `options` command */
-  export type Options = ExtensionPreferences & {}
+  /** Preferences accessible in the `views_options` command */
+  export type ViewsOptions = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
   /** Arguments passed to the `chat_form` command */
   export type ChatForm = {}
-  /** Arguments passed to the `options` command */
-  export type Options = {}
+  /** Arguments passed to the `views_options` command */
+  export type ViewsOptions = {}
 }
 

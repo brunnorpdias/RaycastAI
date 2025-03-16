@@ -18,7 +18,7 @@
       "mode": "view"
     },
     {
-      "name": "options",
+      "name": "views_options",
       "title": "Options",
       "description": "Use an assistant or view saved conversations",
       "mode": "view"

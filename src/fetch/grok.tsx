@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
 import { showToast, Toast } from "@raycast/api";
-import { type Data } from "../chat/chat_form";
+import { type Data } from "../chat_form";
 
 export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
   const messages = data.messages.map(({ timestamp, ...msg }) => (

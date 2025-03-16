@@ -4,20 +4,8 @@ import * as OpenAI from './fetch/openAI';
 // import NewEntry from './assistant_newentry';
 // ADD NEW PROMPT
 
-type Data = {
-  id: number;
-  temperature: number;
-  conversation: Array<{ role: 'user' | 'assistant', content: string, timestamp: number }>;
-  model: string;
-  api?: string;
-  systemMessage?: string;
-  instructions?: string;
-  stream?: boolean;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  attachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-};
+import { type Data } from './chat_form'
+
 
 export default function Answer({ data }: { data: Data }) {
   const [startTime, setStartTime] = useState(0);
@@ -62,7 +50,7 @@ export default function Answer({ data }: { data: Data }) {
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });
       const temp: Data = {
         ...data,
-        conversation: [...data.conversation, { role: 'assistant', content: response, timestamp: Date.now() }],
+        messages: [...data.messages, { role: 'assistant', content: response, timestamp: Date.now() }],
         runID: runID,
       }
       setNewData(temp);
@@ -106,8 +94,8 @@ export default function Answer({ data }: { data: Data }) {
 
               const temp: Data = {
                 ...data,
-                conversation: [
-                  ...data.conversation,
+                messages: [
+                  ...data.messages,
                   { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that", timestamp: Date.now() }
                 ]
               }
@@ -123,8 +111,8 @@ export default function Answer({ data }: { data: Data }) {
 
               const temp: Data = {
                 ...data,
-                conversation: [
-                  ...data.conversation,
+                messages: [
+                  ...data.messages,
                   { role: 'user', content: "Give a title for this conversation in a heading, then give the main points in bullets without mentioning so", timestamp: Date.now() }
                 ]
               }
@@ -134,7 +122,7 @@ export default function Answer({ data }: { data: Data }) {
           <Action.CopyToClipboard
             title='Copy Data'
             icon={Icon.Download}
-            content={JSON.stringify(newData?.conversation)}
+            content={JSON.stringify(newData?.messages)}
           />
           {/* <Action */}
           {/*   title='Rewrite Prompt' */}

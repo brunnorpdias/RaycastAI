@@ -1,9 +1,9 @@
 import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import Detail from "./detail";
+import Detail from "./views_detail";
 import { format as DateFormat } from "date-fns";
-import { type Data } from "../chat/chat_form";
 
+import { type Data } from "./chat_form";
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
@@ -13,7 +13,7 @@ export default function Bookmarks() {
 
   async function RetrieveStorage() {
     const stringData = await LocalStorage.getItem('bookmarks') as string;
-    if (stringData) {
+    if (stringData && JSON.parse(stringData)) {
       setBookmarks(JSON.parse(stringData));
     }
     // else statement
@@ -27,7 +27,13 @@ export default function Bookmarks() {
     return (
       <RaycastList>
         {bookmarks
-          .sort((a, b) => b.data.messages.slice(-1)[0].timestamp - a.data.messages.slice(-1)[0].timestamp)
+          .filter(item => item.data.messages && item.data.messages.length > 0 && item.data.messages.slice(-1)[0]?.timestamp !== undefined)
+          .sort((a, b) => {
+            const bTimestamp = b.data.messages.slice(-1)[0].timestamp || 0;
+            const aTimestamp = a.data.messages.slice(-1)[0].timestamp || 0;
+            return bTimestamp - aTimestamp
+          }
+          )
           .map((item, index) => (
             <RaycastList.Item
               key={`${index}`}

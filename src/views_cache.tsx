@@ -1,21 +1,13 @@
 import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation, showToast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
-import Detail from "./detail";
-import * as OpenAPI from "../fetch/openAI";
-import { type Data } from "../chat/chat_form";
+import Detail from "./views_detail";
+import * as OpenAPI from "./fetch/openAI";
 
+import { type Data } from "./chat_form";
 type DataList = Data[];
-
 type Bookmark = { title: string, data: Data };
 type Bookmarks = Bookmark[];
-
-// type ParsedCacheChats = Array<{
-//   type: 'chat' | 'assistant',
-//   timestamp: number,
-//   messages: Array<{ role: 'user' | 'assistant', content: string }>,
-//   stringData: string
-// }>;
 
 
 export default function Cache() {
@@ -27,20 +19,27 @@ export default function Cache() {
     const cachedChatsString = raycastCache.get('cachedChats');
     // Possibly problematic line that outputs the "[object]" when displaying the conversation name on cache
     const cachedChats: DataList = cachedChatsString ? JSON.parse(cachedChatsString) : [];
-    setCache(cachedChats);
+    if (Array.isArray(cachedChats) && Object(cachedChats.slice(-1))) {
+      setCache(cachedChats);
+    }
   }, [])
 
 
-  if (cache) {
+  if (cache && Object.values(cache)) {
     return (
       <RaycastList>
         {Object.values(cache)
-          .sort((a, b) => b.messages.slice(-1)[0].timestamp - a.messages.slice(-1)[0].timestamp)
-          .map((cachedItem: Data, cacheIndex) => (
+          .filter(item => item.messages && item.messages.length > 0 && item.messages.slice(-1)[0]?.timestamp !== undefined)
+          .sort((a, b) => {
+            const aTimestamp = a.messages.slice(-1)[0]?.timestamp || 0;
+            const bTimestamp = b.messages.slice(-1)[0]?.timestamp || 0;
+            return bTimestamp - aTimestamp;
+          })
+          .map((cachedItem: Data) => (
             <RaycastList.Item
-              key={`${cacheIndex}`} //// CHANGE TO TIMESTAMP
-              title={`${cachedItem.messages[0].content}`}
-              subtitle={DateFormat(cachedItem.messages.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
+              key={`${cachedItem.id}`}
+              title={`${cachedItem.messages[0]?.content || 'No content'}`}
+              subtitle={DateFormat(cachedItem.messages.slice(-1)[0].timestamp || 0, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
@@ -48,6 +47,7 @@ export default function Cache() {
                     icon={Icon.AppWindow}
                     onAction={() => {
                       // console.log(typeof cachedItem.data.messages);
+                      console.log(JSON.stringify(cachedItem))
                       push(<Detail data={cachedItem} />)
                     }}
                   />
@@ -70,7 +70,7 @@ export default function Cache() {
                     icon={Icon.Bookmark}
                     shortcut={{ modifiers: ["cmd"], key: "d" }}
                     onAction={async () => {
-                      const title = await OpenAPI.TitleConversation(cachedItem.messages);
+                      const title = await OpenAPI.TitleConversation(cachedItem);
                       let newBookmark: Bookmark;
                       if (title) {
                         newBookmark = { title: title, data: cachedItem };
@@ -113,5 +113,3 @@ export default function Cache() {
     );
   }
 }
-
-

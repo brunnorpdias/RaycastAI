@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 // import axios from 'axios';
 import readline from 'readline';
 import { Readable } from 'stream';
-import { type Data } from "../chat/chat_form";
+import { type Data } from "../chat_form";
 
 type Response = {
   id: string,

@@ -1,7 +1,7 @@
 // "use strict";
 import { API_KEYS } from "../enums/index";
 const Groq = require("groq-sdk");
-import { type Data } from "../chat/chat_form";
+import { type Data } from "../chat_form";
 
 type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
 
