@@ -8,9 +8,8 @@ import { PplxAPI } from './fetch/perplexity';
 // import * as GoogleOpenAI from './fetch/google_openai';
 import NewEntry from './chat_newentry';
 import { useEffect, useState, useRef } from 'react';
-import { type Data } from "./chat_form";
 
-type Messages = Array<{ role: 'user' | 'assistant', content: string }>;
+import { type Data } from "./chat_form";
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
@@ -93,24 +92,20 @@ export default function Chat({ data }: { data: Data }) {
   }
 
   async function SubstituteBookmark(data: Data) {
-    // Filter out system role and remove timestamp
-    const filteredMessages = newData.messages
-      .filter(({ role }) => role === 'user' || role === 'assistant')
-      .map(({ timestamp, ...rest }) => rest) as Messages;
+    const stringBookmarks = await LocalStorage.getItem('bookmarks');
+    if (typeof stringBookmarks !== 'string') return false;
+    const bookmarks: Bookmarks = JSON.parse(stringBookmarks);
+    const bookmarkIndex: number = bookmarks.findIndex(bookmark => bookmark.data.id === data.id);
 
-    const stringData = await LocalStorage.getItem('bookmarks');
-    if (typeof stringData !== 'string') return;
-
-    const bookmarks: Bookmarks = JSON.parse(stringData);
-    const bookmarkIndex = bookmarks.findIndex(bookmark => bookmark.data.id === data.id);
-    if (bookmarkIndex === -1) return false;
-
-    const title = await OpenAPI.TitleConversation(filteredMessages);
-    if (typeof title !== 'string') return;
-    bookmarks[bookmarkIndex] = { title, data };
-    LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    showToast({ title: 'Bookmark re-saved', style: Toast.Style.Success })
-    return true;
+    if (bookmarkIndex >= 0) {
+      // substitute bookmark
+      const title: string = await OpenAPI.TitleConversation(newData) || "Title not created";
+      bookmarks[bookmarkIndex] = { title, data };
+      LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+      showToast({ title: 'Bookmark modified', style: Toast.Style.Success })
+      return true
+    }
+    return false
   }
 
   useEffect(() => {
@@ -193,25 +188,19 @@ export default function Chat({ data }: { data: Data }) {
             shortcut={{ modifiers: ["cmd"], key: "d" }}
             onAction={async () => {
               const bookmarkSubstituted = await SubstituteBookmark(newData);
-              if (bookmarkSubstituted !== undefined && !bookmarkSubstituted) {
-                const filteredMessages = newData.messages
-                  .filter(({ role }) => role === 'user' || role === 'assistant')
-                  .map(({ timestamp, ...rest }) => rest) as Messages;
-
-                const title = await OpenAPI.TitleConversation(filteredMessages)
-                if (typeof title === 'string') {
-                  const stringData = await LocalStorage.getItem('bookmarks') as string;
-                  const bookmarks: Bookmarks = JSON.parse(stringData ?? '[]')
-                  const newBookmark = { title: title, data: newData }
-                  const newBookmarks: Bookmarks = bookmarks.concat(newBookmark);
-                  await LocalStorage.setItem(
-                    'bookmarks',
-                    JSON.stringify(newBookmarks),
-                  );
-                  showToast({ title: 'Bookmarked' });
-                } else {
-                  showToast({ title: 'Bookmarking Failed', style: Toast.Style.Failure })
-                }
+              if (!bookmarkSubstituted) {
+                const title: string = await OpenAPI.TitleConversation(newData) || "Title not created";
+                const stringBookmarks = await LocalStorage.getItem('bookmarks') as string;
+                const bookmarks: Bookmarks = JSON.parse(stringBookmarks ?? '[]')
+                const newBookmark = { title: title, data: newData }
+                const newBookmarks: Bookmarks = bookmarks.concat(newBookmark);
+                await LocalStorage.setItem(
+                  'bookmarks',
+                  JSON.stringify(newBookmarks),
+                );
+                showToast({ title: 'Bookmarked' });
+              } else {
+                showToast({ title: 'Bookmarking Failed', style: Toast.Style.Failure })
               }
             }}
           />

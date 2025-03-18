@@ -59,7 +59,6 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
     }
   } else if (data.model === 'claude-3-5-haiku-latest') {
     request.max_tokens = 8100 // limit is 8182
-    console.log(request.max_tokens)
   }
 
   if (data.stream) {

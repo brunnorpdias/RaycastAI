@@ -38,6 +38,7 @@ export type Data = {
   threadID?: string;
   runID?: string;
   assistantAttachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
+  // status: 'sreaming' | 'thinking' | 'idle'
 };
 
 

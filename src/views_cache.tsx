@@ -46,8 +46,7 @@ export default function Cache() {
                     title="View Conversation"
                     icon={Icon.AppWindow}
                     onAction={() => {
-                      // console.log(typeof cachedItem.data.messages);
-                      console.log(JSON.stringify(cachedItem))
+                      // console.log(JSON.stringify(cachedItem))
                       push(<Detail data={cachedItem} />)
                     }}
                   />

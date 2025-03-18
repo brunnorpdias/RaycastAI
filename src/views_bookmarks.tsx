@@ -16,7 +16,6 @@ export default function Bookmarks() {
     if (stringData && JSON.parse(stringData)) {
       setBookmarks(JSON.parse(stringData));
     }
-    // else statement
   }
 
   useEffect(() => {
@@ -27,7 +26,7 @@ export default function Bookmarks() {
     return (
       <RaycastList>
         {bookmarks
-          .filter(item => item.data.messages && item.data.messages.length > 0 && item.data.messages.slice(-1)[0]?.timestamp !== undefined)
+          // .filter(item => item.data.messages && item.data.messages.length > 0 && typeof item.data.messages.slice(-1)[0]?.timestamp == 'number')
           .sort((a, b) => {
             const bTimestamp = b.data.messages.slice(-1)[0].timestamp || 0;
             const aTimestamp = a.data.messages.slice(-1)[0].timestamp || 0;
@@ -38,7 +37,7 @@ export default function Bookmarks() {
             <RaycastList.Item
               key={`${index}`}
               title={`${item.title}`}
-              subtitle={DateFormat(item.data.messages.slice(-1)[0].timestamp, 'HH:mm:ss dd/MM/yy')}
+              subtitle={DateFormat(item.data.messages.slice(-1)[0].timestamp || 0, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
