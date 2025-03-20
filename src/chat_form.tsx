@@ -2,7 +2,6 @@ import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
 import Answer from './chat_answer';
 import instructions from '../instructions.json';
 import { useState } from 'react';
-import * as fs from 'fs/promises';
 
 type Values = {
   prompt: string;
@@ -11,18 +10,20 @@ type Values = {
   agent: string;
   temperature: string;
   stream: boolean;
-  attachmentsDir: [string];
+  attatchmentPaths: [string];
   reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
 export type Data = {
   id: number;
+  // status: 'sreaming' | 'thinking' | 'idle'
   messages: Array<{
-    role: 'user' | 'assistant',
+    role: 'user' | 'assistant' | 'system',
     content: string | Array<{
-      type: 'text' | 'document' | 'image',
+      type: 'text' | 'document' | 'image' | 'file',
       source?: object,
-      text?: string
+      text?: string,
+      file?: object
     }>,
     timestamp?: number
   }>;
@@ -30,7 +31,7 @@ export type Data = {
   api?: string;
   systemMessage?: string;
   reasoning?: 'none' | 'low' | 'medium' | 'high';
-  attachments?: [string];
+  attachments?: Array<{ status: 'waiting' | 'uploaded', name: string, path: string }>;
   temperature: number;
   stream?: boolean;
   assistantInstructions?: string;
@@ -38,7 +39,6 @@ export type Data = {
   threadID?: string;
   runID?: string;
   assistantAttachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
-  // status: 'sreaming' | 'thinking' | 'idle'
 };
 
 
@@ -109,46 +109,34 @@ export default function ChatForm() {
         break;
     }
 
-    //conversation with attachment and not
-    let messages: Data["messages"];
-    if (values.attachmentsDir && values.attachmentsDir.length > 0 && values.model == 'claude-3-7-sonnet-latest') {
-      const localPdfPath: string = values.attachmentsDir[0];  // limit of one file only, for now
-      const arrayBuffer = await fs.readFile(localPdfPath);
-      const pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
-      messages = [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: values.prompt,
-            },
-            {
-              type: 'document',
-              source: {
-                media_type: 'application/pdf',
-                type: 'base64',
-                data: pdfBase64,
-              }
-            }
-          ]
-        }
-      ]
-    } else {
-      messages = [{ role: 'user', content: values.prompt, timestamp: Date.now() }]
-    }
-
     const parsedValues: Data = {
       id: Date.now(),
       model: values.model,
       api: values.api,
       systemMessage: systemMessage,
-      messages: messages,
+      messages: [
+        {
+          role: 'user',
+          content: values.prompt,
+          timestamp: Date.now()
+        }
+      ],// messages,
       temperature: 1, //Number(values.temperature),
       stream: true, //values.stream,
-      attachments: values.attachmentsDir,
+      // attachments: values.attatchmentPaths,
+      attachments: [],
       reasoning: values.reasoning,
     }
+
+    if (parsedValues.attachments && values.attatchmentPaths && values.attatchmentPaths.length > 0) {
+      for (const attachmentPath of values.attatchmentPaths) {
+        const filename = attachmentPath.slice(attachmentPath.lastIndexOf('/') + 1);
+        parsedValues.attachments.push(
+          { status: 'waiting', name: filename, path: attachmentPath }
+        )
+      }
+    }
+
     push(<Answer data={parsedValues} />)
   }
 
@@ -208,8 +196,8 @@ export default function ChatForm() {
       {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
       {/* <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} /> */}
 
-      {selectedModel === 'claude-3-7-sonnet-latest' && (
-        <Form.FilePicker id="attachmentsDir" />
+      {['claude-3-7-sonnet-latest', 'gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview'].includes(selectedModel) && (
+        <Form.FilePicker id="attatchmentPaths" />
       )}
     </Form>
   );

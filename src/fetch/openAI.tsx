@@ -3,37 +3,69 @@ import OpenAI from "openai";
 import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
 import fs from 'fs';
-// import { Messages } from "openai/resources/chat/completions/messages";
-import { type Data } from "../chat_form";
 
-type Messages = Array<{ role: 'user' | 'assistant' | 'system', content: string }>;
+import { type Data } from "../chat_form";
+type Messages = Array<{
+  role: 'user' | 'system',
+  content: string | Array<{
+    type: 'text' | 'file' | 'document' | 'image',
+    text?: string,
+    file?: { filename: string, file_data: string }
+  }>,
+}>;
 
 
 export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-  const conversation = data.messages.map(({ timestamp, ...msg }) => (
-    {
-      role: msg.role,
-      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-    }
-  ));
+  let messages: Messages = data.messages
+    .map(({ timestamp, ...msg }) => msg)
+    .filter(({ role }) => role !== 'assistant') as Messages;
 
-  let messages: Messages;
   const systemMessage = data.systemMessage;
-  if (systemMessage && String(systemMessage)) {
-    messages = [
-      { role: 'system', content: systemMessage },
-      ...conversation
-    ];
-  } else {
-    messages = [...conversation];
-  }
 
   let reasoning_effort;
   if (data.reasoning != 'none') {
     reasoning_effort = data.reasoning;
   } else {
     reasoning_effort = undefined
+  }
+
+  if (data.attachments) {
+    const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
+    if (messages.length === 1 && typeof messages[0].content === 'string') {
+      if (['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model) && attachmentsQueue) {
+        let content: Messages[0]["content"] = [// Content = [
+          {
+            type: 'text',
+            text: messages[0].content
+          },
+        ]
+        const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
+        for (const attachment of attachmentsQueue) {
+          const arrayBuffer = fs.readFileSync(attachment.path);  //limit of one file
+          const base64String = arrayBuffer.toString('base64');
+          content.push(
+            {
+              type: 'file',
+              file: {
+                filename: attachment.name,  // limitation of one file
+                file_data: `data:application/pdf;base64,${base64String}`
+              }
+            }
+          )
+          attachment.status = 'uploaded';
+        }
+        messages[0].content = content;
+        // }
+      }
+    }
+  }
+
+  if (systemMessage && String(systemMessage)) {
+    messages = [
+      { role: 'system', content: systemMessage },
+      ...messages
+    ];
   }
 
   let completion;
@@ -64,6 +96,7 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
   let streaming = false;
   if (data.stream) {
     const stream = completion as AsyncIterable<ChatCompletionChunk>;
+    showToast({ title: 'Uploaded', style: Toast.Style.Success })
     for await (const chunk of stream) {
       // console.log(JSON.stringify(chunk));
       if (typeof chunk.choices[0].delta.content === "string") {

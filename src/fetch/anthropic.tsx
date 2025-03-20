@@ -2,7 +2,11 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { showToast, Toast } from "@raycast/api";
 import { API_KEYS } from '../enums';
+import * as fs from 'fs/promises';
+
 import { type Data } from "../chat_form";
+
+type Content = Data["messages"][0]["content"]
 
 type AnthropicRequest = {
   model: string,
@@ -20,9 +24,48 @@ type AnthropicRequest = {
 
 export async function AnthropicAPI(data: Data, onResponse: (response: string, status: string) => void) {
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
-  const messages = data.messages.map(({ timestamp, ...rest }) => rest);
-  let thinking_budget: number;
   let max_tokens: number;
+  let thinking_budget: number;
+  const inputMessages = data.messages.map(({ timestamp, ...rest }) => rest);
+  let messages: Data["messages"];
+
+  if (data.model === 'claude-3-7-sonnet-latest' && data.attachments && data.attachments.length > 0) {
+    if (inputMessages.length === 1 && typeof inputMessages[0].content == 'string') {
+      let contentArray: Content = [
+        {
+          type: 'text',
+          text: inputMessages[0].content,
+        },
+      ];
+
+      const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
+      for (const attachment of attachmentsQueue) {
+        const arrayBuffer = await fs.readFile(attachment.path);
+        const pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
+        contentArray.push({
+          type: 'document',
+          source: {
+            media_type: 'application/pdf',
+            type: 'base64',
+            data: pdfBase64,
+          }
+        })
+        attachment.status = 'uploaded';
+      }
+
+      messages = [
+        {
+          role: 'user',
+          content: contentArray
+        }
+      ]
+    } else {
+      messages = inputMessages;
+      // add logic for additional pdf's and images when chat_newentry makes it possible (also, need to differentiate new files)
+    }
+  } else {
+    messages = inputMessages;
+  }
 
   switch (data.reasoning) {
     case 'low':

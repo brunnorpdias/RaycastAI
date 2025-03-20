@@ -1,5 +1,4 @@
 import { Form, ActionPanel, Action, useNavigation } from "@raycast/api";
-import { useState, useEffect, useRef } from "react";
 import Answer from './chat_answer';
 import { type Data } from "./chat_form";
 

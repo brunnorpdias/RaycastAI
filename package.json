@@ -33,7 +33,7 @@
     "@eslint/config-array": "latest",
     "@google/generative-ai": "latest",
     "@mistralai/mistralai": "latest",
-    "@raycast/api": "latest",
+    "@raycast/api": "^1.93.2",
     "axios": "latest",
     "date-fns": "latest",
     "eventsource": "latest",
