@@ -3,6 +3,8 @@ import Answer from './chat_answer';
 import instructions from '../instructions.json';
 import { useState } from 'react';
 
+import APIHandler from './chat_api_handler';
+
 type Values = {
   prompt: string;
   api: string;
@@ -137,7 +139,8 @@ export default function ChatForm() {
       }
     }
 
-    push(<Answer data={parsedValues} />)
+    // push(<Answer data={parsedValues} />)
+    APIHandler(parsedValues);
   }
 
   return (
