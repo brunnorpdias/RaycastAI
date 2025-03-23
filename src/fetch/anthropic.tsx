@@ -4,6 +4,7 @@ import { showToast, Toast } from "@raycast/api";
 import { API_KEYS } from '../enums';
 import * as fs from 'fs/promises';
 
+import { type StreamPipeline } from "../chat_answer";
 import { type Data } from "../chat_form";
 
 type Content = Data["messages"][0]["content"]
@@ -22,7 +23,7 @@ type AnthropicRequest = {
 }
 
 
-export async function AnthropicAPI(data: Data, onResponse: (response: string, status: string) => void) {
+export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
   let max_tokens: number;
   let thinking_budget: number;
@@ -109,28 +110,35 @@ export async function AnthropicAPI(data: Data, onResponse: (response: string, st
     let stream_started = false;
     const stream = client.messages.stream(request as MessageCreateParamsBase)
     for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta') {
+      if (chunk.type === 'content_block_start' && chunk.content_block.type === 'thinking') {
+        streamPipeline('# Thinking...\n```\n', 'streaming')
+      } else if (chunk.type === 'content_block_delta') {
         if (chunk.delta.type === 'thinking_delta') {
           console.log(`Thinking: ${chunk.delta.thinking}`);
+          streamPipeline(chunk.delta.thinking, 'streaming')
           if (!thinking_started) {
             showToast({ title: 'Thinking...', style: Toast.Style.Animated })
             thinking_started = true
           }
         } else if (chunk.delta.type === 'text_delta') {
-          onResponse(chunk.delta.text, 'streaming')
+          streamPipeline(chunk.delta.text, 'streaming')
           if (!stream_started) {
             showToast({ title: 'Streaming', style: Toast.Style.Animated })
             stream_started = true
           }
         }
-      } else if (chunk.type === 'content_block_stop') {
-        onResponse('', 'done')
+      } else if (chunk.type === 'content_block_stop' && chunk.index === 0) {
+        streamPipeline('\n```\n# Message\n', 'streaming')
+        // streamPipeline('', 'reset')
+      } else if (chunk.type === 'message_stop') {
+        streamPipeline('', 'done')
+        break;
       }
     }
   } else {
     const msg = await client.messages.create(request as MessageCreateParamsBase)
     if ('content' in msg && 'text' in msg.content[0]) {
-      onResponse(msg.content[0].text, 'done')
+      streamPipeline(msg.content[0].text, 'done')
     } else {
       console.log("Error extracting messsage")
     }

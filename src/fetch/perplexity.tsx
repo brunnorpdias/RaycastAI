@@ -1,9 +1,10 @@
 import { API_KEYS } from '../enums';
 import fetch from 'node-fetch';
-// import axios from 'axios';
 import readline from 'readline';
 import { Readable } from 'stream';
+
 import { type Data } from "../chat_form";
+import { type StreamPipeline } from "../chat_answer";
 
 type Response = {
   id: string,
@@ -23,7 +24,8 @@ type Response = {
   }>
 }
 
-export async function PplxAPI(data: Data, onResponse: (response: string, status: string) => void) {
+
+export async function PplxAPI(data: Data, streamPipeline: StreamPipeline) {
   const options = {
     method: 'POST',
     headers: {
@@ -58,9 +60,9 @@ export async function PplxAPI(data: Data, onResponse: (response: string, status:
               const json: Response = JSON.parse(line.replace('data: ', '').trim());
 
               if (json.choices[0].finish_reason === null) {
-                onResponse(json.choices[0].delta.content, 'streaming');
+                streamPipeline(json.choices[0].delta.content, 'streaming');
               } else {
-                onResponse(json.choices[0].delta.content, 'done');
+                streamPipeline(json.choices[0].delta.content, 'done');
               }
 
             } catch (e) {
@@ -75,6 +77,6 @@ export async function PplxAPI(data: Data, onResponse: (response: string, status:
   } else {
     const res = await fetch('https://api.perplexity.ai/chat/completions', options);
     const json = await res.json() as Response;
-    onResponse(json.choices[0].message.content, 'done');
+    streamPipeline(json.choices[0].message.content, 'done');
   }
 }

@@ -2,7 +2,9 @@ import { showToast, Toast } from "@raycast/api";
 import OpenAI from "openai";
 import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
 import { API_KEYS } from '../enums';
+
 import { type Data } from "../chat_form";
+import { type StreamPipeline } from "../chat_answer";
 
 
 const openai = new OpenAI({
@@ -10,7 +12,7 @@ const openai = new OpenAI({
   baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
 });
 
-export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
+export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
   const conversation = data.messages.map(({ timestamp, ...msg }) => (
     {
       role: msg.role,
@@ -44,17 +46,16 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
           showToast({ title: 'Streaming', style: Toast.Style.Animated })
           streaming = true;
         };
-        onResponse(chunk.choices[0].delta.content, "streaming");
+        streamPipeline(chunk.choices[0].delta.content, "streaming");
       };
 
       if (chunk.choices[0].finish_reason == 'stop') {
-        onResponse('', 'done');
+        streamPipeline('', 'done');
         break;
       };
     }
   } else {
     const chatCompletion = completion as ChatCompletion;
-    onResponse(chatCompletion.choices[0].message.content as string, 'done');
+    streamPipeline(chatCompletion.choices[0].message.content as string, 'done');
   }
 }
-

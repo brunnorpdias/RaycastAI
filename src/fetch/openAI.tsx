@@ -5,6 +5,8 @@ import { API_KEYS } from '../enums';
 import fs from 'fs';
 
 import { type Data } from "../chat_form";
+import { type StreamPipeline } from "../chat_answer";
+
 type Messages = Array<{
   role: 'user' | 'system',
   content: string | Array<{
@@ -15,7 +17,7 @@ type Messages = Array<{
 }>;
 
 
-export async function RunChat(data: Data, onResponse: (response: string, status: string) => void) {
+export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
   let messages: Messages = data.messages
     .map(({ timestamp, ...msg }) => msg)
@@ -104,17 +106,17 @@ export async function RunChat(data: Data, onResponse: (response: string, status:
           showToast({ title: 'Streaming', style: Toast.Style.Animated })
           streaming = true;
         };
-        onResponse(chunk.choices[0].delta.content, "streaming");
+        streamPipeline(chunk.choices[0].delta.content, "streaming");
       };
 
       if (chunk.choices[0].finish_reason == 'stop') {
-        onResponse('', 'done');
+        streamPipeline('', 'done');
         break;
       };
     }
   } else {
     const chatCompletion = completion as ChatCompletion;
-    onResponse(chatCompletion.choices[0].message.content as string, 'done');
+    streamPipeline(chatCompletion.choices[0].message.content as string, 'done');
   }
 }
 
@@ -197,7 +199,7 @@ export async function NewThreadMessage(data: Data) {
 }
 
 
-export async function RunThread(data: Data, onResponse: (response: string, status: string) => void) {
+export async function RunThread(data: Data, streamPipeline: (response: string, status: string) => void) {
   if (data.assistantID && data.threadID) {
     const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
     const stream = await openai.beta.threads.runs.create(
@@ -219,7 +221,7 @@ export async function RunThread(data: Data, onResponse: (response: string, statu
       if (chunk.event === 'thread.message.delta') {
         if (chunk.data.delta.content) {
           if (chunk.data.delta.content[0].type === 'text' && chunk.data.delta.content[0].text?.value) {
-            onResponse(chunk.data.delta.content[0].text.value, "streaming");
+            streamPipeline(chunk.data.delta.content[0].text.value, "streaming");
             if (!streamingStarted) {
               showToast({ title: 'Streaming', style: Toast.Style.Animated });
               streamingStarted = true;
@@ -235,7 +237,7 @@ export async function RunThread(data: Data, onResponse: (response: string, statu
       }
 
       if (chunk.event === 'thread.run.completed') {
-        onResponse('', 'done');
+        streamPipeline('', 'done');
         // console.log(`run_id: ${chunk.data.id}`)
         return chunk.data.id
       };

@@ -28,8 +28,8 @@ export default function Bookmarks() {
         {bookmarks
           // .filter(item => item.data.messages && item.data.messages.length > 0 && typeof item.data.messages.slice(-1)[0]?.timestamp == 'number')
           .sort((a, b) => {
-            const bTimestamp = b.data.messages.slice(-1)[0].timestamp || 0;
-            const aTimestamp = a.data.messages.slice(-1)[0].timestamp || 0;
+            const bTimestamp = b.data.id;
+            const aTimestamp = a.data.id;
             return bTimestamp - aTimestamp
           }
           )
@@ -37,7 +37,7 @@ export default function Bookmarks() {
             <RaycastList.Item
               key={`${index}`}
               title={`${item.title}`}
-              subtitle={DateFormat(item.data.messages.slice(-1)[0].timestamp || 0, 'HH:mm:ss dd/MM/yy')}
+              subtitle={DateFormat(item.data.id, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action

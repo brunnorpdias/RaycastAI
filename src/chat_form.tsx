@@ -1,9 +1,7 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
-import Answer from './chat_answer';
+import AnswerView from "./chat_answer";
 import instructions from '../instructions.json';
 import { useState } from 'react';
-
-import APIHandler from './chat_api_handler';
 
 type Values = {
   prompt: string;
@@ -111,7 +109,7 @@ export default function ChatForm() {
         break;
     }
 
-    const parsedValues: Data = {
+    const data: Data = {
       id: Date.now(),
       model: values.model,
       api: values.api,
@@ -130,17 +128,15 @@ export default function ChatForm() {
       reasoning: values.reasoning,
     }
 
-    if (parsedValues.attachments && values.attatchmentPaths && values.attatchmentPaths.length > 0) {
+    if (data.attachments && values.attatchmentPaths && values.attatchmentPaths.length > 0) {
       for (const attachmentPath of values.attatchmentPaths) {
         const filename = attachmentPath.slice(attachmentPath.lastIndexOf('/') + 1);
-        parsedValues.attachments.push(
+        data.attachments.push(
           { status: 'waiting', name: filename, path: attachmentPath }
         )
       }
     }
-
-    // push(<Answer data={parsedValues} />)
-    APIHandler(parsedValues);
+    push(<AnswerView data={data} />);
   }
 
   return (
