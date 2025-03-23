@@ -7,7 +7,7 @@ type Values = {
   prompt: string;
   api: string;
   model: string;
-  agent: string;
+  sysMessage: string;
   temperature: string;
   stream: boolean;
   attatchmentPaths: [string];
@@ -16,7 +16,7 @@ type Values = {
 
 export type Data = {
   id: number;
-  // status: 'sreaming' | 'thinking' | 'idle'
+  // status: 'idle' | 'streaming'
   messages: Array<{
     role: 'user' | 'assistant' | 'system',
     content: string | Array<{
@@ -91,7 +91,7 @@ export default function ChatForm() {
   async function handleSubmit(values: Values) {
     var systemMessage: string = "";
 
-    switch (values.agent) {
+    switch (values.sysMessage) {
       case 'efficient':
         systemMessage = instructions.efficient;
         break;
@@ -120,12 +120,12 @@ export default function ChatForm() {
           content: values.prompt,
           timestamp: Date.now()
         }
-      ],// messages,
+      ], // messages,
       temperature: 1, //Number(values.temperature),
       stream: true, //values.stream,
-      // attachments: values.attatchmentPaths,
       attachments: [],
       reasoning: values.reasoning,
+      // status: 'streaming',
     }
 
     if (data.attachments && values.attatchmentPaths && values.attatchmentPaths.length > 0) {
@@ -174,15 +174,6 @@ export default function ChatForm() {
         ))}
       </Form.Dropdown>
 
-      <Form.Dropdown id='agent' title='Agent' >
-        <Form.Dropdown.Item value='efficient' title='Straight-to-the-point' />
-        <Form.Dropdown.Item value='traditional' title='Traditional' />
-        <Form.Dropdown.Item value='researcher' title='Researcher' />
-        <Form.Dropdown.Item value='coach' title='Life and Professional Coach' />
-        <Form.Dropdown.Item value='planner' title='Evaluator and Planner' />
-        <Form.Dropdown.Item value='writer' title='Writer and Writing Guide' />
-      </Form.Dropdown>
-
       {['claude-3-7-sonnet-latest', 'o1', 'o3-mini'].includes(selectedModel) && (
         <Form.Dropdown id='reasoning' title='Reasoning Effort' >
           <Form.Dropdown.Item value='none' title='None' />
@@ -191,6 +182,15 @@ export default function ChatForm() {
           <Form.Dropdown.Item value='high' title='High' />
         </Form.Dropdown>
       )}
+
+      <Form.Dropdown id='sysMessage' title='System Message' >
+        <Form.Dropdown.Item value='efficient' title='Straight-to-the-point' />
+        <Form.Dropdown.Item value='traditional' title='Traditional' />
+        <Form.Dropdown.Item value='researcher' title='Researcher' />
+        <Form.Dropdown.Item value='coach' title='Life and Professional Coach' />
+        <Form.Dropdown.Item value='planner' title='Evaluator and Planner' />
+        <Form.Dropdown.Item value='writer' title='Writer and Writing Guide' />
+      </Form.Dropdown>
 
       {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
       {/* <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} /> */}

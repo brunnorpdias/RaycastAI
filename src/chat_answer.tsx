@@ -1,4 +1,4 @@
-import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache, Icon, LocalStorage } from "@raycast/api";
+import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon, LocalStorage } from "@raycast/api";
 import NewEntry from './chat_newentry';
 import * as OpenAPI from './fetch/openAI';
 import { useEffect, useState, useRef } from 'react';
@@ -10,20 +10,22 @@ export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = (apiResponse: string, apiStatus: Status) => void;
 
 
-export default function Answer({ data }: { data: Data }) {
-  const hasRun = useRef(false);
+// export default function Answer({ data }: { data: Data }, messageId?: number) {
+export default function Answer({ data, messageId }: {
+  data: Data;
+  messageId?: number;
+}) {
   const { push } = useNavigation();
+  const hasRun = useRef(false);
   const [status, setStatus] = useState<Status>('idle');
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
   const [newData, setNewData] = useState<Data>(data);
 
-  const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status) => {
-    setStatus(apiStatus);
-    setResponse((prevResponse) => prevResponse + apiResponse);
-  };
-
   useEffect(() => {
+    if (messageId) {
+      OpenHistoricalMessage();
+    }
     if (!hasRun.current) {
       APIHandler(data, streamPipeline)
       setStartTime(Date.now())
@@ -33,17 +35,44 @@ export default function Answer({ data }: { data: Data }) {
 
   useEffect(() => {
     if (status === 'done') {
-      setNewData(NewData(data, response))
-      SaveToCache(data)
-      Bookmark(data, false)
-      const endTime = Date.now()
-      const duration: number = Math.round((endTime - startTime) / 100) / 10;
+      SaveData();
+      const duration: number = Math.round((Date.now() - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });  // style add?
     }
-    if (status === 'reset') {
-      setResponse('');
-    }
   }, [status])
+
+  const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status) => {
+    setStatus(apiStatus);
+    if (apiStatus !== 'reset') {
+      setResponse((prevResponse) => prevResponse + apiResponse);
+    } else {
+      setResponse('')
+    }
+  };
+
+  async function SaveData() {
+    const finalData: Data = await NewData(data, response);
+    setNewData(finalData);
+    Cache(finalData);
+    Bookmark(finalData, false);
+  }
+
+  async function OpenHistoricalMessage() {
+    hasRun.current = true;
+    const selected_message = data.messages.findLast(msg => msg.timestamp === messageId)
+    if (selected_message) {
+      let api_response: string;
+      if (typeof selected_message.content === 'string') {
+        api_response = selected_message.content;
+      } else {
+        api_response = selected_message.content.slice(-1)[0].text || '';
+      }
+      setResponse(api_response)
+      setNewData(data)
+    } else {
+      showToast({ title: 'Error opening message', style: Toast.Style.Failure })
+    }
+  }
 
   return (
     <Detail
@@ -60,7 +89,15 @@ export default function Answer({ data }: { data: Data }) {
             title="New Entry"
             icon={Icon.Plus}
             onAction={() => {
-              push(<NewEntry data={newData} />)
+              if (messageId) {
+                const messageIndex: number = data.messages
+                  .filter(msg => msg.role === 'assistant')
+                  .findLastIndex(msg => msg.timestamp === messageId) || data.messages.length - 1
+                const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
+                push(<NewEntry data={truncData} />)
+              } else {
+                push(<NewEntry data={newData} />)
+              }
             }}
           />
 
@@ -99,17 +136,17 @@ export default function Answer({ data }: { data: Data }) {
 
 
 // Helper Functions
-function NewData(data: Data, response: string) {
+async function NewData(data: Data, response: string) {
   let userMessage: Data["messages"][0] = data.messages.slice(-1)[0];
-  let systemMessage: Data["messages"][0];
+  let assistantMessage: Data["messages"][0];
   if (typeof userMessage.content === 'string') {
-    systemMessage = {
+    assistantMessage = {
       role: 'assistant',
       content: response,
       timestamp: Date.now()
     };
   } else {
-    systemMessage = {
+    assistantMessage = {
       role: 'assistant',
       content: [{ type: 'text', text: response }],
       timestamp: Date.now()
@@ -117,35 +154,29 @@ function NewData(data: Data, response: string) {
   }
   const newData: Data = {
     ...data,
-    messages: [...data.messages, systemMessage]
+    messages: [...data.messages, assistantMessage],
   }
   return newData
 }
 
 
-async function SaveToCache(data: Data) {
-  showToast({ title: 'Saving to Cache', style: Toast.Style.Animated });
-  const raycastCache = new Cache();
-  const cachedChatsString = raycastCache.get('cachedChats');
-  const cachedChats = cachedChatsString ? JSON.parse(cachedChatsString) : [];
-  if (cachedChats.length > 0) {
-    for (let i = 0; i < cachedChats.length; i++) {
-      if (cachedChats[i].id == data.id) {
-        cachedChats.splice(i, 1);
-      }
-    }
-    // Remove any repeated items (new entries of the same conversation)
-    if (cachedChats.length >= 15) {
-      const newCachedChats = cachedChats.slice(1).concat(data);
-      raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
-    } else {
-      const newCachedChats = cachedChats.concat(data);
-      raycastCache.set('cachedChats', JSON.stringify(newCachedChats));
-    }
+async function Cache(data: Data) {
+  const raycastCache = new RaycastCache();
+  const cachedDataString = raycastCache.get('cachedData');
+  let cachedData: Data[] = cachedDataString ? JSON.parse(cachedDataString) : [];
+  if (cachedData.length > 0) {
+    const filteredCache: Data[] = cachedData
+      .filter(cache => cache.id !== data.id) // remove data if it's already cached
+    const newList = [...filteredCache, data];
+    const newCachedData: Data[] = newList
+      .sort((a: Data, b: Data) => b.id - a.id)
+      .slice(0, 30)
+    raycastCache.set('cachedData', JSON.stringify(newCachedData));
   } else {
     const list = [data];
-    raycastCache.set('cachedChats', JSON.stringify(list));
+    raycastCache.set('cachedData', JSON.stringify(list));
   }
+  showToast({ title: 'Cached', style: Toast.Style.Success });
 }
 
 

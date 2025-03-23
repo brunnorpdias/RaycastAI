@@ -1,6 +1,6 @@
 import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import Detail from "./views_detail";
+import ChatHistory from "./views_history";
 import { format as DateFormat } from "date-fns";
 
 import { type Data } from "./chat_form";
@@ -45,7 +45,7 @@ export default function Bookmarks() {
                     icon={Icon.AppWindow}
                     onAction={() => {
                       // console.log(typeof item.data.messages);
-                      push(<Detail data={item.data} />)
+                      push(<ChatHistory data={item.data} />)
                     }}
                   />
                   {/* await LocalStorage.clear(); */}

@@ -1,7 +1,7 @@
 import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation, showToast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
-import Detail from "./views_detail";
+import ChatHistory from "./views_history";
 import * as OpenAPI from "./fetch/openAI";
 
 import { type Data } from "./chat_form";
@@ -16,11 +16,11 @@ export default function Cache() {
 
   useEffect(() => {
     const raycastCache = new RaycastCache();
-    const cachedChatsString = raycastCache.get('cachedChats');
+    const cachedDataString = raycastCache.get('cachedData');
     // Possibly problematic line that outputs the "[object]" when displaying the conversation name on cache
-    const cachedChats: DataList = cachedChatsString ? JSON.parse(cachedChatsString) : [];
-    if (Array.isArray(cachedChats) && Object(cachedChats.slice(-1))) {
-      setCache(cachedChats);
+    const cachedData: DataList = cachedDataString ? JSON.parse(cachedDataString) : [];
+    if (Array.isArray(cachedData) && Object(cachedData.slice(-1))) {
+      setCache(cachedData);
     }
   }, [])
 
@@ -47,7 +47,7 @@ export default function Cache() {
                     icon={Icon.AppWindow}
                     onAction={() => {
                       // console.log(JSON.stringify(cachedItem))
-                      push(<Detail data={cachedItem} />)
+                      push(<ChatHistory data={cachedItem} />)
                     }}
                   />
 
@@ -60,7 +60,7 @@ export default function Cache() {
                       const newCache = cache.filter(messages => messages.id !== deleteID);
                       setCache(newCache);
                       const raycastCache = new RaycastCache();
-                      raycastCache.set('cachedChats', JSON.stringify(newCache))
+                      raycastCache.set('cachedData', JSON.stringify(newCache))
                     }}
                   />
 

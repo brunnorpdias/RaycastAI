@@ -29,16 +29,16 @@ export default function Options() {
       {/* /> */}
 
       <RaycastList.Item
-        title={"Assistant"}
-        subtitle={"Get help with a project or analysing documents"}
-        icon={Icon.Upload}
+        title={"Cache"}
+        subtitle={"View cached chats and assistant threads"}
+        icon={Icon.Sidebar}
         actions={
           <ActionPanel>
             <Action
-              title="Open Assistant"
-              icon={Icon.Upload}
+              title="Open Cache"
+              icon={Icon.Sidebar}
               onAction={() => {
-                push(<AssistantForm />)
+                push(<Cache />)
               }}
             />
           </ActionPanel>
@@ -63,21 +63,22 @@ export default function Options() {
       />
 
       <RaycastList.Item
-        title={"Cache"}
-        subtitle={"View cached chats and assistant threads"}
-        icon={Icon.Sidebar}
+        title={"Assistant"}
+        subtitle={"Get help with a project or analysing documents"}
+        icon={Icon.Upload}
         actions={
           <ActionPanel>
             <Action
-              title="Open Cache"
-              icon={Icon.Sidebar}
+              title="Open Assistant"
+              icon={Icon.Upload}
               onAction={() => {
-                push(<Cache />)
+                push(<AssistantForm />)
               }}
             />
           </ActionPanel>
         }
       />
+
     </RaycastList>
   );
 };
