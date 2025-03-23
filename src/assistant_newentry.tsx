@@ -1,4 +1,4 @@
-import { Form, ActionPanel, Action, useNavigation, showToast } from "@raycast/api";
+import { Form, ActionPanel, Action, useNavigation } from "@raycast/api";
 import Answer from './assistant_answer';
 import { type Data } from './chat_form';
 

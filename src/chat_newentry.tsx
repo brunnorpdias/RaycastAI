@@ -12,11 +12,17 @@ export default function NewEntry({ data }: { data: Data }) {
 
   function handleSubmit(values: Values) {
     const prompt = values.prompt;
+    const lastMessage: Data["messages"][0] = data.messages.slice(-1)[0];
+    let newMessage: Data["messages"][0];
+    if (typeof lastMessage.content === 'string') {
+      newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
+    } else {
+      newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
+    }
     const newData: Data = {
       ...data,
-      messages: [...data.messages, { role: 'user', content: prompt, timestamp: Date.now() }]
+      messages: [...data.messages, newMessage]
     }
-    // showToast({ title: "Submitted" });
     push(<Answer data={newData} />)
   }
 

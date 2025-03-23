@@ -107,33 +107,29 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
 
   if (data.stream) {
     let thinking_started = false;
-    let stream_started = false;
     const stream = client.messages.stream(request as MessageCreateParamsBase)
     for await (const chunk of stream) {
+      // console.log(JSON.stringify(chunk))
       if (chunk.type === 'content_block_start' && chunk.content_block.type === 'thinking') {
+        showToast({ title: 'Thinking...', style: Toast.Style.Animated })
         streamPipeline('# Thinking...\n```\n', 'streaming')
-      } else if (chunk.type === 'content_block_delta') {
-        if (chunk.delta.type === 'thinking_delta') {
-          console.log(`Thinking: ${chunk.delta.thinking}`);
-          streamPipeline(chunk.delta.thinking, 'streaming')
-          if (!thinking_started) {
-            showToast({ title: 'Thinking...', style: Toast.Style.Animated })
-            thinking_started = true
-          }
-        } else if (chunk.delta.type === 'text_delta') {
-          streamPipeline(chunk.delta.text, 'streaming')
-          if (!stream_started) {
-            showToast({ title: 'Streaming', style: Toast.Style.Animated })
-            stream_started = true
-          }
+        thinking_started = true
+      } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'thinking_delta') {
+        console.log(`Thinking: ${chunk.delta.thinking}`);
+        streamPipeline(chunk.delta.thinking, 'streaming')
+      } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'text') {
+        showToast({ title: 'Streaming', style: Toast.Style.Animated })
+        if (thinking_started) {
+          streamPipeline('\n```\n# Message\n', 'streaming')
+          streamPipeline('', 'reset')
         }
-      } else if (chunk.type === 'content_block_stop' && chunk.index === 0) {
-        streamPipeline('\n```\n# Message\n', 'streaming')
-        // streamPipeline('', 'reset')
+      } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+        streamPipeline(chunk.delta.text, 'streaming')
       } else if (chunk.type === 'message_stop') {
         streamPipeline('', 'done')
         break;
       }
+
     }
   } else {
     const msg = await client.messages.create(request as MessageCreateParamsBase)

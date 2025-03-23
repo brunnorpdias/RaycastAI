@@ -10,7 +10,7 @@ export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = (apiResponse: string, apiStatus: Status) => void;
 
 
-export default function AnswerView({ data }: { data: Data }) {
+export default function Answer({ data }: { data: Data }) {
   const hasRun = useRef(false);
   const { push } = useNavigation();
   const [status, setStatus] = useState<Status>('idle');
@@ -104,19 +104,22 @@ function NewData(data: Data, response: string) {
   let systemMessage: Data["messages"][0];
   if (typeof userMessage.content === 'string') {
     systemMessage = {
-      role: 'system',
+      role: 'assistant',
       content: response,
       timestamp: Date.now()
     };
   } else {
     systemMessage = {
-      role: 'system',
-      content: [...userMessage.content, { type: 'text', text: response }],
+      role: 'assistant',
+      content: [{ type: 'text', text: response }],
       timestamp: Date.now()
     };
   }
-  data.messages.push(systemMessage);
-  return data
+  const newData: Data = {
+    ...data,
+    messages: [...data.messages, systemMessage]
+  }
+  return newData
 }
 
 

@@ -1,5 +1,5 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
-import AnswerView from "./chat_answer";
+import Answer from "./chat_answer";
 import instructions from '../instructions.json';
 import { useState } from 'react';
 
@@ -136,7 +136,7 @@ export default function ChatForm() {
         )
       }
     }
-    push(<AnswerView data={data} />);
+    push(<Answer data={data} />);
   }
 
   return (
