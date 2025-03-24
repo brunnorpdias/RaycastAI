@@ -1,6 +1,6 @@
 import { Form, ActionPanel, Action, useNavigation } from "@raycast/api";
-import Answer from './chat_answer';
-import { type Data } from "./chat_form";
+import Answer from './answer';
+import { type Data } from "./form";
 
 type Values = {
   prompt: string
@@ -12,12 +12,12 @@ export default function NewEntry({ data }: { data: Data }) {
 
   function handleSubmit(values: Values) {
     const prompt = values.prompt;
-    const lastMessage: Data["messages"][0] = data.messages.slice(-1)[0];
+    const lastMessage = data.messages.at(-1);
     let newMessage: Data["messages"][0];
-    if (typeof lastMessage.content === 'string') {
-      newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
+    if (lastMessage && typeof lastMessage.content === 'string') {
+      newMessage = { role: 'user', content: prompt, id: Date.now() };
     } else {
-      newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
+      newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], id: Date.now() }
     }
     const newData: Data = {
       ...data,

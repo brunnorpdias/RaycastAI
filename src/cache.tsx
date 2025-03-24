@@ -1,10 +1,10 @@
 import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation, showToast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
-import ChatHistory from "./views_history";
+import ChatHistory from "./history";
 import * as OpenAPI from "./fetch/openAI";
 
-import { type Data } from "./chat_form";
+import { type Data } from "./form";
 type DataList = Data[];
 type Bookmark = { title: string, data: Data };
 type Bookmarks = Bookmark[];
@@ -29,17 +29,17 @@ export default function Cache() {
     return (
       <RaycastList>
         {Object.values(cache)
-          .filter(item => item.messages && item.messages.length > 0 && item.messages.slice(-1)[0]?.timestamp !== undefined)
-          .sort((a, b) => {
-            const aTimestamp = a.messages.slice(-1)[0]?.timestamp || 0;
-            const bTimestamp = b.messages.slice(-1)[0]?.timestamp || 0;
-            return bTimestamp - aTimestamp;
-          })
+          .filter(item => item.messages && item.messages.length > 0 && item.messages.at(-1)?.id !== undefined)
+          // .sort((a, b) => {
+          //   const aTimestamp = a.messages.at(-1)?.id || 0;
+          //   const bTimestamp = b.messages.at(-1)?.id || 0;
+          //   return bTimestamp - aTimestamp;
+          // })
           .map((cachedItem: Data) => (
             <RaycastList.Item
-              key={`${cachedItem.id}`}
+              key={`${cachedItem.timestamp}`}
               title={`${cachedItem.messages[0]?.content || 'No content'}`}
-              subtitle={DateFormat(cachedItem.messages.slice(-1)[0].timestamp || 0, 'HH:mm:ss dd/MM/yy')}
+              subtitle={DateFormat(cachedItem.messages.at(-1)?.id || 0, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
@@ -56,8 +56,8 @@ export default function Cache() {
                     icon={Icon.Trash}
                     shortcut={{ modifiers: ["cmd"], key: "backspace" }}
                     onAction={() => {
-                      const deleteID = cachedItem.id;
-                      const newCache = cache.filter(messages => messages.id !== deleteID);
+                      const deleteID = cachedItem.timestamp;
+                      const newCache = cache.filter(messages => messages.timestamp !== deleteID);
                       setCache(newCache);
                       const raycastCache = new RaycastCache();
                       raycastCache.set('cachedData', JSON.stringify(newCache))
@@ -83,7 +83,7 @@ export default function Cache() {
 
                       if (typeof (bookmarksString) == 'string') {
                         const bookmarks: Bookmarks = JSON.parse(bookmarksString)
-                        const filteredBookmarks = bookmarks.filter(bm => bm.data.id !== cachedItem.id)
+                        const filteredBookmarks = bookmarks.filter(bm => bm.data.timestamp !== cachedItem.timestamp)
                         console.log(JSON.stringify(filteredBookmarks))
                         newBookmarks = [...filteredBookmarks, newBookmark]
                       } else {

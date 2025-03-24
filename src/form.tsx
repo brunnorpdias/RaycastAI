@@ -1,5 +1,5 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
-import Answer from "./chat_answer";
+import Answer from "./answer";
 import instructions from '../instructions.json';
 import { useState } from 'react';
 
@@ -15,9 +15,10 @@ type Values = {
 };
 
 export type Data = {
-  id: number;
+  timestamp: number;
   // status: 'idle' | 'streaming'
   messages: Array<{
+    id: number
     role: 'user' | 'assistant' | 'system',
     content: string | Array<{
       type: 'text' | 'document' | 'image' | 'file',
@@ -25,20 +26,13 @@ export type Data = {
       text?: string,
       file?: object
     }>,
-    timestamp?: number
   }>;
   model: string;
-  api?: string;
-  systemMessage?: string;
-  reasoning?: 'none' | 'low' | 'medium' | 'high';
-  attachments?: Array<{ status: 'waiting' | 'uploaded', name: string, path: string }>;
+  api: string;
+  systemMessage: string;
+  reasoning: 'none' | 'low' | 'medium' | 'high';
+  attachments: Array<{ status: 'waiting' | 'uploaded', name: string, path: string }>;
   temperature: number;
-  stream?: boolean;
-  assistantInstructions?: string;
-  assistantID?: string;
-  threadID?: string;
-  runID?: string;
-  assistantAttachments?: Array<{ file_id: string, tools: Array<{ type: 'code_interpreter' | 'file_search' }> }>;
 };
 
 
@@ -110,7 +104,7 @@ export default function ChatForm() {
     }
 
     const data: Data = {
-      id: Date.now(),
+      timestamp: Date.now(),
       model: values.model,
       api: values.api,
       systemMessage: systemMessage,
@@ -118,11 +112,10 @@ export default function ChatForm() {
         {
           role: 'user',
           content: values.prompt,
-          timestamp: Date.now()
+          id: Date.now()
         }
       ], // messages,
       temperature: 1, //Number(values.temperature),
-      stream: true, //values.stream,
       attachments: [],
       reasoning: values.reasoning,
       // status: 'streaming',

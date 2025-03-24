@@ -1,16 +1,15 @@
 import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon, LocalStorage } from "@raycast/api";
-import NewEntry from './chat_newentry';
+import NewEntry from './new_entry';
 import * as OpenAPI from './fetch/openAI';
 import { useEffect, useRef, useState } from 'react';
-import { APIHandler } from './chat_api_handler';
+import { APIHandler } from './api_handler';
 
 type Bookmarks = Array<{ title: string, data: Data }>;
-import { type Data } from "./chat_form";
+import { type Data } from "./form";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
-export type StreamPipeline = (apiResponse: string, apiStatus: Status) => void;
+export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: number) => void;
 
 
-// export default function Answer({ data }: { data: Data }, messageId?: number) {
 export default function Answer({ data, messageId }: {
   data: Data;
   messageId?: number;
@@ -21,6 +20,7 @@ export default function Answer({ data, messageId }: {
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
   const [newData, setNewData] = useState<Data>(data);
+  const [msgID, setMsgId] = useState<number>(data.messages.at(-1)?.id || 0);
 
   useEffect(() => {
     if (messageId) {
@@ -40,17 +40,20 @@ export default function Answer({ data, messageId }: {
     }
   }, [status])
 
-  const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status) => {
+  const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status, messageId?: number) => {
     setStatus(apiStatus);
     if (apiStatus !== 'reset') {
       setResponse((prevResponse) => prevResponse + apiResponse);
     } else {
       setResponse('')
     }
+    if (messageId) {
+      setMsgId(msgID)
+    }
   };
 
   async function SaveData() {
-    const finalData: Data = await NewData(data, response);
+    const finalData: Data = await NewData(data, response, msgID);
     setNewData(finalData);
     Cache(finalData);
     Bookmark(finalData, false);
@@ -92,20 +95,20 @@ export default function Answer({ data, messageId }: {
 
 
 //  Helper Functions  //
-async function NewData(data: Data, response: string) {
-  let userMessage: Data["messages"][0] = data.messages.slice(-1)[0];
+async function NewData(data: Data, response: string, msgId: number) {
+  let userMessage = data.messages.at(-1);
   let assistantMessage: Data["messages"][0];
-  if (typeof userMessage.content === 'string') {
+  if (userMessage && typeof userMessage.content === 'string') {
     assistantMessage = {
       role: 'assistant',
       content: response,
-      timestamp: Date.now()
+      id: msgId,
     };
   } else {
     assistantMessage = {
       role: 'assistant',
       content: [{ type: 'text', text: response }],
-      timestamp: Date.now()
+      id: msgId,
     };
   }
   const newData: Data = {
@@ -122,10 +125,10 @@ async function Cache(data: Data) {
   let cachedData: Data[] = cachedDataString ? JSON.parse(cachedDataString) : [];
   if (cachedData.length > 0) {
     const filteredCache: Data[] = cachedData
-      .filter(cache => cache.id !== data.id) // remove data if it's already cached
+      .filter(cache => cache.timestamp !== data.timestamp) // remove data if it's already cached
     const newList = [...filteredCache, data];
     const newCachedData: Data[] = newList
-      .sort((a: Data, b: Data) => b.id - a.id)
+      .sort((a: Data, b: Data) => b.timestamp - a.timestamp)
       .slice(0, 30)
     raycastCache.set('cachedData', JSON.stringify(newCachedData));
   } else {
@@ -140,7 +143,7 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
   const stringBookmarks = await LocalStorage.getItem('bookmarks');
   if (typeof stringBookmarks !== 'string') return false;
   const bookmarks: Bookmarks = JSON.parse(stringBookmarks);
-  const bookmarkIndex: number = bookmarks.findIndex(bookmark => bookmark.data.id === data.id);
+  const bookmarkIndex: number = bookmarks.findIndex(bookmark => bookmark.data.timestamp === data.timestamp);
 
   if (bookmarkIndex >= 0) {  // bookmark already exists
     const title = await OpenAPI.TitleConversation(data);
@@ -162,7 +165,7 @@ function CreateNewEntry(data: Data, newData: Data, push: Function, messageId?: n
   // is this a cached or bookmarked chat?
   if (messageId) {
     const messageIndex: number = data.messages
-      .findLastIndex(msg => msg.timestamp === messageId) || data.messages.length - 1
+      .findLastIndex(msg => msg.id === messageId) || data.messages.length - 1
     const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
     // Confirm overwrite of conversation
     showToast({
@@ -178,13 +181,13 @@ function CreateNewEntry(data: Data, newData: Data, push: Function, messageId?: n
 
 
 async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewData: Function, messageId?: number) {
-  const selected_message = data.messages.findLast(msg => msg.timestamp === messageId)
+  const selected_message = data.messages.findLast(msg => msg.id === messageId)
   if (selected_message) {
     let api_response: string;
     if (typeof selected_message.content === 'string') {
       api_response = selected_message.content;
     } else {
-      api_response = selected_message.content.slice(-1)[0].text || '';
+      api_response = selected_message.content.at(-1)?.text || '';
     }
     setResponse(api_response)
     setNewData(data)

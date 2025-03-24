@@ -4,8 +4,8 @@ import { showToast, Toast } from "@raycast/api";
 import { API_KEYS } from '../enums';
 import * as fs from 'fs/promises';
 
-import { type StreamPipeline } from "../chat_answer";
-import { type Data } from "../chat_form";
+import { type StreamPipeline } from "../answer";
+import { type Data } from "../form";
 
 type Content = Data["messages"][0]["content"]
 
@@ -27,8 +27,8 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
   let max_tokens: number;
   let thinking_budget: number;
-  const inputMessages = data.messages.map(({ timestamp, ...rest }) => rest);
-  let messages: Data["messages"];
+  const inputMessages = data.messages.map(({ id, ...rest }) => rest);
+  let messages;
 
   if (data.model === 'claude-3-7-sonnet-latest' && data.attachments && data.attachments.length > 0) {
     if (inputMessages.length === 1 && typeof inputMessages[0].content == 'string') {
@@ -54,12 +54,10 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
         attachment.status = 'uploaded';
       }
 
-      messages = [
-        {
-          role: 'user',
-          content: contentArray
-        }
-      ]
+      messages = [{
+        role: 'user',
+        content: contentArray,
+      }]
     } else {
       messages = inputMessages;
       // add logic for additional pdf's and images when chat_newentry makes it possible (also, need to differentiate new files)
@@ -93,7 +91,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
     messages: messages,
     max_tokens: max_tokens,
     temperature: data.temperature,
-    stream: data.stream,
+    stream: true,
   }
 
   if (data.model === 'claude-3-7-sonnet-latest' && data.reasoning && ['low', 'medium', 'high'].includes(data.reasoning)) {
@@ -105,38 +103,31 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
     request.max_tokens = 8100 // limit is 8182
   }
 
-  if (data.stream) {
-    let thinking_started = false;
-    const stream = client.messages.stream(request as MessageCreateParamsBase)
-    let thinking_text = '';  // collect on data later on? cannot be at message to avoid feeding back to the model
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_start' && chunk.content_block.type === 'thinking') {
-        thinking_started = true
-        showToast({ title: 'Thinking...', style: Toast.Style.Animated })
-        streamPipeline('### Thinking...\n```\n', 'streaming')
-      } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'thinking_delta') {
-        thinking_text += chunk.delta.thinking;
-        streamPipeline(chunk.delta.thinking, 'streaming')
-      } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'text') {
-        if (thinking_started) {
-          streamPipeline('\n```\n\n---\n\n', 'streaming')
-          streamPipeline('', 'reset')
-        }
-        showToast({ title: 'Streaming', style: Toast.Style.Animated })
-      } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-        streamPipeline(chunk.delta.text, 'streaming')
-      } else if (chunk.type === 'message_stop') {
-        streamPipeline('', 'done')
-        break;
+  let thinking_started = false;
+  const stream = client.messages.stream(request as MessageCreateParamsBase)
+  let thinking_text = '';  // collect on data later on? cannot be at message to avoid feeding back to the model
+  let msgID: number = 0;
+  for await (const chunk of stream) {
+    if (chunk.type === 'message_start') {
+      msgID = Number(chunk.message.id);
+    } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'thinking') {
+      thinking_started = true
+      showToast({ title: 'Thinking...', style: Toast.Style.Animated })
+      streamPipeline('### Thinking...\n```\n', 'streaming')
+    } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'thinking_delta') {
+      thinking_text += chunk.delta.thinking;
+      streamPipeline(chunk.delta.thinking, 'streaming')
+    } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'text') {
+      if (thinking_started) {
+        streamPipeline('\n```\n\n---\n\n', 'streaming')
+        streamPipeline('', 'reset')
       }
-
-    }
-  } else {
-    const msg = await client.messages.create(request as MessageCreateParamsBase)
-    if ('content' in msg && 'text' in msg.content[0]) {
-      streamPipeline(msg.content[0].text, 'done')
-    } else {
-      console.log("Error extracting messsage")
+      showToast({ title: 'Streaming', style: Toast.Style.Animated })
+    } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+      streamPipeline(chunk.delta.text, 'streaming')
+    } else if (chunk.type === 'message_stop') {
+      streamPipeline('', 'done', msgID)
+      break;
     }
   }
 }

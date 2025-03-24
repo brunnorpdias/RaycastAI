@@ -3,8 +3,8 @@ import fetch from 'node-fetch';
 import readline from 'readline';
 import { Readable } from 'stream';
 
-import { type Data } from "../chat_form";
-import { type StreamPipeline } from "../chat_answer";
+import { type Data } from "../form";
+import { type StreamPipeline } from "../answer";
 
 type Response = {
   id: string,
@@ -38,45 +38,39 @@ export async function PplxAPI(data: Data, streamPipeline: StreamPipeline) {
       // messages: [ {role: 'system', content: 'Be precise and concise.'}, {role: 'user', content: data.prompt} ],
       messages: data.messages,
       temperature: data.temperature,
-      stream: data.stream
+      stream: true
     })
   };
 
-  if (data.stream) {
-    (async () => {          // Immediately Invoked Function Expression (IIFE)
-      const res = await fetch('https://api.perplexity.ai/chat/completions', options);
-      if (res.body) {
-        // Converts the response body to a readable stream. 'Readable.from' is a method to create a readable stream from a given input.
-        const stream = Readable.from(res.body);
-
-        // Creates a readline interface from the stream. This allows us to read the stream line by line.
-        const rl = readline.createInterface({ input: stream });
-
-        // Event listener for the 'line' event, which is triggered every time a line is read from the stream.
-        rl.on('line', (line) => {
-          if (line.startsWith('data: ')) {
-            try {
-              // Parsing the JSON from the line, assuming the line is in the format 'data: <json>', and removing 'data: ' to parse the JSON string.
-              const json: Response = JSON.parse(line.replace('data: ', '').trim());
-
-              if (json.choices[0].finish_reason === null) {
-                streamPipeline(json.choices[0].delta.content, 'streaming');
-              } else {
-                streamPipeline(json.choices[0].delta.content, 'done');
-              }
-
-            } catch (e) {
-              console.error(e);
-            }
-          }
-        });
-        // Awaiting the 'close' event of the readline interface, which signals that all lines have been processed.
-        await new Promise((resolve) => rl.on('close', resolve));
-      }
-    })();
-  } else {
+  (async () => {          // Immediately Invoked Function Expression (IIFE)
     const res = await fetch('https://api.perplexity.ai/chat/completions', options);
-    const json = await res.json() as Response;
-    streamPipeline(json.choices[0].message.content, 'done');
-  }
+    if (res.body) {
+      // Converts the response body to a readable stream. 'Readable.from' is a method to create a readable stream from a given input.
+      const stream = Readable.from(res.body);
+
+      // Creates a readline interface from the stream. This allows us to read the stream line by line.
+      const rl = readline.createInterface({ input: stream });
+
+      // Event listener for the 'line' event, which is triggered every time a line is read from the stream.
+      rl.on('line', (line) => {
+        if (line.startsWith('data: ')) {
+          try {
+            // Parsing the JSON from the line, assuming the line is in the format 'data: <json>', and removing 'data: ' to parse the JSON string.
+            const json: Response = JSON.parse(line.replace('data: ', '').trim());
+
+            if (json.choices[0].finish_reason === null) {
+              streamPipeline(json.choices[0].delta.content, 'streaming');
+            } else {
+              streamPipeline(json.choices[0].delta.content, 'done');
+            }
+
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      });
+      // Awaiting the 'close' event of the readline interface, which signals that all lines have been processed.
+      await new Promise((resolve) => rl.on('close', resolve));
+    }
+  })();
 }

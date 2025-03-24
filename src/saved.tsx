@@ -1,8 +1,7 @@
 import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
 // import ChatForm from './chat_form';
-import AssistantForm from "./assistant_form";
-import Bookmarks from "./views_bookmarks";
-import Cache from "./views_cache";
+import Bookmarks from "./bookmarks";
+import Cache from "./cache";
 
 
 // export default function Index() {
@@ -56,23 +55,6 @@ export default function Options() {
               icon={Icon.Bookmark}
               onAction={() => {
                 push(<Bookmarks />)
-              }}
-            />
-          </ActionPanel>
-        }
-      />
-
-      <RaycastList.Item
-        title={"Assistant"}
-        subtitle={"Get help with a project or analysing documents"}
-        icon={Icon.Upload}
-        actions={
-          <ActionPanel>
-            <Action
-              title="Open Assistant"
-              icon={Icon.Upload}
-              onAction={() => {
-                push(<AssistantForm />)
               }}
             />
           </ActionPanel>

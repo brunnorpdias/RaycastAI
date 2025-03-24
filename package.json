@@ -12,15 +12,15 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "chat_form",
+      "name": "form",
       "title": "Chat",
       "description": "Talk with an LLM",
       "mode": "view"
     },
     {
-      "name": "views_options",
-      "title": "Options",
-      "description": "Use an assistant or view saved conversations",
+      "name": "saved",
+      "title": "Saved",
+      "description": "View all saved chats",
       "mode": "view"
     }
   ],

@@ -1,10 +1,10 @@
 import { showToast, Toast } from "@raycast/api";
 import OpenAI from "openai";
-import { ChatCompletionChunk, ChatCompletion } from "openai/resources";
+import { ChatCompletionChunk } from "openai/resources";
 import { API_KEYS } from '../enums';
 
-import { type Data } from "../chat_form";
-import { type StreamPipeline } from "../chat_answer";
+import { type Data } from "../form";
+import { type StreamPipeline } from "../answer";
 
 
 const openai = new OpenAI({
@@ -13,7 +13,7 @@ const openai = new OpenAI({
 });
 
 export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
-  const conversation = data.messages.map(({ timestamp, ...msg }) => (
+  const conversation = data.messages.map(({ id, ...msg }) => (
     {
       role: msg.role,
       content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
@@ -33,29 +33,24 @@ export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
   const completion = await openai.chat.completions.create({
     model: data.model,
     messages: messages,
-    // temperature: data.temperature,
-    stream: data.stream
+    temperature: data.temperature,
+    stream: true
   })
 
   let streaming = false;
-  if (data.stream) {
-    const stream = completion as AsyncIterable<ChatCompletionChunk>;
-    for await (const chunk of stream) {
-      if (typeof chunk.choices[0].delta.content === "string") {
-        if (!streaming) {
-          showToast({ title: 'Streaming', style: Toast.Style.Animated })
-          streaming = true;
-        };
-        streamPipeline(chunk.choices[0].delta.content, "streaming");
+  const stream = completion as AsyncIterable<ChatCompletionChunk>;
+  for await (const chunk of stream) {
+    if (typeof chunk.choices[0].delta.content === "string") {
+      if (!streaming) {
+        showToast({ title: 'Streaming', style: Toast.Style.Animated })
+        streaming = true;
       };
+      streamPipeline(chunk.choices[0].delta.content, "streaming");
+    };
 
-      if (chunk.choices[0].finish_reason == 'stop') {
-        streamPipeline('', 'done');
-        break;
-      };
-    }
-  } else {
-    const chatCompletion = completion as ChatCompletion;
-    streamPipeline(chatCompletion.choices[0].message.content as string, 'done');
+    if (chunk.choices[0].finish_reason == 'stop') {
+      streamPipeline('', 'done');
+      break;
+    };
   }
 }

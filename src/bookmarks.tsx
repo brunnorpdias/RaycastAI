@@ -1,9 +1,9 @@
 import { Action, ActionPanel, Icon, List as RaycastList, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
-import ChatHistory from "./views_history";
+import ChatHistory from "./history";
 import { format as DateFormat } from "date-fns";
 
-import { type Data } from "./chat_form";
+import { type Data } from "./form";
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
@@ -27,17 +27,16 @@ export default function Bookmarks() {
       <RaycastList>
         {bookmarks
           // .filter(item => item.data.messages && item.data.messages.length > 0 && typeof item.data.messages.slice(-1)[0]?.timestamp == 'number')
-          .sort((a, b) => {
-            const bTimestamp = b.data.id;
-            const aTimestamp = a.data.id;
-            return bTimestamp - aTimestamp
-          }
-          )
+          // .sort((a, b) => {
+          //   const bTimestamp = b.data.timestamp;
+          //   const aTimestamp = a.data.timestamp;
+          //   return bTimestamp - aTimestamp
+          // })
           .map((item, index) => (
             <RaycastList.Item
               key={`${index}`}
               title={`${item.title}`}
-              subtitle={DateFormat(item.data.id, 'HH:mm:ss dd/MM/yy')}
+              subtitle={DateFormat(item.data.timestamp, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
@@ -54,8 +53,8 @@ export default function Bookmarks() {
                     icon={Icon.Trash}
                     shortcut={{ modifiers: ["cmd"], key: "backspace" }}
                     onAction={async () => {
-                      const deleteID = item.data.id;
-                      const newBookmarks = bookmarks.filter(bookmark => bookmark.data.id !== deleteID);
+                      const deleteID = item.data.timestamp;
+                      const newBookmarks = bookmarks.filter(bookmark => bookmark.data.timestamp !== deleteID);
                       setBookmarks(newBookmarks);
                       LocalStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
                     }}

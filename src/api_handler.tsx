@@ -6,8 +6,8 @@ import * as GrokAPI from './fetch/grok';
 import { PplxAPI } from './fetch/perplexity';
 // import * as GoogleOpenAI from './fetch/google_openai';
 
-import { type Data } from "./chat_form";
-import { type StreamPipeline } from "./chat_answer";
+import { type Data } from "./form";
+import { type StreamPipeline } from "./answer";
 
 
 export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
