@@ -1,7 +1,7 @@
 import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon, LocalStorage } from "@raycast/api";
 import NewEntry from './chat_newentry';
 import * as OpenAPI from './fetch/openAI';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { APIHandler } from './chat_api_handler';
 
 type Bookmarks = Array<{ title: string, data: Data }>;
@@ -15,18 +15,19 @@ export default function Answer({ data, messageId }: {
   data: Data;
   messageId?: number;
 }) {
+
   const { push } = useNavigation();
   const hasRun = useRef(false);
   const [status, setStatus] = useState<Status>('idle');
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
   const [newData, setNewData] = useState<Data>(data);
+  const [unlockedChatRewriting, unlockChatRewriting] = useState<boolean>(false);
 
   useEffect(() => {
     if (messageId) {
-      OpenHistoricalMessage();
-    }
-    if (!hasRun.current) {
+      OpenHistoricalMessage(data, setResponse, setNewData, messageId);
+    } else if (!hasRun.current) {
       APIHandler(data, streamPipeline)
       setStartTime(Date.now())
       hasRun.current = true;
@@ -57,23 +58,6 @@ export default function Answer({ data, messageId }: {
     Bookmark(finalData, false);
   }
 
-  async function OpenHistoricalMessage() {
-    hasRun.current = true;
-    const selected_message = data.messages.findLast(msg => msg.timestamp === messageId)
-    if (selected_message) {
-      let api_response: string;
-      if (typeof selected_message.content === 'string') {
-        api_response = selected_message.content;
-      } else {
-        api_response = selected_message.content.slice(-1)[0].text || '';
-      }
-      setResponse(api_response)
-      setNewData(data)
-    } else {
-      showToast({ title: 'Error opening message', style: Toast.Style.Failure })
-    }
-  }
-
   return (
     <Detail
       markdown={response}
@@ -89,15 +73,7 @@ export default function Answer({ data, messageId }: {
             title="New Entry"
             icon={Icon.Plus}
             onAction={() => {
-              if (messageId) {
-                const messageIndex: number = data.messages
-                  .filter(msg => msg.role === 'assistant')
-                  .findLastIndex(msg => msg.timestamp === messageId) || data.messages.length - 1
-                const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
-                push(<NewEntry data={truncData} />)
-              } else {
-                push(<NewEntry data={newData} />)
-              }
+              CreateNewEntry(data, newData, push, unlockChatRewriting, unlockedChatRewriting, messageId)
             }}
           />
 
@@ -110,24 +86,6 @@ export default function Answer({ data, messageId }: {
             }}
           />
 
-          {/* <Action */}
-          {/*   title="Summarise" */}
-          {/*   icon={Icon.ShortParagraph} */}
-          {/*   onAction={() => { */}
-          {/*     hasRunRef.current = false; */}
-          {/*     setResponse('') */}
-          {/**/}
-          {/*     const temp: Data = { */}
-          {/*       ...newData, */}
-          {/*       messages: [ */}
-          {/*         ...newData.messages, */}
-          {/*         { role: 'user', content: "Give a title for this conversation in a heading, then summarise the content on the conversation without mentioning that", timestamp: Date.now() } */}
-          {/*       ] */}
-          {/*     } */}
-          {/*     push(<Chat data={temp} />) */}
-          {/*   }} */}
-          {/* /> */}
-
         </ActionPanel>
       }
     />
@@ -135,7 +93,7 @@ export default function Answer({ data, messageId }: {
 }
 
 
-// Helper Functions
+//  Helper Functions  //
 async function NewData(data: Data, response: string) {
   let userMessage: Data["messages"][0] = data.messages.slice(-1)[0];
   let assistantMessage: Data["messages"][0];
@@ -198,5 +156,45 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
     bookmarks.push({ title: title, data: data });
     LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
     showToast({ title: 'Bookmarked', style: Toast.Style.Success })
+  }
+}
+
+
+function CreateNewEntry(data: Data, newData: Data, push: Function, unlockChatRewriting: Function, unlockedChatRewriting: boolean, messageId?: number) {
+  // is this a cached or bookmarked chat?
+  if (messageId) {
+    // did the user already given permission to rewrite the chat data?
+    if (unlockedChatRewriting) {
+      const messageIndex: number = data.messages
+        .findLastIndex(msg => msg.timestamp === messageId) || data.messages.length - 1
+      const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
+      push(<NewEntry data={truncData} />)
+    } else {
+      showToast({
+        title: 'Unlock Message Rewrite?', style: Toast.Style.Failure, primaryAction: {
+          title: "Unlock",
+          onAction: () => { unlockChatRewriting(true) }
+        }
+      })
+    }
+  } else {
+    push(<NewEntry data={newData} />)
+  }
+}
+
+
+async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewData: Function, messageId?: number) {
+  const selected_message = data.messages.findLast(msg => msg.timestamp === messageId)
+  if (selected_message) {
+    let api_response: string;
+    if (typeof selected_message.content === 'string') {
+      api_response = selected_message.content;
+    } else {
+      api_response = selected_message.content.slice(-1)[0].text || '';
+    }
+    setResponse(api_response)
+    setNewData(data)
+  } else {
+    showToast({ title: 'Error opening message', style: Toast.Style.Failure })
   }
 }
