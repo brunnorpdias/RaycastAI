@@ -15,14 +15,12 @@ export default function Answer({ data, messageId }: {
   data: Data;
   messageId?: number;
 }) {
-
   const { push } = useNavigation();
   const hasRun = useRef(false);
   const [status, setStatus] = useState<Status>('idle');
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
   const [newData, setNewData] = useState<Data>(data);
-  const [unlockedChatRewriting, unlockChatRewriting] = useState<boolean>(false);
 
   useEffect(() => {
     if (messageId) {
@@ -73,7 +71,7 @@ export default function Answer({ data, messageId }: {
             title="New Entry"
             icon={Icon.Plus}
             onAction={() => {
-              CreateNewEntry(data, newData, push, unlockChatRewriting, unlockedChatRewriting, messageId)
+              CreateNewEntry(data, newData, push, messageId)
             }}
           />
 
@@ -160,23 +158,19 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 }
 
 
-function CreateNewEntry(data: Data, newData: Data, push: Function, unlockChatRewriting: Function, unlockedChatRewriting: boolean, messageId?: number) {
+function CreateNewEntry(data: Data, newData: Data, push: Function, messageId?: number) {
   // is this a cached or bookmarked chat?
   if (messageId) {
-    // did the user already given permission to rewrite the chat data?
-    if (unlockedChatRewriting) {
-      const messageIndex: number = data.messages
-        .findLastIndex(msg => msg.timestamp === messageId) || data.messages.length - 1
-      const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
-      push(<NewEntry data={truncData} />)
-    } else {
-      showToast({
-        title: 'Unlock Message Rewrite?', style: Toast.Style.Failure, primaryAction: {
-          title: "Unlock",
-          onAction: () => { unlockChatRewriting(true) }
-        }
-      })
-    }
+    const messageIndex: number = data.messages
+      .findLastIndex(msg => msg.timestamp === messageId) || data.messages.length - 1
+    const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
+    // Confirm overwrite of conversation
+    showToast({
+      title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
+        title: "Yes",
+        onAction: () => { push(<NewEntry data={truncData} />) }
+      }
+    })
   } else {
     push(<NewEntry data={newData} />)
   }

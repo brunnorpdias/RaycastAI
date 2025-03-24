@@ -6,110 +6,120 @@ import fs from 'fs';
 
 import { type Data } from "../chat_form";
 import { type StreamPipeline } from "../chat_answer";
+import { ChatCompletionMessageParam, ChatCompletionCreateParamsStreaming } from "openai/resources/chat";
+// import { Stream } from "openai/streaming";
 
-type Messages = Array<{
-  role: 'user' | 'system',
+type CompletionMessages = Array<{
+  role: 'user' | 'assistant' | 'system',
   content: string | Array<{
     type: 'text' | 'file' | 'document' | 'image',
     text?: string,
-    file?: { filename: string, file_data: string }
+    file?: object,
   }>,
 }>;
 
+// type AssistantMessages = Array<{
+//   role: 'user' | 'assistant',
+//   content: string | Array<{
+//     type: 'text' | 'file' | 'document' | 'image',
+//     text?: string,
+//     file?: object, // { filename: string, file_data: string }
+//   }>,
+// }>;
+
 
 export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
-  const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-  let messages: Messages = data.messages
-    .map(({ timestamp, ...msg }) => msg)
-    .filter(({ role }) => role !== 'assistant') as Messages;
+  let messages: CompletionMessages = data.messages.map(({ timestamp, ...msg }) => msg)
+  await AddAttachments(data, messages)
+  const completionInput = await CompletionInput(data, messages) as ChatCompletionCreateParamsStreaming;
+  CreateStream(data, completionInput, streamPipeline)
+}
 
-  const systemMessage = data.systemMessage;
+//  Helper Functions  //
+async function AddAttachments(data: Data, messages: CompletionMessages) {
+  if (data.attachments && ['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model)) {
+    // file has no persistance, on future use filter?
+    const attachmentsQueue = data.attachments  // .filter(({ status }) => status !== 'uploaded')
+    if (attachmentsQueue) {
+      const prompt: string = messages.slice(-1)[0].content as string;
+      let content: CompletionMessages[0]["content"] = [{
+        type: 'text',
+        text: prompt
+      }]
+      for (const attachment of attachmentsQueue) {
+        const arrayBuffer = fs.readFileSync(attachment.path);  //limit of one file
+        const base64String = arrayBuffer.toString('base64');
+        content.push({
+          type: 'file',
+          file: {
+            filename: attachment.name,  // limitation of one file
+            file_data: `data:application/pdf;base64,${base64String}`
+          }
+        })
+        attachment.status = 'uploaded';
+      }
+      messages[0].content = content;
+      // return content
+    }
+  }
+}
 
+async function CompletionInput(data: Data, messages: CompletionMessages) {
   let reasoning_effort;
   if (data.reasoning != 'none') {
     reasoning_effort = data.reasoning;
   } else {
     reasoning_effort = undefined
   }
-
-  if (data.attachments) {
-    const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
-    if (messages.length === 1 && typeof messages[0].content === 'string') {
-      if (['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model) && attachmentsQueue) {
-        let content: Messages[0]["content"] = [// Content = [
-          {
-            type: 'text',
-            text: messages[0].content
-          },
-        ]
-        const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
-        for (const attachment of attachmentsQueue) {
-          const arrayBuffer = fs.readFileSync(attachment.path);  //limit of one file
-          const base64String = arrayBuffer.toString('base64');
-          content.push(
-            {
-              type: 'file',
-              file: {
-                filename: attachment.name,  // limitation of one file
-                file_data: `data:application/pdf;base64,${base64String}`
-              }
-            }
-          )
-          attachment.status = 'uploaded';
-        }
-        messages[0].content = content;
-        // }
-      }
-    }
-  }
-
+  const systemMessage = data.systemMessage;
   if (systemMessage && String(systemMessage)) {
     messages = [
       { role: 'system', content: systemMessage },
       ...messages
     ];
   }
-
-  let completion;
+  let completionInput: object;
   if (data.model == 'o3-mini' || data.model == 'o1') {
-    completion = await openai.chat.completions.create({
+    completionInput = {
       model: data.model,
       reasoning_effort: reasoning_effort,
-      messages: messages,
+      messages: messages as ChatCompletionMessageParam[],
       temperature: data.temperature,
       stream: data.stream,
       store: true,
-    });
+    }
   } else if (data.model == 'gpt-4o-search-preview') {
-    completion = await openai.chat.completions.create({
+    completionInput = {
       model: data.model,
-      messages: messages,
+      messages: messages as ChatCompletionMessageParam[],
       stream: data.stream,
-    });
+    }
   } else {
-    completion = await openai.chat.completions.create({
+    completionInput = {
       model: data.model,
-      messages: messages,
+      messages: messages as ChatCompletionMessageParam[],
       temperature: data.temperature,
       stream: data.stream,
-    });
+    };
   }
+  return completionInput
+}
 
-  let streaming = false;
+async function CreateStream(data: Data, completionInput: ChatCompletionCreateParamsStreaming, streamPipeline: Function) {
+  let isStreaming = false;
+  const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
+  const completion: unknown = await openai.chat.completions.create(completionInput);
   if (data.stream) {
     const stream = completion as AsyncIterable<ChatCompletionChunk>;
     showToast({ title: 'Uploaded', style: Toast.Style.Success })
     for await (const chunk of stream) {
-      // console.log(JSON.stringify(chunk));
       if (typeof chunk.choices[0].delta.content === "string") {
-        if (!streaming) {
+        if (!isStreaming) {
           showToast({ title: 'Streaming', style: Toast.Style.Animated })
-          streaming = true;
+          isStreaming = true;
         };
         streamPipeline(chunk.choices[0].delta.content, "streaming");
-      };
-
-      if (chunk.choices[0].finish_reason == 'stop') {
+      } else if (chunk.choices[0].finish_reason == 'stop') {
         streamPipeline('', 'done');
         break;
       };
@@ -121,19 +131,21 @@ export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
 }
 
 
+
 export async function CreateThread(data?: Data) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
   let newThread;
 
   if (data) {
-    const conversation = data.messages.map(({ timestamp, ...msg }) => (
+    const messages = data.messages.map(({ timestamp, ...msg }) => (
       {
-        role: msg.role,
+        role: msg.role !== 'system' ? msg.role : 'assistant',
         content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
       }
     ));
+
     newThread = await openai.beta.threads.create({
-      messages: conversation,
+      messages: messages,
     });
   } else {
     newThread = await openai.beta.threads.create();
@@ -176,24 +188,26 @@ export async function UploadFiles(filePaths: string[]) {
 
 
 export async function NewThreadMessage(data: Data) {
-  const conversation = data.messages.map(({ timestamp, ...msg }) => (
-    {
-      role: msg.role,
+  const messages = data.messages
+    .map(({ timestamp, ...msg }) => ({
+      role: msg.role !== 'system' ? msg.role : 'assistant',
       content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-    }
-  ));
+    }))
 
   if (data.threadID) {
     const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-    const lastMessage = conversation[conversation.length - 1];
-    await openai.beta.threads.messages.create(
-      data.threadID,
-      {
-        role: lastMessage.role,
-        content: lastMessage.content,
-        attachments: data.assistantAttachments,
-      }
-    );
+    const lastMessage = messages[messages.length - 1];
+    if (typeof lastMessage.content === 'string') {
+      await openai.beta.threads.messages.create(
+        data.threadID,
+        {
+          role: lastMessage.role,
+          content: lastMessage.content || '',
+          attachments: data.assistantAttachments,
+        }
+      );
+
+    }
     // console.log(threadMessages);
   }
 }
@@ -249,7 +263,7 @@ export async function RunThread(data: Data, streamPipeline: (response: string, s
 export async function TitleConversation(data: Data) {
   showToast({ title: 'Creating a title', style: Toast.Style.Animated })
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-  const conversation = data.messages.map(({ timestamp, ...msg }) => (
+  const messages = data.messages.map(({ timestamp, ...msg }) => (
     {
       role: msg.role,
       content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
@@ -258,7 +272,7 @@ export async function TitleConversation(data: Data) {
 
   const chat = await openai.chat.completions.create({
     messages: [
-      ...conversation,
+      ...messages,
       {
         role: 'user',
         content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.'
