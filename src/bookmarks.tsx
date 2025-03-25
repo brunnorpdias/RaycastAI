@@ -47,7 +47,7 @@ export default function Bookmarks() {
                       push(<ChatHistory data={item.data} />)
                     }}
                   />
-                  await LocalStorage.clear();
+
                   <Action
                     title="Delete Item"
                     icon={Icon.Trash}

@@ -5,137 +5,137 @@ import fs from 'fs';
 
 import { type Data } from "../form";
 import { type StreamPipeline } from "../answer";
-import { ChatCompletionCreateParamsStreaming } from "openai/resources/chat";
+import { ResponseCreateParamsStreaming } from "openai/resources/responses/responses";
 
-type Messages = Array<{
+type Input = Array<{
   role: 'user' | 'assistant' | 'system',
   content: string | Array<{
-    type: 'text' | 'file' | 'document' | 'image',
+    type: 'input_text' | 'input_file' | 'input_image',
     text?: string,
-    file?: object,
+    filename?: string,
+    file_data?: string,
   }>,
 }>;
 
 
 export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
-  let messages: Messages = data.messages.map(({ id, ...msg }) => msg)
-  const msgWithFiles: Messages = await addFiles(data, messages)
-  const completionInput = await CompletionInput(data, msgWithFiles) as ChatCompletionCreateParamsStreaming;
-  CreateStream(completionInput, streamPipeline)
+  const input: Input = await GenerateInput(data)
+  const inputWithFiles: Input = await AddFiles(data, input)
+  const responsesObject = await ResponsesObject(data, inputWithFiles) as ResponseCreateParamsStreaming;
+  GenerateStreaming(responsesObject, streamPipeline)
 }
 
 
-async function addFiles(data: Data, messages: Messages) {
-  if (data.attachments && ['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model)) {
+export async function TitleConversation(data: Data) {
+  const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
+  const input: Input = await GenerateInput(data)
+  const responsesObject = await ResponsesObject(data, input)
+  responsesObject.stream = false;
+  responsesObject.input.push({ role: 'user', content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.' })
+  showToast({ title: 'Creating a title', style: Toast.Style.Animated })
+  const response = await openai.responses.create(responsesObject as ResponseCreateParamsStreaming);
+  showToast({ title: 'Title created' });
+  return response
+}
+
+
+//  Helper Functions  //
+async function GenerateInput(data: Data) {
+  // make privacy switch to enable / disable storage at OpenAI
+  // get id from the server
+  let input: Input = data.messages
+    .map(({ id, ...msg }) => {
+      return {
+        ...msg,
+        content: typeof msg.content === 'string' ?
+          msg.content : msg.content
+            .map(item => {
+              return {
+                ...item,
+                type:
+                  item.type === 'text' ? 'input_text' :
+                    item.type === 'file' ? 'input_file' :
+                      item.type === 'image' ? 'input_image' :
+                        item.type
+              }
+            })
+      }
+    })
+  return input
+}
+
+
+async function AddFiles(data: Data, input: Input) {
+  if (data.attachments.length > 0 && ['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model)) {
+    const lastInput = input.at(-1)
+    const lastInputContent = lastInput?.content;
     // file has no persistance, on future use filter?
-    const lastMessage = data.messages.at(-1);
     const attachmentsQueue = data.attachments  // .filter(({ status }) => status !== 'uploaded')
-    if (lastMessage && attachmentsQueue) {
-      const prompt: string = typeof lastMessage.content === 'string' ? lastMessage.content : '';
-      let content: Messages[0]["content"] = [{
-        type: 'text',
+    if (lastInput && lastInputContent && attachmentsQueue) {
+      const prompt: string =
+        typeof lastInputContent === 'string' ?
+          lastInputContent :
+          lastInputContent[0].text ? lastInputContent[0].text : '' // assumes text is on first position
+      let content: Input[0]["content"] = [{
+        type: 'input_text',
         text: prompt
       }]
       for (const attachment of attachmentsQueue) {
-        const arrayBuffer = fs.readFileSync(attachment.path);  //limit of one file
+        const arrayBuffer = fs.readFileSync(attachment.path);
         const base64String = arrayBuffer.toString('base64');
         content.push({
-          type: 'file',
-          file: {
-            filename: attachment.name,  // limitation of one file
-            file_data: `data:application/pdf;base64,${base64String}`
-          }
+          type: 'input_file',
+          filename: attachment.name,  // limitation of one file
+          file_data: `data:application/pdf;base64,${base64String}`
         })
         attachment.status = 'uploaded';
       }
-      const msgWithFiles: Messages = lastMessage ?
-        [...messages.slice(0, -1), { ...lastMessage, content: content }] :
-        [...messages]
-      return msgWithFiles
+      const inputWithFiles: Input =
+        lastInput ?
+          [...input.slice(0, -1), { ...lastInput, content: content }] :
+          [...input]
+      return inputWithFiles
     }
   }
-  return messages
+  return input
 }
 
-async function CompletionInput(data: Data, messages: Messages) {
+
+async function ResponsesObject(data: Data, input: Input) {
   let reasoning_effort;
   if (data.reasoning != 'none') {
     reasoning_effort = data.reasoning;
   } else {
     reasoning_effort = undefined
   }
-  const systemMessage = data.systemMessage;
-  if (systemMessage && String(systemMessage)) {
-    messages = [
-      { role: 'system', content: systemMessage },
-      ...messages
-    ];
+  let responsesObject = {
+    input: input,
+    model: data.model,
+    instructions: data.instructions.length > 0 ? data.instructions : undefined,
+    reasoning: ['o1', 'o3-mini'].includes(data.model) && reasoning_effort ? { effort: reasoning_effort } : null,
+    // store: true
+    // previous_response_id: 
+    // tools: [],
+    temperature: data.temperature,
+    stream: true,
   }
-  let completionInput: object;
-  if (data.model == 'o3-mini' || data.model == 'o1') {
-    completionInput = {
-      model: data.model,
-      reasoning_effort: reasoning_effort,
-      messages: messages,
-      temperature: data.temperature,
-      // store: true
-    }
-  } else if (data.model == 'gpt-4o-search-preview') {
-    completionInput = {
-      model: data.model,
-      messages: messages,
-    }
-  } else {
-    completionInput = {
-      model: data.model,
-      messages: messages,
-      temperature: data.temperature,
-    };
-  }
-  return completionInput
+  return responsesObject
 }
 
-async function CreateStream(completionInput: ChatCompletionCreateParamsStreaming, streamPipeline: Function) {
+
+async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: Function) {
   const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-  const stream = await openai.chat.completions.create(completionInput);
-  let isStreaming = false;
+  const stream = await openai.responses.create(responsesObject);
   for await (const chunk of stream) {
-    if (typeof chunk.choices[0].delta.content === "string") {
-      if (!isStreaming) {
-        showToast({ title: 'Streaming', style: Toast.Style.Animated })
-        isStreaming = true;
-      };
-      streamPipeline(chunk.choices[0].delta.content, "streaming");
-    } else if (chunk.choices[0].finish_reason == 'stop') {
-      streamPipeline('', 'done');
+    if (chunk.type === 'response.created') {
+      showToast({ title: 'Request Received', style: Toast.Style.Success })
+    } else if (chunk.type === 'response.content_part.added') {
+      showToast({ title: 'Streaming', style: Toast.Style.Animated })
+    } else if (chunk.type === 'response.output_text.delta') {
+      streamPipeline(chunk.delta, 'streaming')
+    } else if (chunk.type === 'response.completed') {
+      streamPipeline('', 'done')
       break;
-    };
+    }
   }
-}
-
-
-//  Other OpenAI Functions  //
-export async function TitleConversation(data: Data) {
-  showToast({ title: 'Creating a title', style: Toast.Style.Animated })
-  const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
-  const messages = data.messages.map(({ id, ...msg }) => ({
-    role: msg.role,
-    content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
-  }
-  ));
-
-  const chat = await openai.chat.completions.create({
-    messages: [
-      ...messages,
-      {
-        role: 'user',
-        content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.'
-      }
-    ],
-    model: 'gpt-4o-mini',
-    stream: false,
-  });
-
-  showToast({ title: 'Title created' });
-  return chat.choices[0]?.message.content
 }

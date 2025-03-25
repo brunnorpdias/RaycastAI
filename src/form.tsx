@@ -1,13 +1,13 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
 import Answer from "./answer";
-import instructions from '../instructions.json';
+import instructionsObject from '../instructions.json';
 import { useState } from 'react';
 
 type Values = {
   prompt: string;
   api: string;
   model: string;
-  sysMessage: string;
+  instructions: string;
   temperature: string;
   stream: boolean;
   attatchmentPaths: [string];
@@ -21,7 +21,7 @@ export type Data = {
     id: number
     role: 'user' | 'assistant' | 'system',
     content: string | Array<{
-      type: 'text' | 'document' | 'image' | 'file',
+      type: 'text' | 'file' | 'image' | 'input_text' | 'input_file' | 'input_image',
       source?: object,
       text?: string,
       file?: object
@@ -29,9 +29,9 @@ export type Data = {
   }>;
   model: string;
   api: string;
-  systemMessage: string;
+  instructions: string;
   reasoning: 'none' | 'low' | 'medium' | 'high';
-  attachments: Array<{ status: 'waiting' | 'uploaded', name: string, path: string }>;
+  attachments: Array<{ status: 'idle' | 'uploaded', name: string, path: string, id?: number }>;
   temperature: number;
 };
 
@@ -83,23 +83,23 @@ export default function ChatForm() {
   }
 
   async function handleSubmit(values: Values) {
-    var systemMessage: string = "";
+    var instructions: string = "";
 
-    switch (values.sysMessage) {
+    switch (values.instructions) {
       case 'efficient':
-        systemMessage = instructions.efficient;
+        instructions = instructionsObject.efficient;
         break;
       case 'researcher':
-        systemMessage = instructions.researcher;
+        instructions = instructionsObject.researcher;
         break;
       case 'coach':
-        systemMessage = instructions.coach;
+        instructions = instructionsObject.coach;
         break;
       case 'planner':
-        systemMessage = instructions.planner;
+        instructions = instructionsObject.planner;
         break;
       case 'writer':
-        systemMessage = instructions.writer;
+        instructions = instructionsObject.writer;
         break;
     }
 
@@ -107,15 +107,13 @@ export default function ChatForm() {
       timestamp: Date.now(),
       model: values.model,
       api: values.api,
-      systemMessage: systemMessage,
-      messages: [
-        {
-          role: 'user',
-          content: values.prompt,
-          id: Date.now()
-        }
-      ], // messages,
-      temperature: 1, //Number(values.temperature),
+      instructions: instructions,
+      messages: [{
+        role: 'user',
+        content: values.prompt,
+        id: Date.now()
+      }],
+      temperature: 1, // Number(values.temperature),
       attachments: [],
       reasoning: values.reasoning,
       // status: 'streaming',
@@ -125,7 +123,7 @@ export default function ChatForm() {
       for (const attachmentPath of values.attatchmentPaths) {
         const filename = attachmentPath.slice(attachmentPath.lastIndexOf('/') + 1);
         data.attachments.push(
-          { status: 'waiting', name: filename, path: attachmentPath }
+          { status: 'idle', name: filename, path: attachmentPath }
         )
       }
     }
@@ -176,7 +174,7 @@ export default function ChatForm() {
         </Form.Dropdown>
       )}
 
-      <Form.Dropdown id='sysMessage' title='System Message' >
+      <Form.Dropdown id='instructions' title='instructions' >
         <Form.Dropdown.Item value='efficient' title='Straight-to-the-point' />
         <Form.Dropdown.Item value='traditional' title='Traditional' />
         <Form.Dropdown.Item value='researcher' title='Researcher' />
