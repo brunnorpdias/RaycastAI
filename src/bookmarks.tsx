@@ -26,12 +26,12 @@ export default function Bookmarks() {
     return (
       <RaycastList>
         {bookmarks
-          // .filter(item => item.data.messages && item.data.messages.length > 0 && typeof item.data.messages.slice(-1)[0]?.timestamp == 'number')
-          // .sort((a, b) => {
-          //   const bTimestamp = b.data.timestamp;
-          //   const aTimestamp = a.data.timestamp;
-          //   return bTimestamp - aTimestamp
-          // })
+          .filter(item => item.data.messages && item.data.messages.length > 0 && typeof item.data.messages.slice(-1)[0]?.id == 'number')
+          .sort((a, b) => {
+            const bTimestamp = b.data.timestamp;
+            const aTimestamp = a.data.timestamp;
+            return bTimestamp - aTimestamp
+          })
           .map((item, index) => (
             <RaycastList.Item
               key={`${index}`}
@@ -47,7 +47,7 @@ export default function Bookmarks() {
                       push(<ChatHistory data={item.data} />)
                     }}
                   />
-                  {/* await LocalStorage.clear(); */}
+                  await LocalStorage.clear();
                   <Action
                     title="Delete Item"
                     icon={Icon.Trash}
