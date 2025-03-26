@@ -1,7 +1,8 @@
-import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
-import Answer from "./answer";
-import instructionsObject from '../instructions.json';
+import { Form, ActionPanel, Action, useNavigation, Cache as RaycastCache } from '@raycast/api';
 import { useState } from 'react';
+
+import Answer from "./answer";
+import instructionsObject from './enums/instructions.json';
 
 type Values = {
   prompt: string;
@@ -18,10 +19,11 @@ export type Data = {
   timestamp: number;
   // status: 'idle' | 'streaming'
   messages: Array<{
-    id: number
+    id?: string,
+    timestamp: number,
     role: 'user' | 'assistant' | 'system',
     content: string | Array<{
-      type: 'text' | 'file' | 'image' | 'input_text' | 'input_file' | 'input_image',
+      type: 'text' | 'file' | 'image' | 'document' | 'input_text' | 'input_file' | 'input_image',
       source?: object,
       text?: string,
       file?: object
@@ -41,7 +43,7 @@ export default function ChatForm() {
   const [selectedAPI, setAPI] = useState<API>('anthropic');
   const [selectedModel, setModel] = useState<string>('');
 
-  type API = 'perplexity' | 'openai' | 'deepmind' | 'anthropic' | 'groq' | 'grok';
+  type API = 'openai' | 'deepmind' | 'anthropic' | 'grok' | 'perplexity';
   type Model = { name: string, code: string };
 
   const APItoModels: Record<API, Model[]> = {
@@ -51,17 +53,16 @@ export default function ChatForm() {
     ],
     'openai': [
       { name: 'GPT 4o', code: 'gpt-4o' },
-      { name: 'GPT 4o Search', code: 'gpt-4o-search-preview' },
+      // { name: 'GPT 4o Search', code: 'gpt-4o-search-preview' },  // no support through responses api
       { name: 'o3 mini', code: 'o3-mini' },
       { name: 'o1', code: 'o1' },
       { name: 'GPT 4.5', code: 'gpt-4.5-preview' },
-      { name: 'GPT 4o Mini', code: 'gpt-4o-mini' },
+      // { name: 'GPT 4o Mini', code: 'gpt-4o-mini' },
     ],
     'deepmind': [
       { name: 'Gemini 2.0 Flash', code: 'models/gemini-2.0-flash' },
       { name: 'Gemini 2.0 Flash Thinking Experimental', code: 'models/gemini-2.0-flash-thinking-exp-01-21' },
-      { name: 'Gemini 2.0 Flash Experimental', code: 'models/gemini-2.0-flash-exp' },
-      { name: 'Gemini 2.0 Pro Experimental', code: 'models/gemini-2.0-pro-exp-02-05' },
+      { name: 'Gemini 2.5 Pro', code: 'models/gemini-2.5-pro-exp-03-25' },
     ],
     'perplexity': [
       { name: 'Sonar Deep Research', code: 'sonar-deep-research' },
@@ -72,14 +73,6 @@ export default function ChatForm() {
     'grok': [
       { name: 'Grok 2', code: 'grok-2-latest' },
     ],
-    'groq': [
-      { name: 'LLaMA 3.2 3b', code: 'llama-3.2-1b-preview' },
-      { name: 'LLaMA 3.2 90b', code: 'llama-3.2-90b-text-preview' },
-    ],
-    // 'deepmind': [
-    //   { name: 'Gemini 1.5 Flash', code: 'gemini-1.5-flash-002'},
-    //   { name: 'Gemini 1.5 Pro', code: 'gemini-1.5-pro-002'},
-    // ]
   }
 
   async function handleSubmit(values: Values) {
@@ -111,7 +104,7 @@ export default function ChatForm() {
       messages: [{
         role: 'user',
         content: values.prompt,
-        id: Date.now()
+        timestamp: Date.now(),
       }],
       temperature: 1, // Number(values.temperature),
       attachments: [],
@@ -127,6 +120,13 @@ export default function ChatForm() {
         )
       }
     }
+
+    const cache = new RaycastCache()
+    const stringCache = cache.get('cachedData') || ''
+    const newCache: Data[] = JSON.parse(stringCache)
+    newCache.push(data)
+    cache.set('cachedData', JSON.stringify(newCache))
+
     push(<Answer data={data} />);
   }
 
@@ -146,13 +146,11 @@ export default function ChatForm() {
         value={selectedAPI}
         onChange={(api) => setAPI(api as API)}
       >
-        <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
-        <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
         <Form.Dropdown.Item value='deepmind' title='Deepmind' icon='deepmind-icon.png' />
-        {/* <Form.Dropdown.Item value='google' title='Google' icon='google-gemini-icon.png' /> */}
-        <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
-        <Form.Dropdown.Item value='groq' title='Groq' icon='groq-icon.png' />
+        <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
+        <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
         <Form.Dropdown.Item value='grok' title='Grok' icon='grok-logo-icon.png' />
+        <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
       </Form.Dropdown>
 
       <Form.Dropdown
@@ -184,7 +182,6 @@ export default function ChatForm() {
       </Form.Dropdown>
 
       {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
-      {/* <Form.Checkbox id='stream' title='Streaming' label='Streaming or static response' defaultValue={true} /> */}
 
       {['claude-3-7-sonnet-latest', 'gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview'].includes(selectedModel) && (
         <Form.FilePicker id="attatchmentPaths" />

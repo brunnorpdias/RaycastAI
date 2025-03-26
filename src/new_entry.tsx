@@ -15,9 +15,9 @@ export default function NewEntry({ data }: { data: Data }) {
     const lastMessage = data.messages.at(-1);
     let newMessage: Data["messages"][0];
     if (lastMessage && typeof lastMessage.content === 'string') {
-      newMessage = { role: 'user', content: prompt, id: Date.now() };
+      newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
     } else {
-      newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], id: Date.now() }
+      newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
     }
     const newData: Data = {
       ...data,

@@ -26,7 +26,7 @@ export default function Bookmarks() {
     return (
       <RaycastList>
         {bookmarks
-          .filter(item => item.data.messages && item.data.messages.length > 0 && typeof item.data.messages.slice(-1)[0]?.id == 'number')
+          .filter(item => item.data.messages && item.data.messages.length > 0)
           .sort((a, b) => {
             const bTimestamp = b.data.timestamp;
             const aTimestamp = a.data.timestamp;

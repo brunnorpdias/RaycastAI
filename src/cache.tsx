@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation, showToast } from "@raycast/api";
+import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
 import ChatHistory from "./history";
@@ -29,17 +29,17 @@ export default function Cache() {
     return (
       <RaycastList>
         {Object.values(cache)
-          .filter(item => item.messages && item.messages.length > 0 && item.messages.at(-1)?.id !== undefined)
+          .filter(item => item.messages && item.messages.length > 0)
           .sort((a, b) => {
-            const aTimestamp = a.messages.at(-1)?.id || 0;
-            const bTimestamp = b.messages.at(-1)?.id || 0;
+            const aTimestamp = a.timestamp || 0;
+            const bTimestamp = b.timestamp || 0;
             return bTimestamp - aTimestamp;
           })
           .map((cachedItem: Data) => (
             <RaycastList.Item
               key={`${cachedItem.timestamp}`}
               title={`${cachedItem.messages[0]?.content || 'No content'}`}
-              subtitle={DateFormat(cachedItem.messages.at(-1)?.id || 0, 'HH:mm:ss dd/MM/yy')}
+              subtitle={DateFormat(cachedItem.timestamp || 0, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
                   <Action
@@ -75,12 +75,11 @@ export default function Cache() {
                         newBookmark = { title: title, data: cachedItem };
                       } else {
                         console.log('Could not create a title to the conversation')
+                        showToast({ title: 'Could not create a title to the conversation', style: Toast.Style.Failure })
                         return
                       }
-
                       const bookmarksString = await LocalStorage.getItem("bookmarks")
                       let newBookmarks: Bookmarks;
-
                       if (typeof (bookmarksString) == 'string') {
                         const bookmarks: Bookmarks = JSON.parse(bookmarksString)
                         const filteredBookmarks = bookmarks.filter(bm => bm.data.timestamp !== cachedItem.timestamp)
@@ -89,7 +88,6 @@ export default function Cache() {
                       } else {
                         newBookmarks = [newBookmark]
                       }
-
                       await LocalStorage.setItem(
                         'bookmarks',
                         JSON.stringify(newBookmarks)

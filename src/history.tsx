@@ -18,9 +18,9 @@ export default function ChatHistory({ data }: { data: Data }) {
     return (
       <RaycastList isShowingDetail>
         {data.messages
-          .map((message) => (
+          .map((message, index) => (
             <RaycastList.Item
-              key={`#${message.id}`}
+              key={`#${index}`}
               title={`${message.content}`}
               subtitle={`${message.role}`}
               detail={
@@ -33,7 +33,12 @@ export default function ChatHistory({ data }: { data: Data }) {
                     icon={Icon.Text}
                     onAction={() => {
                       if (message.role === 'assistant') {
-                        push(<Answer data={data} messageId={message.id} />)
+                        // added if statements because of change in formatting of data, not necessary for new users
+                        if (message.timestamp) {
+                          push(<Answer data={data} msgTimestamp={message.timestamp} />)
+                        } else {
+                          push(<Answer data={data} msgTimestamp={Number(message.id)} />)
+                        }
                       } else {
                         showToast({ title: 'Cannot open user message', style: Toast.Style.Failure })
                       }

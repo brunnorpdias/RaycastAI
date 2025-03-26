@@ -1,7 +1,8 @@
-import { API_KEYS } from '../enums';
 import fetch from 'node-fetch';
 import readline from 'readline';
+
 import { Readable } from 'stream';
+import { API_KEYS } from '../enums/index';
 
 import { type Data } from "../form";
 import { type StreamPipeline } from "../answer";

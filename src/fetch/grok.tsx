@@ -1,14 +1,15 @@
-import OpenAI from "openai";
-import { ChatCompletionChunk } from "openai/resources";
-import { API_KEYS } from '../enums';
 import { showToast, Toast } from "@raycast/api";
+import OpenAI from "openai";
 
+import { API_KEYS } from '../enums/index';
+
+import { ChatCompletionChunk } from "openai/resources";
 import { type Data } from "../form";
 import { type StreamPipeline } from "../answer";
 
 
 export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
-  const messages = data.messages.map(({ id, ...msg }) => (
+  const messages = data.messages.map(({ timestamp, id, ...msg }) => (
     {
       role: msg.role,
       content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)

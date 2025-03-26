@@ -1,6 +1,5 @@
 .DS_STORE
 src/enums/
-instructions.json
 package-lock.json
 raycast-env.d.ts
 node_modules/

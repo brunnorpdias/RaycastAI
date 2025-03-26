@@ -1,14 +1,14 @@
 import { Anthropic } from '@anthropic-ai/sdk';
-import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { showToast, Toast } from "@raycast/api";
-import { API_KEYS } from '../enums';
 import * as fs from 'fs/promises';
 
+import { API_KEYS } from '../enums/index';
+
+import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { type StreamPipeline } from "../answer";
 import { type Data } from "../form";
 
 type Content = Data["messages"][0]["content"]
-
 type AnthropicRequest = {
   model: string,
   system: string | undefined,
@@ -27,7 +27,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
   let max_tokens: number;
   let thinking_budget: number;
-  const inputMessages = data.messages.map(({ id, ...rest }) => rest);
+  const inputMessages = data.messages.map(({ timestamp, id, ...rest }) => rest);
   let messages;
 
   if (data.model === 'claude-3-7-sonnet-latest' && data.attachments && data.attachments.length > 0) {
@@ -76,7 +76,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
       max_tokens = 40000
       break
     case 'high':
-      thinking_budget = 32000
+      thinking_budget = 30000
       max_tokens = 62000 // max limit is now 64000 for 3.7 but restricted to avoid api overload
       break
     default:
@@ -87,7 +87,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
 
   let request: AnthropicRequest = {
     model: data.model,
-    system: data.systemMessage,
+    system: data.instructions,
     messages: messages,
     max_tokens: max_tokens,
     temperature: data.temperature,
@@ -106,10 +106,10 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   let thinking_started = false;
   const stream = client.messages.stream(request as MessageCreateParamsBase)
   let thinking_text = '';  // collect on data later on? cannot be at message to avoid feeding back to the model
-  let msgID: number = 0;
+  let msgID: string = '';
   for await (const chunk of stream) {
     if (chunk.type === 'message_start') {
-      msgID = Number(chunk.message.id);
+      msgID = chunk.message.id;
     } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'thinking') {
       thinking_started = true
       showToast({ title: 'Thinking...', style: Toast.Style.Animated })

@@ -7,12 +7,12 @@ import { APIHandler } from './api_handler';
 type Bookmarks = Array<{ title: string, data: Data }>;
 import { type Data } from "./form";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
-export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: number) => void;
+export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: string) => void;
 
 
-export default function Answer({ data, messageId }: {
+export default function Answer({ data, msgTimestamp }: {
   data: Data;
-  messageId?: number;
+  msgTimestamp?: number;
 }) {
   const { push } = useNavigation();
   const hasRun = useRef(false);
@@ -20,11 +20,11 @@ export default function Answer({ data, messageId }: {
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
   const [newData, setNewData] = useState<Data>(data);
-  const [msgID, setMsgId] = useState<number>(data.messages.at(-1)?.id || 0);
+  const [msgID, setMsgId] = useState<string | undefined>();
 
   useEffect(() => {
-    if (messageId) {
-      OpenHistoricalMessage(data, setResponse, setNewData, messageId);
+    if (msgTimestamp) {
+      OpenHistoricalMessage(data, setResponse, setNewData, msgTimestamp);
     } else if (!hasRun.current) {
       APIHandler(data, streamPipeline)
       setStartTime(Date.now())
@@ -40,7 +40,7 @@ export default function Answer({ data, messageId }: {
     }
   }, [status])
 
-  const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status, messageId?: number) => {
+  const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status, messageId?: string) => {
     setStatus(apiStatus);
     if (apiStatus !== 'reset') {
       setResponse((prevResponse) => prevResponse + apiResponse);
@@ -48,7 +48,7 @@ export default function Answer({ data, messageId }: {
       setResponse('')
     }
     if (messageId) {
-      setMsgId(msgID)
+      setMsgId(messageId)
     }
   };
 
@@ -74,7 +74,7 @@ export default function Answer({ data, messageId }: {
             title="New Entry"
             icon={Icon.Plus}
             onAction={() => {
-              CreateNewEntry(data, newData, push, messageId)
+              CreateNewEntry(data, newData, push, msgTimestamp)
             }}
           />
 
@@ -95,21 +95,24 @@ export default function Answer({ data, messageId }: {
 
 
 //  Helper Functions  //
-async function NewData(data: Data, response: string, msgId: number) {
+async function NewData(data: Data, response: string, msgId?: string) {
   let userMessage = data.messages.at(-1);
   let assistantMessage: Data["messages"][0];
   if (userMessage && typeof userMessage.content === 'string') {
     assistantMessage = {
       role: 'assistant',
       content: response,
-      id: msgId,
+      timestamp: Date.now(),
     };
   } else {
     assistantMessage = {
       role: 'assistant',
       content: [{ type: 'text', text: response }],
-      id: msgId,
+      timestamp: Date.now(),
     };
+  }
+  if (msgId) {
+    assistantMessage.id = msgId
   }
   const newData: Data = {
     ...data,
@@ -161,11 +164,11 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 }
 
 
-function CreateNewEntry(data: Data, newData: Data, push: Function, messageId?: number) {
+function CreateNewEntry(data: Data, newData: Data, push: Function, msgTimestamp?: number) {
   // is this a cached or bookmarked chat?
-  if (messageId) {
+  if (msgTimestamp) {
     const messageIndex: number = data.messages
-      .findLastIndex(msg => msg.id === messageId) || data.messages.length - 1
+      .findLastIndex(msg => msg.timestamp === msgTimestamp) || data.messages.length - 1
     const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
     // Confirm overwrite of conversation
     showToast({
@@ -180,8 +183,13 @@ function CreateNewEntry(data: Data, newData: Data, push: Function, messageId?: n
 }
 
 
-async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewData: Function, messageId?: number) {
-  const selected_message = data.messages.findLast(msg => msg.id === messageId)
+async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewData: Function, msgTimestamp: number) {
+  // Changed from id to timestamp, later added id separately, on the future remove the if condition, unnecessary for new users
+  let selected_message = data.messages.findLast(msg =>
+    msg.timestamp ?
+      msg.timestamp === msgTimestamp :
+      Number(msg.id) === msgTimestamp
+  )
   if (selected_message) {
     let api_response: string;
     if (typeof selected_message.content === 'string') {

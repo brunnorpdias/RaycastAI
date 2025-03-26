@@ -31,15 +31,12 @@
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
     "@eslint/config-array": "latest",
-    "@google/generative-ai": "latest",
-    "@mistralai/mistralai": "latest",
-    "@raycast/api": "^1.93.2",
+    "@google/genai": "latest",
+    "@raycast/api": "^1.93.0",
     "axios": "latest",
     "date-fns": "latest",
     "eventsource": "latest",
     "fetch": "latest",
-    "groq-sdk": "latest",
-    "llamaai": "latest",
     "node-fetch": "latest",
     "openai": "latest"
   },
