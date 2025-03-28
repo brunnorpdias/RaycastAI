@@ -34,9 +34,9 @@ export default function Answer({ data, msgTimestamp }: {
 
   useEffect(() => {
     if (status === 'done') {
-      SaveData();
       const duration: number = Math.round((Date.now() - startTime) / 100) / 10;
       showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });  // style add?
+      SaveData();
     }
   }, [status])
 
@@ -125,13 +125,13 @@ async function NewData(data: Data, response: string, msgId?: string) {
 async function Cache(data: Data) {
   const raycastCache = new RaycastCache();
   const cachedDataString = raycastCache.get('cachedData');
-  let cachedData: Data[] = cachedDataString ? JSON.parse(cachedDataString) : [];
-  if (cachedData.length > 0) {
+  let cachedData: Data[] = cachedDataString ? JSON.parse(cachedDataString) : undefined;
+  if (cachedData?.length > 0) {
     const filteredCache: Data[] = cachedData
       .filter(cache => cache.timestamp !== data.timestamp) // remove data if it's already cached
     const newList = [...filteredCache, data];
     const newCachedData: Data[] = newList
-      .sort((a: Data, b: Data) => b.timestamp - a.timestamp)
+      .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
       .slice(0, 30)
     raycastCache.set('cachedData', JSON.stringify(newCachedData));
   } else {

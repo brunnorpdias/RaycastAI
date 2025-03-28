@@ -43,6 +43,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
       for (const attachment of attachmentsQueue) {
         const arrayBuffer = await fs.readFile(attachment.path);
         const pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
+        attachment.data = pdfBase64;
         contentArray.push({
           type: 'document',
           source: {
@@ -51,7 +52,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
             data: pdfBase64,
           }
         })
-        attachment.status = 'uploaded';
+        attachment.status = 'staged';
       }
 
       messages = [{
@@ -127,6 +128,11 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
       streamPipeline(chunk.delta.text, 'streaming')
     } else if (chunk.type === 'message_stop') {
       streamPipeline('', 'done', msgID)
+      data.attachments.map(attachment =>
+        attachment.status === 'staged' ?
+          attachment.status = 'uploaded' :
+          attachment
+      )
       break;
     }
   }

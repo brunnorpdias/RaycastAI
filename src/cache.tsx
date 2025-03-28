@@ -31,9 +31,11 @@ export default function Cache() {
         {Object.values(cache)
           .filter(item => item.messages && item.messages.length > 0)
           .sort((a, b) => {
-            const aTimestamp = a.timestamp || 0;
-            const bTimestamp = b.timestamp || 0;
-            return bTimestamp - aTimestamp;
+            // const aTimestamp = a.timestamp || 0;
+            // const bTimestamp = b.timestamp || 0;
+            const aLastMsgTime = a.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
+            const bLastMsgTime = b.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
+            return bLastMsgTime - aLastMsgTime;
           })
           .map((cachedItem: Data) => (
             <RaycastList.Item

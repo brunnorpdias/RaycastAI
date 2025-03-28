@@ -1,29 +1,75 @@
-import { Form, ActionPanel, Action, useNavigation } from "@raycast/api";
+import { Form, ActionPanel, Action, useNavigation, showToast, Toast, Cache as RaycastCache } from "@raycast/api";
 import Answer from './answer';
 import { type Data } from "./form";
+import { useEffect, useState } from "react";
 
 type Values = {
   prompt: string
 }
 
 
-export default function NewEntry({ data }: { data: Data }) {
+export default function NewEntry({ data, promptTimestamp }: { data: Data, promptTimestamp?: number }) {
   const { push } = useNavigation();
+  const [fieldText, setFieldText] = useState<string>('');
 
-  function handleSubmit(values: Values) {
+  useEffect(() => {
+    console.log(promptTimestamp)
+    const message = data.messages.filter(msg => msg.timestamp === promptTimestamp).at(0);
+    if (message) {
+      console.log(JSON.stringify(message))
+      const msgPrompt = typeof message.content === 'string' ?
+        message.content :
+        message.content.filter(item => item.type === 'text').at(-1)?.text || 'Error to define prompt...'
+      setFieldText(msgPrompt)
+    }
+  }, [promptTimestamp])
+
+
+  //clean this up
+  async function handleSubmit(values: Values) {
     const prompt = values.prompt;
     const lastMessage = data.messages.at(-1);
-    let newMessage: Data["messages"][0];
-    if (lastMessage && typeof lastMessage.content === 'string') {
-      newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
+    if (!promptTimestamp) {
+      let newMessage: Data["messages"][0];
+      if (lastMessage && typeof lastMessage.content === 'string') {
+        newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
+      } else {
+        newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
+      }
+      const newData: Data = {
+        ...data,
+        messages: [...data.messages, newMessage]
+      }
+      Cache(data);
+      push(<Answer data={newData} />)
     } else {
-      newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
+      const messages: Data["messages"] = data.messages;
+      const messageIndex: number = messages
+        .findLastIndex(msg => msg.timestamp === promptTimestamp)
+      const truncMessages: Data["messages"] = messageIndex > 1 ?
+        messages.slice(0, messageIndex) :
+        []
+      let newMessage: Data["messages"][0];
+      if (lastMessage && typeof lastMessage.content === 'string') {
+        newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
+      } else {
+        newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
+      }
+      const truncData: Data = {
+        ...data,
+        messages: [...truncMessages, newMessage]
+      }
+      // Confirm overwrite of conversation
+      showToast({
+        title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
+          title: "Yes",
+          onAction: () => {
+            Cache(data);
+            push(<Answer data={truncData} />)
+          }
+        }
+      })
     }
-    const newData: Data = {
-      ...data,
-      messages: [...data.messages, newMessage]
-    }
-    push(<Answer data={newData} />)
   }
 
 
@@ -35,7 +81,15 @@ export default function NewEntry({ data }: { data: Data }) {
         </ActionPanel>
       }
     >
-      <Form.TextArea id="prompt" title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
+      <Form.TextArea id="prompt" value={fieldText} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
     </Form>
   );
+}
+
+function Cache(data: Data) {
+  // const cache = new RaycastCache()
+  // const stringCache = cache.get('cachedData') || ''
+  // const newCache: Data[] = JSON.parse(stringCache)
+  // newCache.push(data)
+  // cache.set('cachedData', JSON.stringify(newCache))
 }

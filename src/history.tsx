@@ -1,4 +1,4 @@
-import { List as RaycastList, ActionPanel, Action, Icon, useNavigation, showToast, Toast } from "@raycast/api";
+import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
 import NewEntry from "./new_entry";
 import Answer from "./answer";
 import { useEffect, useState } from "react";
@@ -21,15 +21,19 @@ export default function ChatHistory({ data }: { data: Data }) {
           .map((message, index) => (
             <RaycastList.Item
               key={`#${index}`}
-              title={`${message.content}`}
-              subtitle={`${message.role}`}
+              title={
+                typeof message.content === 'string' ?
+                  message.content :
+                  message.content.filter(item => item.type === 'text').at(-1)?.text || ''
+              }
+              subtitle={message.role}
               detail={
                 <RaycastList.Item.Detail markdown={message.content ? String(message.content) : "Not a string"} />
               }
               actions={
                 <ActionPanel>
                   <Action
-                    title="View message"
+                    title={message.role === 'user' ? 'Edit' : 'Open Message'}
                     icon={Icon.Text}
                     onAction={() => {
                       if (message.role === 'assistant') {
@@ -40,7 +44,7 @@ export default function ChatHistory({ data }: { data: Data }) {
                           push(<Answer data={data} msgTimestamp={Number(message.id)} />)
                         }
                       } else {
-                        showToast({ title: 'Cannot open user message', style: Toast.Style.Failure })
+                        push(<NewEntry data={data} promptTimestamp={message.timestamp} />)
                       }
                     }}
                   />
