@@ -44,7 +44,6 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
 
   let isStreaming: boolean = false;
   for await (const chunk of response) {
-    // console.log(JSON.stringify(chunk))
     if (chunk.text) {
       streamPipeline(chunk.text, 'streaming');
       if (!isStreaming) {

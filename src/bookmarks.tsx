@@ -35,7 +35,14 @@ export default function Bookmarks() {
           .map((item, index) => (
             <RaycastList.Item
               key={`${index}`}
-              title={`${item.title}`}
+              // title={`${item.title}`}
+              title={`${ //
+                typeof item.data.messages.at(0)?.content === 'string' ?
+                  item.data.messages[0].content :
+                  Array.isArray(item.data.messages[0].content) ?
+                    item.data.messages[0].content[0].text || '' :
+                    ''
+                }`}
               subtitle={DateFormat(item.data.timestamp, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
@@ -43,7 +50,6 @@ export default function Bookmarks() {
                     title="View messages"
                     icon={Icon.AppWindow}
                     onAction={() => {
-                      // console.log(typeof item.data.messages);
                       push(<ChatHistory data={item.data} />)
                     }}
                   />

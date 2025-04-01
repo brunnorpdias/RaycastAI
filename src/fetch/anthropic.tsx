@@ -41,9 +41,10 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
 
       const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
       for (const attachment of attachmentsQueue) {
+        if (!['pdf'].includes(attachment.extension)) break  // only accept pdf and images
         const arrayBuffer = await fs.readFile(attachment.path);
         const pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
-        attachment.data = pdfBase64;
+        // attachment.data = pdfBase64;
         contentArray.push({
           type: 'document',
           source: {
@@ -53,6 +54,11 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
           }
         })
         attachment.status = 'staged';
+      }
+
+      const lastMessage = data.messages.at(-1);
+      if (lastMessage) {
+        lastMessage.content = contentArray
       }
 
       messages = [{

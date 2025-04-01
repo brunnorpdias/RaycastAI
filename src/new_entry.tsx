@@ -14,10 +14,8 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
   // const [selectedModel, setSelectedModel] = useState<string>('');  // add model selector for new prompts
 
   useEffect(() => {
-    console.log(promptTimestamp)
     const message = data.messages.filter(msg => msg.timestamp === promptTimestamp).at(0);
     if (message) {
-      console.log(JSON.stringify(message))
       const msgPrompt = typeof message.content === 'string' ?
         message.content :
         message.content.filter(item => item.type === 'text').at(-1)?.text || 'Error to define prompt...'
@@ -32,19 +30,16 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
   //clean this up
   async function handleSubmit(values: Values) {
     const prompt = values.prompt;
-    const lastMessage = data.messages.at(-1);
+    const newMessage: Data["messages"][0] = data.api === 'openai' ?
+      { role: 'user', content: [{ type: 'input_text', text: prompt }], timestamp: Date.now() } :
+      { role: 'user', content: prompt, timestamp: Date.now() }
+
     if (!promptTimestamp) {
-      let newMessage: Data["messages"][0];
-      if (lastMessage && typeof lastMessage.content === 'string') {
-        newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
-      } else {
-        newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
-      }
       const newData: Data = {
         ...data,
         messages: [...data.messages, newMessage]
       }
-      Cache(data);
+      await Cache(newData);
       push(<Answer data={newData} />)
     } else {
       const messages: Data["messages"] = data.messages;
@@ -53,12 +48,6 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
       const truncMessages: Data["messages"] = messageIndex > 1 ?
         messages.slice(0, messageIndex) :
         []
-      let newMessage: Data["messages"][0];
-      if (lastMessage && typeof lastMessage.content === 'string') {
-        newMessage = { role: 'user', content: prompt, timestamp: Date.now() };
-      } else {
-        newMessage = { role: 'user', content: [{ type: 'text', text: prompt }], timestamp: Date.now() }
-      }
       const truncData: Data = {
         ...data,
         messages: [...truncMessages, newMessage]
@@ -67,8 +56,8 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
       showToast({
         title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
           title: "Yes",
-          onAction: () => {
-            Cache(data);
+          onAction: async () => {
+            await Cache(truncData);
             push(<Answer data={truncData} />)
           }
         }
@@ -99,10 +88,16 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
   );
 }
 
-function Cache(data: Data) {
-  // const cache = new RaycastCache()
-  // const stringCache = cache.get('cachedData') || ''
-  // const newCache: Data[] = JSON.parse(stringCache)
-  // newCache.push(data)
-  // cache.set('cachedData', JSON.stringify(newCache))
+async function Cache(newData: Data) {
+  const cache = new RaycastCache()
+  const stringCache = cache.get('cachedData')
+  let newCache: Data[];
+  if (stringCache) {
+    let oldCache: Data[] = JSON.parse(stringCache)
+    oldCache = oldCache.filter(item => item.timestamp !== newData.timestamp)
+    newCache = [newData, ...oldCache]
+  } else {
+    newCache = [newData]
+  }
+  cache.set('cachedData', JSON.stringify(newCache))
 }

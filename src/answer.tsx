@@ -138,7 +138,7 @@ async function Cache(data: Data) {
     const list = [data];
     raycastCache.set('cachedData', JSON.stringify(list));
   }
-  showToast({ title: 'Cached', style: Toast.Style.Success });
+  // showToast({ title: 'Cached', style: Toast.Style.Success });
 }
 
 
@@ -153,7 +153,7 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
     if (typeof title !== 'string') return false;
     bookmarks[bookmarkIndex] = { title: title, data: data };
     LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    showToast({ title: 'Bookmark modified', style: Toast.Style.Success })
+    // showToast({ title: 'Bookmark modified', style: Toast.Style.Success })
   } else if (isManuallyBookmarked) {
     const title = await OpenAPI.TitleConversation(data);
     if (typeof title !== 'string') return false;
