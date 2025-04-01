@@ -24,11 +24,17 @@ export default function ChatHistory({ data }: { data: Data }) {
               title={
                 typeof message.content === 'string' ?
                   message.content :
-                  message.content.filter(item => item.type === 'text').at(-1)?.text || ''
+                  message.content[0].text || 'Not found'
               }
               subtitle={message.role}
               detail={
-                <RaycastList.Item.Detail markdown={message.content ? String(message.content) : "Not a string"} />
+                <RaycastList.Item.Detail
+                  markdown={
+                    typeof message.content === 'string' ?
+                      message.content :
+                      message.content[0].text
+                  }
+                />
               }
               actions={
                 <ActionPanel>

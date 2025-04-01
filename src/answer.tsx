@@ -138,7 +138,7 @@ async function Cache(data: Data) {
     const list = [data];
     raycastCache.set('cachedData', JSON.stringify(list));
   }
-  showToast({ title: 'Cached', style: Toast.Style.Success });
+  // showToast({ title: 'Cached', style: Toast.Style.Success });
 }
 
 
@@ -153,7 +153,7 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
     if (typeof title !== 'string') return false;
     bookmarks[bookmarkIndex] = { title: title, data: data };
     LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    showToast({ title: 'Bookmark modified', style: Toast.Style.Success })
+    // showToast({ title: 'Bookmark modified', style: Toast.Style.Success })
   } else if (isManuallyBookmarked) {
     const title = await OpenAPI.TitleConversation(data);
     if (typeof title !== 'string') return false;
@@ -166,7 +166,8 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 
 function CreateNewEntry(data: Data, newData: Data, push: Function, msgTimestamp?: number) {
   // is this a cached or bookmarked chat?
-  if (msgTimestamp) {
+  const lastTimestamp = data.messages.at(-1)?.timestamp
+  if (msgTimestamp && msgTimestamp === lastTimestamp) {
     const messageIndex: number = data.messages
       .findLastIndex(msg => msg.timestamp === msgTimestamp) || data.messages.length - 1
     const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }

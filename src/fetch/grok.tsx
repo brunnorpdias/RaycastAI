@@ -27,13 +27,11 @@ export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
     temperature: data.temperature,
     stream: true,
   });
-  // console.log(completion.choices[0].message);
 
 
   let streaming = false;
   const stream = completion as AsyncIterable<ChatCompletionChunk>;
   for await (const chunk of stream) {
-    // console.log(JSON.stringify(chunk));
     if (typeof chunk.choices[0].delta.content === "string") {
       if (!streaming) {
         showToast({ title: 'Streaming', style: Toast.Style.Animated })

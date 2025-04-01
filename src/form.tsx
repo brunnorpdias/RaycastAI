@@ -40,8 +40,9 @@ export type Data = {
     id?: string,
     status: 'idle' | 'staged' | 'uploaded',
     name: string,
+    extension: string,
     path: string,
-    data?: string,
+    // data?: string,
   }>;
   temperature: number;
   private?: boolean;
@@ -106,16 +107,16 @@ export default function ChatForm() {
         break;
     }
 
+    const messages: Data["messages"] = values.api === 'openai' ?
+      [{ role: 'user', content: [{ type: 'input_text', text: values.prompt }], timestamp: Date.now() }] :
+      [{ role: 'user', content: values.prompt, timestamp: Date.now() }]
+
     const data: Data = {
       timestamp: Date.now(),
       model: values.model,
       api: values.api,
       instructions: instructions || '',
-      messages: [{
-        role: 'user',
-        content: values.prompt,
-        timestamp: Date.now(),
-      }],
+      messages: messages,
       temperature: 1, // Number(values.temperature),
       tools: values.web ? 'web' : undefined,
       attachments: [],
@@ -125,18 +126,28 @@ export default function ChatForm() {
     }
 
     if (data.attachments && values.attatchmentPaths && values.attatchmentPaths.length > 0) {
-      for (const attachmentPath of values.attatchmentPaths) {
-        const filename = attachmentPath.slice(attachmentPath.lastIndexOf('/') + 1);
-        data.attachments.push(
-          { status: 'idle', name: filename, path: attachmentPath }
-        )
+      for (const path of values.attatchmentPaths) {
+        const file = path.slice(path.lastIndexOf('/') + 1);
+        const name = file.slice(0, file.lastIndexOf('.'))
+        const extension = file.slice(file.lastIndexOf('.') + 1)
+        data.attachments.push({
+          status: 'idle',
+          name: name,
+          extension: extension,
+          path: path,
+        })
       }
     }
 
     const cache = new RaycastCache()
-    const stringCache = cache.get('cachedData') || ''
-    const newCache: Data[] = JSON.parse(stringCache)
-    newCache.push(data)
+    const stringCache = cache.get('cachedData');
+    let newCache: Data[];
+    if (stringCache) {
+      const oldCache = JSON.parse(stringCache);
+      newCache = [data, ...oldCache]
+    } else {
+      newCache = [data]
+    }
     cache.set('cachedData', JSON.stringify(newCache))
 
     push(<Answer data={data} />);

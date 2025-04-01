@@ -31,8 +31,6 @@ export default function Cache() {
         {Object.values(cache)
           .filter(item => item.messages && item.messages.length > 0)
           .sort((a, b) => {
-            // const aTimestamp = a.timestamp || 0;
-            // const bTimestamp = b.timestamp || 0;
             const aLastMsgTime = a.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
             const bLastMsgTime = b.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
             return bLastMsgTime - aLastMsgTime;
@@ -40,7 +38,13 @@ export default function Cache() {
           .map((cachedItem: Data) => (
             <RaycastList.Item
               key={`${cachedItem.timestamp}`}
-              title={`${cachedItem.messages[0]?.content || 'No content'}`}
+              title={`${ //
+                typeof cachedItem.messages.at(0)?.content === 'string' ?
+                  cachedItem.messages[0].content :
+                  Array.isArray(cachedItem.messages[0].content) ?
+                    cachedItem.messages[0].content[0].text || '' :
+                    ''
+                }`}
               subtitle={DateFormat(cachedItem.timestamp || 0, 'HH:mm:ss dd/MM/yy')}
               actions={
                 <ActionPanel>
@@ -48,7 +52,6 @@ export default function Cache() {
                     title="View Conversation"
                     icon={Icon.AppWindow}
                     onAction={() => {
-                      // console.log(JSON.stringify(cachedItem))
                       push(<ChatHistory data={cachedItem} />)
                     }}
                   />
@@ -76,7 +79,6 @@ export default function Cache() {
                       if (title) {
                         newBookmark = { title: title, data: cachedItem };
                       } else {
-                        console.log('Could not create a title to the conversation')
                         showToast({ title: 'Could not create a title to the conversation', style: Toast.Style.Failure })
                         return
                       }
@@ -85,7 +87,6 @@ export default function Cache() {
                       if (typeof (bookmarksString) == 'string') {
                         const bookmarks: Bookmarks = JSON.parse(bookmarksString)
                         const filteredBookmarks = bookmarks.filter(bm => bm.data.timestamp !== cachedItem.timestamp)
-                        console.log(JSON.stringify(filteredBookmarks))
                         newBookmarks = [...filteredBookmarks, newBookmark]
                       } else {
                         newBookmarks = [newBookmark]
