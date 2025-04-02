@@ -43,7 +43,7 @@ export default function Answer({ data, msgTimestamp }: {
   const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status, messageId?: string) => {
     setStatus(apiStatus);
     if (apiStatus !== 'reset') {
-      setResponse((prevResponse) => prevResponse + apiResponse);
+      setResponse((prevResponse: string) => prevResponse + apiResponse);
     } else {
       setResponse('')
     }
