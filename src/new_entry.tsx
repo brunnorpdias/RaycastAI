@@ -11,6 +11,7 @@ type Values = {
 export default function NewEntry({ data, promptTimestamp }: { data: Data, promptTimestamp?: number }) {
   const { push } = useNavigation();
   const [fieldText, setFieldText] = useState<string>('');
+  // const [selectedModel, setSelectedModel] = useState<string>('');  // add model selector for new prompts
 
   useEffect(() => {
     console.log(promptTimestamp)
@@ -24,6 +25,9 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
     }
   }, [promptTimestamp])
 
+  // useEffect(() => {
+  //   setSelectedModel(data.model)
+  // }, [data])
 
   //clean this up
   async function handleSubmit(values: Values) {
@@ -81,7 +85,16 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         </ActionPanel>
       }
     >
-      <Form.TextArea id="prompt" value={fieldText} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
+      <Form.TextArea id="prompt" defaultValue={fieldText} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
+
+      {/* {[ */}
+      {/*   'claude-3-7-sonnet-latest', */}
+      {/*   'gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview', */}
+      {/*   'gemini-2.0-flash', 'gemini-2.5-pro-exp-03-25' */}
+      {/* ].includes(selectedModel) && ( */}
+      {/*     <Form.FilePicker id="attatchmentPaths" /> */}
+      {/*   )} */}
+
     </Form>
   );
 }

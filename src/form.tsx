@@ -62,6 +62,7 @@ export default function ChatForm() {
       { name: 'o3 mini', code: 'o3-mini' },
       { name: 'o1', code: 'o1' },
       { name: 'GPT 4.5', code: 'gpt-4.5-preview' },
+      { name: 'GPT 4o Transcribe', code: 'gpt-4o-transcribe' },
       // { name: 'GPT 4o Search', code: 'gpt-4o-search-preview' },  // no support through responses api
       // { name: 'GPT 4o Mini', code: 'gpt-4o-mini' },
     ],
@@ -150,7 +151,9 @@ export default function ChatForm() {
         </ActionPanel>
       }
     >
-      <Form.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
+      {selectedModel !== 'gpt-4o-transcribe' && (
+        <Form.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
+      )}
 
       <Form.Dropdown
         id='api'
@@ -184,20 +187,22 @@ export default function ChatForm() {
         </Form.Dropdown>
       )}
 
-      {/* <Form.Dropdown id='instructions' title='instructions' > */}
-      {/*   <Form.Dropdown.Item value='efficient' title='Straight-to-the-point' /> */}
-      {/*   <Form.Dropdown.Item value='traditional' title='Traditional' /> */}
-      {/*   <Form.Dropdown.Item value='researcher' title='Researcher' /> */}
-      {/*   <Form.Dropdown.Item value='coach' title='Life and Professional Coach' /> */}
-      {/*   <Form.Dropdown.Item value='planner' title='Evaluator and Planner' /> */}
-      {/*   <Form.Dropdown.Item value='writer' title='Writer and Writing Guide' /> */}
-      {/* </Form.Dropdown> */}
+      {selectedModel !== 'gpt-4o-transcribe' && (
+        <Form.Dropdown id='instructions' title='instructions' >
+          <Form.Dropdown.Item value='efficient' title='Straight-to-the-point' />
+          <Form.Dropdown.Item value='traditional' title='Traditional' />
+          <Form.Dropdown.Item value='researcher' title='Researcher' />
+          <Form.Dropdown.Item value='coach' title='Life and Professional Coach' />
+          <Form.Dropdown.Item value='planner' title='Evaluator and Planner' />
+          <Form.Dropdown.Item value='writer' title='Writer and Writing Guide' />
+        </Form.Dropdown>
+      )}
 
       {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
 
       {[
         'claude-3-7-sonnet-latest',
-        'gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview',
+        'gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview', 'gpt-4o-transcribe',
         'gemini-2.0-flash', 'gemini-2.5-pro-exp-03-25'
       ].includes(selectedModel) && (
           <Form.FilePicker id="attatchmentPaths" />
@@ -207,7 +212,9 @@ export default function ChatForm() {
         <Form.Checkbox id="web" label="Search the Web" defaultValue={false} />
       )}
 
-      <Form.Checkbox id="private" label="Data Privacy" defaultValue={true} />
+      {(selectedAPI === 'openai' && selectedModel !== 'gpt-4o-transcribe') && (
+        <Form.Checkbox id="private" label="Data Privacy" defaultValue={true} />
+      )}
 
     </Form>
   );

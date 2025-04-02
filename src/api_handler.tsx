@@ -11,7 +11,11 @@ import { type StreamPipeline } from "./answer";
 export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
   switch (data.api) {
     case 'openai':
-      await OpenAPI.RunChat(data, streamPipeline);
+      if (data.model !== 'gpt-4o-transcribe') {
+        await OpenAPI.Responses(data, streamPipeline);
+      } else {
+        await OpenAPI.Transcribe(data, streamPipeline);
+      }
       break;
     case 'anthropic':
       await AnthropicAPI(data, streamPipeline);

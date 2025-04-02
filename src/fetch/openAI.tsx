@@ -24,7 +24,7 @@ type Content = string | Array<{
 
 const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
-export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
+export async function Responses(data: Data, streamPipeline: StreamPipeline) {
   // make privacy switch to enable / disable storage at OpenAI
   // get id from the server
   const input: Input = await GenerateInput(data)
@@ -52,6 +52,32 @@ export async function TitleConversation(data: Data) {
     showToast({ title: 'Title couldn\'t be created', style: Toast.Style.Failure })
   }
 }
+
+
+export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
+  const stream = await openai.audio.transcriptions.create({
+    file: fs.createReadStream(data.attachments[0].path),
+    model: "gpt-4o-transcribe",
+    response_format: 'json', //  "text",
+    stream: true,
+  });
+
+  // console.log(transcription.text);
+  // streamPipeline(transcription.text, 'done')
+  for await (const event of stream) {
+    console.log(event);
+    if (event.type === 'transcript.text.delta') {
+      showToast({ title: 'Streaming', style: Toast.Style.Animated })
+      streamPipeline(event.delta, 'streaming')
+    } else if (event.type === 'transcript.text.done') {
+      streamPipeline('', 'done')
+    } else {
+      showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure })
+      console.log('Not planned')
+    }
+  }
+}
+
 
 
 //  Helper Functions  //

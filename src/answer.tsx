@@ -166,7 +166,8 @@ async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 
 function CreateNewEntry(data: Data, newData: Data, push: Function, msgTimestamp?: number) {
   // is this a cached or bookmarked chat?
-  if (msgTimestamp) {
+  const lastTimestamp = data.messages.at(-1)?.timestamp
+  if (msgTimestamp && msgTimestamp !== lastTimestamp) {
     const messageIndex: number = data.messages
       .findLastIndex(msg => msg.timestamp === msgTimestamp) || data.messages.length - 1
     const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
