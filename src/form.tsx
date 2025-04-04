@@ -1,13 +1,15 @@
 import { Form, ActionPanel, Action, useNavigation, Cache as RaycastCache } from '@raycast/api';
 import { useState } from 'react';
 
+import { type Data, type API, type Model, APItoModels } from './utils/types'
+import { reasoningModels, toolSupportModels, attachmentModels, transcriptionModels } from './utils/types';
 import Answer from "./answer";
 import instructionsObject from './enums/instructions.json';
 
 type Values = {
   prompt: string;
-  api: string;
-  model: string;
+  api: API;
+  model: Model;
   private: boolean,
   web: boolean,
   instructions: string;
@@ -17,75 +19,10 @@ type Values = {
   reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
-export type Data = {
-  timestamp: number;
-  // status: 'idle' | 'streaming'
-  messages: Array<{
-    id?: string,
-    timestamp: number,
-    role: 'user' | 'assistant' | 'system',
-    content: string | Array<{  // change this formatting, this is irrelevant for storing purposes
-      type: 'text' | 'file' | 'image' | 'document' | 'input_text' | 'input_file' | 'input_image',
-      source?: object,
-      text?: string,
-      file?: object
-    }>,
-  }>;
-  model: string;
-  api: string;
-  instructions: string;
-  tools?: string;
-  reasoning: 'none' | 'low' | 'medium' | 'high';
-  attachments: Array<{
-    id?: string,
-    status: 'idle' | 'staged' | 'uploaded',
-    name: string,
-    extension: string,
-    path: string,
-    // data?: string,
-  }>;
-  temperature: number;
-  private?: boolean;
-};
-
-
 export default function ChatForm() {
   const { push } = useNavigation();
   const [selectedAPI, setAPI] = useState<API>('openai');
-  const [selectedModel, setModel] = useState<string>('');
-
-  type API = 'openai' | 'deepmind' | 'anthropic' | 'grok' | 'perplexity';
-  type Model = { name: string, code: string };
-
-  const APItoModels: Record<API, Model[]> = {
-    'openai': [
-      { name: 'GPT 4o', code: 'gpt-4o' },
-      { name: 'o3 mini', code: 'o3-mini' },
-      { name: 'o1', code: 'o1' },
-      { name: 'GPT 4.5', code: 'gpt-4.5-preview' },
-      { name: 'GPT 4o Transcribe', code: 'gpt-4o-transcribe' },
-      // { name: 'GPT 4o Search', code: 'gpt-4o-search-preview' },  // no support through responses api
-      // { name: 'GPT 4o Mini', code: 'gpt-4o-mini' },
-    ],
-    'deepmind': [
-      { name: 'Gemini 2.0 Flash', code: 'gemini-2.0-flash' },
-      { name: 'Gemini 2.0 Flash Thinking Experimental', code: 'gemini-2.0-flash-thinking-exp-01-21' },
-      { name: 'Gemini 2.5 Pro', code: 'gemini-2.5-pro-exp-03-25' },
-    ],
-    'anthropic': [
-      { name: 'Claude 3.7 Sonnet', code: 'claude-3-7-sonnet-latest' },
-      { name: 'Claude 3.5 Haiku', code: 'claude-3-5-haiku-latest' },
-    ],
-    'perplexity': [
-      { name: 'Sonar Deep Research', code: 'sonar-deep-research' },
-      { name: 'Sonar Reasoning Pro', code: 'sonar-reasoning-pro' },
-      { name: 'Sonar Pro', code: 'sonar-pro' },
-      { name: 'Sonar', code: 'sonar' },
-    ],
-    'grok': [
-      { name: 'Grok 2', code: 'grok-2-latest' },
-    ],
-  }
+  const [selectedModel, setModel] = useState<Model>('gpt-4o-2024-11-20');
 
   async function handleSubmit(values: Values) {
     var instructions: string = "";
@@ -108,6 +45,7 @@ export default function ChatForm() {
         break;
     }
 
+    // added custom message for responses api (openai)
     const messages: Data["messages"] = values.api === 'openai' ?
       [{ role: 'user', content: [{ type: 'input_text', text: values.prompt }], timestamp: Date.now() }] :
       [{ role: 'user', content: values.prompt, timestamp: Date.now() }]
@@ -162,9 +100,8 @@ export default function ChatForm() {
         </ActionPanel>
       }
     >
-      {selectedModel !== 'gpt-4o-transcribe' && (
-        <Form.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
-      )}
+
+      <Form.TextArea id='prompt' title='Prompt' placeholder='Describe your request here' enableMarkdown={true} />
 
       <Form.Dropdown
         id='api'
@@ -182,14 +119,14 @@ export default function ChatForm() {
       <Form.Dropdown
         id='model'
         title='Model'
-        onChange={(model) => setModel(model)}
+        onChange={(model) => setModel(model as Model)}
       >
-        {APItoModels[selectedAPI].map((model: Model) => (
+        {APItoModels[selectedAPI].map((model) => (
           <Form.Dropdown.Item key={model.code} value={model.code} title={model.name} />
         ))}
       </Form.Dropdown>
 
-      {['claude-3-7-sonnet-latest', 'o1', 'o3-mini'].includes(selectedModel) && (
+      {reasoningModels.includes(selectedModel) && (
         <Form.Dropdown id='reasoning' title='Reasoning Effort' >
           <Form.Dropdown.Item value='none' title='None' />
           <Form.Dropdown.Item value='low' title='Low' />
@@ -198,7 +135,7 @@ export default function ChatForm() {
         </Form.Dropdown>
       )}
 
-      {selectedModel !== 'gpt-4o-transcribe' && (
+      {transcriptionModels.includes(selectedModel) && (
         <Form.Dropdown id='instructions' title='instructions' >
           <Form.Dropdown.Item value='efficient' title='Straight-to-the-point' />
           <Form.Dropdown.Item value='traditional' title='Traditional' />
@@ -211,19 +148,15 @@ export default function ChatForm() {
 
       {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
 
-      {[
-        'claude-3-7-sonnet-latest',
-        'gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview', 'gpt-4o-transcribe',
-        'gemini-2.0-flash', 'gemini-2.5-pro-exp-03-25'
-      ].includes(selectedModel) && (
-          <Form.FilePicker id="attatchmentPaths" />
-        )}
+      {attachmentModels.includes(selectedModel) && (
+        <Form.FilePicker id="attatchmentPaths" />
+      )}
 
-      {['gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview'].includes(selectedModel) && (
+      {toolSupportModels.includes(selectedModel) && (
         <Form.Checkbox id="web" label="Search the Web" defaultValue={false} />
       )}
 
-      {(selectedAPI === 'openai' && selectedModel !== 'gpt-4o-transcribe') && (
+      {(selectedAPI === 'openai' && !reasoningModels.includes(selectedModel)) && (
         <Form.Checkbox id="private" label="Data Privacy" defaultValue={true} />
       )}
 

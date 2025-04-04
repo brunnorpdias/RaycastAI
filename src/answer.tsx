@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { APIHandler } from './api_handler';
 
 type Bookmarks = Array<{ title: string, data: Data }>;
-import { type Data } from "./form";
+import { type Data } from "./utils/types";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: string) => void;
 
@@ -59,33 +59,49 @@ export default function Answer({ data, msgTimestamp }: {
     Bookmark(finalData, false);
   }
 
+
   return (
     <Detail
       markdown={response}
       actions={
         <ActionPanel>
+
           <Action.CopyToClipboard
             title='Copy Response'
-            icon={Icon.Paragraph}
+            icon={Icon.Clipboard}
             content={response}
           />
 
-          <Action
-            title="New Entry"
-            icon={Icon.Plus}
-            onAction={() => {
-              CreateNewEntry(data, newData, push, msgTimestamp)
-            }}
-          />
+          {data.model !== 'gpt-4o-transcribe' && (
+            <Action
+              title="New Entry"
+              icon={Icon.Plus}
+              onAction={() => {
+                CreateNewEntry(data, newData, push, msgTimestamp)
+              }}
+            />
+          )}
 
-          <Action
-            title="Bookmark"
-            icon={Icon.Bookmark}
-            shortcut={{ modifiers: ["cmd"], key: "d" }}
-            onAction={async () => {
-              Bookmark(data, true)
-            }}
-          />
+          {data.model !== 'gpt-4o-transcribe' && (
+            <Action
+              title="Bookmark"
+              icon={Icon.Bookmark}
+              shortcut={{ modifiers: ["cmd"], key: "d" }}
+              onAction={async () => {
+                Bookmark(data, true)
+              }}
+            />
+          )}
+
+          {data.model === 'gpt-4o-transcribe' && (
+            <Action
+              title="Improve Transcript"
+              icon={Icon.Paragraph}
+              onAction={() => {
+                ImproveTranscript(response, push)
+              }}
+            />
+          )}
 
         </ActionPanel>
       }
@@ -203,4 +219,27 @@ async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewDa
   } else {
     showToast({ title: 'Error opening message', style: Toast.Style.Failure })
   }
+}
+
+
+function ImproveTranscript(response: string, push: Function) {
+  const prompt: string = `Analyze the following transcript. Identify the core themes and key points. 
+                          Reorganize and rewrite the content into a coherent narrative. Eliminate 
+                          redundancies, filler words, and tangents. Ensure a smooth flow between ideas, 
+                          presenting the information as a structured piece rather than a fragmented 
+                          conversation/monologue. Maintain the original meaning and the tone, but with 
+                          a clear flow of ideas.\n\n**Transcript**\n${response}`
+
+  const transcriptData: Data = {
+    timestamp: Date.now(),
+    messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+    model: 'gemini-2.5-pro-exp-03-25',
+    api: 'deepmind',
+    reasoning: 'none',
+    instructions: '',
+    temperature: 1,
+    attachments: []
+  }
+
+  push(<Answer data={transcriptData} />)
 }

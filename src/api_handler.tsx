@@ -4,7 +4,7 @@ import * as DeepmindAPI from './fetch/deepmind';
 import * as GrokAPI from './fetch/grok';
 import { PplxAPI } from './fetch/perplexity';
 
-import { type Data } from "./form";
+import { type Data } from "./utils/types";
 import { type StreamPipeline } from "./answer";
 
 

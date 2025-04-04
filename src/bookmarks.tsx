@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import ChatHistory from "./history";
 import { format as DateFormat } from "date-fns";
 
-import { type Data } from "./form";
+import { type Data } from "./utils/types";
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 

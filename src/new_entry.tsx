@@ -1,6 +1,6 @@
 import { Form, ActionPanel, Action, useNavigation, showToast, Toast, Cache as RaycastCache } from "@raycast/api";
 import Answer from './answer';
-import { type Data } from "./form";
+import { type Data } from "./utils/types";
 import { useEffect, useState } from "react";
 
 type Values = {

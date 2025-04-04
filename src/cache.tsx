@@ -4,7 +4,7 @@ import { format as DateFormat } from "date-fns";
 import ChatHistory from "./history";
 import * as OpenAPI from "./fetch/openAI";
 
-import { type Data } from "./form";
+import { type Data } from "./utils/types";
 type DataList = Data[];
 type Bookmark = { title: string, data: Data };
 type Bookmarks = Bookmark[];

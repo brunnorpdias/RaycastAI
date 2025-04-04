@@ -2,7 +2,7 @@ import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@
 import NewEntry from "./new_entry";
 import Answer from "./answer";
 import { useEffect, useState } from "react";
-import { type Data } from "./form";
+import { type Data } from "./utils/types";
 
 export default function ChatHistory({ data }: { data: Data }) {
   const { push } = useNavigation();

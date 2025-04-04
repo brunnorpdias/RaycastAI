@@ -4,9 +4,10 @@ import OpenAI from "openai";
 import fs from 'fs';
 import { API_KEYS } from '../enums/index';
 
-import { type Data } from "../form";
+import { type Data } from "../utils/types";
 import { type StreamPipeline } from "../answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
+import { assert } from "console";
 
 type Input = string | Array<{
   role: 'user' | 'assistant' | 'system',
@@ -56,20 +57,27 @@ export async function TitleConversation(data: Data) {
 
 
 export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
+  const lastMsg = data.messages.at(-1)
+  if (!lastMsg) return
+  const prompt: string = typeof lastMsg.content === 'string' ? lastMsg.content : '';
   const stream = await openai.audio.transcriptions.create({
     file: fs.createReadStream(data.attachments[0].path),
     model: "gpt-4o-transcribe",
+    prompt: prompt,
     response_format: 'json', //  "text",
     stream: true,
   });
 
   // console.log(transcription.text);
   // streamPipeline(transcription.text, 'done')
+  let isStreaming = false;
   for await (const event of stream) {
-    console.log(event);
     if (event.type === 'transcript.text.delta') {
-      showToast({ title: 'Streaming', style: Toast.Style.Animated })
       streamPipeline(event.delta, 'streaming')
+      if (!isStreaming) {
+        isStreaming = true;
+        showToast({ title: 'Streaming', style: Toast.Style.Animated })
+      }
     } else if (event.type === 'transcript.text.done') {
       streamPipeline('', 'done')
     } else {
@@ -157,9 +165,12 @@ async function AddFiles(data: Data, input: Input) {
     }
   }
 
-  const lastMessage = data.messages.at(-1);
-  if (lastMessage) {
-    lastMessage.content = content;  // update local data with new content
+  if (!data.private) {
+    const lastMessage = data.messages.at(-1);
+    // use assert instead
+    if (lastMessage) {
+      lastMessage.content = content;  // update local data with new content
+    }
   }
 
   let inputWithFiles: Input;
@@ -173,6 +184,7 @@ async function AddFiles(data: Data, input: Input) {
       { role: 'user', content: content }
     ]
   }
+
   return inputWithFiles
 }
 
@@ -198,6 +210,7 @@ async function ResponsesObject(data: Data, input: Input) {
 
 
 async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: Function, data: Data) {
+  console.log(JSON.stringify(responsesObject))
   const stream = await openai.responses.create(responsesObject);
   let id: string = '';
   for await (const event of stream) {

@@ -6,7 +6,7 @@ import fs from 'fs';
 import { API_KEYS } from '../enums/index';
 
 import { ChatCompletionChunk } from "openai/resources";
-import { type Data } from "../form";
+import { type Data } from "../utils/types";
 import { type StreamPipeline } from "../answer";
 
 
