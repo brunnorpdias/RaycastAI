@@ -1,7 +1,7 @@
 import { showToast, Toast } from "@raycast/api";
 import OpenAI from "openai";
 
-import { API_KEYS } from '../enums/index';
+import { API_KEYS } from '../enums/api_keys';
 
 import { ChatCompletionChunk } from "openai/resources";
 import { type Data } from "../utils/types";

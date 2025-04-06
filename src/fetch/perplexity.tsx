@@ -2,9 +2,9 @@ import fetch from 'node-fetch';
 import readline from 'readline';
 
 import { Readable } from 'stream';
-import { API_KEYS } from '../enums/index';
+import { API_KEYS } from '../enums/api_keys';
 
-import { type Data } from "../form";
+import { type Data } from "../utils/types";
 import { type StreamPipeline } from "../answer";
 
 type Response = {

@@ -2,6 +2,7 @@ import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@
 // import ChatForm from './chat_form';
 import Bookmarks from "./bookmarks";
 import Cache from "./cache";
+import SavedChats from "./saved_chats";
 
 
 // export default function Index() {
@@ -37,7 +38,8 @@ export default function Options() {
               title="Open Cache"
               icon={Icon.Sidebar}
               onAction={() => {
-                push(<Cache />)
+                // push(<Cache />)
+                push(<SavedChats cacheOrBookmarks={'cache'} />)
               }}
             />
           </ActionPanel>
@@ -54,7 +56,8 @@ export default function Options() {
               title="Open Bookmarks"
               icon={Icon.Bookmark}
               onAction={() => {
-                push(<Bookmarks />)
+                // push(<Bookmarks />)
+                push(<SavedChats cacheOrBookmarks={'bookmarks'} />)
               }}
             />
           </ActionPanel>

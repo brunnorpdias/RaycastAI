@@ -12,7 +12,7 @@ type Values = {
   model: Model;
   private: boolean,
   web: boolean,
-  instructions: string;
+  instructions: 'traditional' | 'concise' | 'socratic';
   temperature: string;
   stream: boolean;
   attatchmentPaths: [string];
@@ -22,26 +22,21 @@ type Values = {
 export default function ChatForm() {
   const { push } = useNavigation();
   const [selectedAPI, setAPI] = useState<API>('openai');
-  const [selectedModel, setModel] = useState<Model>('gpt-4o-2024-11-20');
+  const [selectedModel, setModel] = useState<Model>('chatgpt-4o-latest');
 
   async function handleSubmit(values: Values) {
-    var instructions: string = "";
+    let instructions: string;
+    const personalInfo: string = instructionsObject.personal;
 
     switch (values.instructions) {
-      case 'efficient':
-        instructions = instructionsObject.efficient;
+      case 'traditional':
+        instructions = instructionsObject.traditional;
         break;
-      case 'researcher':
-        instructions = instructionsObject.researcher;
+      case 'concise':
+        instructions = instructionsObject.concise;
         break;
-      case 'coach':
-        instructions = instructionsObject.coach;
-        break;
-      case 'planner':
-        instructions = instructionsObject.planner;
-        break;
-      case 'writer':
-        instructions = instructionsObject.writer;
+      case 'socratic':
+        instructions = instructionsObject.socratic;
         break;
     }
 
@@ -54,7 +49,7 @@ export default function ChatForm() {
       timestamp: Date.now(),
       model: values.model,
       api: values.api,
-      instructions: instructions || '',
+      instructions: values.private ? `${personalInfo} ${instructions}` : instructions,
       messages: messages,
       temperature: 1, // Number(values.temperature),
       tools: values.web ? 'web' : undefined,
@@ -112,6 +107,7 @@ export default function ChatForm() {
         <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
         <Form.Dropdown.Item value='deepmind' title='Deepmind' icon='deepmind-icon.png' />
         <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
+        <Form.Dropdown.Item value='openrouter' title='OpenRouter' icon='open_router-logo.png' />
         <Form.Dropdown.Item value='grok' title='Grok' icon='grok-logo-icon.png' />
         <Form.Dropdown.Item value='perplexity' title='Perplexity' icon='perplexity-icon.png' />
       </Form.Dropdown>
@@ -135,14 +131,11 @@ export default function ChatForm() {
         </Form.Dropdown>
       )}
 
-      {transcriptionModels.includes(selectedModel) && (
+      {!transcriptionModels.includes(selectedModel) && (
         <Form.Dropdown id='instructions' title='instructions' >
-          <Form.Dropdown.Item value='efficient' title='Straight-to-the-point' />
           <Form.Dropdown.Item value='traditional' title='Traditional' />
-          <Form.Dropdown.Item value='researcher' title='Researcher' />
-          <Form.Dropdown.Item value='coach' title='Life and Professional Coach' />
-          <Form.Dropdown.Item value='planner' title='Evaluator and Planner' />
-          <Form.Dropdown.Item value='writer' title='Writer and Writing Guide' />
+          <Form.Dropdown.Item value='concise' title='Concise' />
+          <Form.Dropdown.Item value='socratic' title='Socratic' />
         </Form.Dropdown>
       )}
 

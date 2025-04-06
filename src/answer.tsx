@@ -2,7 +2,7 @@ import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as 
 import NewEntry from './new_entry';
 import * as OpenAPI from './fetch/openAI';
 import { useEffect, useRef, useState } from 'react';
-import { APIHandler } from './api_handler';
+import { APIHandler } from './fetch/api_handler';
 
 type Bookmarks = Array<{ title: string, data: Data }>;
 import { type Data } from "./utils/types";
@@ -233,8 +233,8 @@ function ImproveTranscript(response: string, push: Function) {
   const transcriptData: Data = {
     timestamp: Date.now(),
     messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
-    model: 'gemini-2.5-pro-exp-03-25',
-    api: 'deepmind',
+    model: 'chatgpt-4o-latest',
+    api: 'openai',
     reasoning: 'none',
     instructions: '',
     temperature: 1,

@@ -28,7 +28,7 @@ export default function Cache() {
   if (cache && Object.values(cache)) {
     return (
       <RaycastList>
-        {Object.values(cache)
+        {cache
           .filter(item => item.messages && item.messages.length > 0)
           .sort((a, b) => {
             const aLastMsgTime = a.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;

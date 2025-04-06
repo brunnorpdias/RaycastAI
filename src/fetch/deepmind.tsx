@@ -3,7 +3,7 @@ import OpenAI from "openai";
 import { GoogleGenAI } from "@google/genai";
 import fs from 'fs';
 
-import { API_KEYS } from '../enums/index';
+import { API_KEYS } from '../enums/api_keys';
 
 import { ChatCompletionChunk } from "openai/resources";
 import { type Data } from "../utils/types";

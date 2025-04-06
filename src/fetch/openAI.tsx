@@ -2,12 +2,11 @@ import { showToast, Toast } from "@raycast/api";
 
 import OpenAI from "openai";
 import fs from 'fs';
-import { API_KEYS } from '../enums/index';
+import { API_KEYS } from '../enums/api_keys';
 
 import { type Data } from "../utils/types";
 import { type StreamPipeline } from "../answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
-import { assert } from "console";
 
 type Input = string | Array<{
   role: 'user' | 'assistant' | 'system',
@@ -68,8 +67,6 @@ export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
     stream: true,
   });
 
-  // console.log(transcription.text);
-  // streamPipeline(transcription.text, 'done')
   let isStreaming = false;
   for await (const event of stream) {
     if (event.type === 'transcript.text.delta') {
@@ -118,7 +115,7 @@ async function AddFiles(data: Data, input: Input) {
 
   if (
     data.attachments?.length === 0 ||
-    !['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model) ||
+    // !['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model) ||  // not necessary, form already verifies
     !lastInput || !lastInputContent || !attachmentsQueue
   ) {
     return input;
@@ -148,7 +145,6 @@ async function AddFiles(data: Data, input: Input) {
         image_url: !isPDF ? `data:image/${attachment.extension};base64,${base64String}` : undefined,
       })
       attachment.status = 'staged';
-      // attachment.data = base64String;
     } else {
       showToast({ title: 'Uploading file', style: Toast.Style.Animated })
       const file = await openai.files.create({
@@ -165,7 +161,7 @@ async function AddFiles(data: Data, input: Input) {
     }
   }
 
-  if (!data.private) {
+  if (data.private) {
     const lastMessage = data.messages.at(-1);
     // use assert instead
     if (lastMessage) {
@@ -198,7 +194,7 @@ async function ResponsesObject(data: Data, input: Input) {
     model: data.model,
     tools: data.tools === 'web' ? [{ type: 'web_search' }] : undefined,
     instructions: data.instructions.length > 0 ? data.instructions : undefined,
-    reasoning: ['o1', 'o3-mini'].includes(data.model) && data.reasoning ? { effort: data.reasoning } : undefined,
+    reasoning: data.reasoning !== 'none' ? { effort: data.reasoning } : undefined,
     store: !data.private ? true : false,
     previous_response_id: !data.private ? previousResponseId : undefined,
     // tools: [],
@@ -210,7 +206,6 @@ async function ResponsesObject(data: Data, input: Input) {
 
 
 async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: Function, data: Data) {
-  console.log(JSON.stringify(responsesObject))
   const stream = await openai.responses.create(responsesObject);
   let id: string = '';
   for await (const event of stream) {
@@ -223,6 +218,7 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
       streamPipeline(event.delta, 'streaming')
     } else if (event.type === 'response.completed') {
       streamPipeline('', 'done', id)
+      // console.log(`id: ${id}`)
       data.attachments.map(att => att.status === 'staged' ? att.status = 'uploaded' : att)
       break;
     }

@@ -2,7 +2,7 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import { showToast, Toast } from "@raycast/api";
 import * as fs from 'fs/promises';
 
-import { API_KEYS } from '../enums/index';
+import { API_KEYS } from '../enums/api_keys';
 
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { type StreamPipeline } from "../answer";
