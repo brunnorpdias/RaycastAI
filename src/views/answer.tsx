@@ -1,11 +1,11 @@
 import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon, LocalStorage } from "@raycast/api";
 import NewEntry from './new_entry';
-import * as OpenAPI from './fetch/openAI';
+import * as OpenAPI from '../fetch/openAI';
 import { useEffect, useRef, useState } from 'react';
-import { APIHandler } from './fetch/api_handler';
+import { APIHandler } from '../utils/api_handler';
 
 type Bookmarks = Array<{ title: string, data: Data }>;
-import { type Data } from "./utils/types";
+import { type Data } from "../utils/types";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: string) => void;
 
@@ -116,13 +116,13 @@ async function NewData(data: Data, response: string, msgId?: string) {
   let assistantMessage: Data["messages"][0];
   if (userMessage && typeof userMessage.content === 'string') {
     assistantMessage = {
-      role: 'assistant',
+      role: data.api !== 'deepmind' ? 'assistant' : 'model',
       content: response,
       timestamp: Date.now(),
     };
   } else {
     assistantMessage = {
-      role: 'assistant',
+      role: data.api !== 'deepmind' ? 'assistant' : 'model',
       content: [{ type: 'text', text: response }],
       timestamp: Date.now(),
     };

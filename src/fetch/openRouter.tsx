@@ -1,5 +1,5 @@
 import { type Data } from "../utils/types";
-import { type StreamPipeline } from "../answer";
+import { type StreamPipeline } from "../views/answer";
 
 import { API_KEYS } from '../enums/api_keys';
 import { showToast, Toast } from "@raycast/api";

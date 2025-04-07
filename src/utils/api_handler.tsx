@@ -1,12 +1,10 @@
-import * as OpenAPI from './openAI';
-import { AnthropicAPI } from './anthropic';
-import * as DeepmindAPI from './deepmind';
-import { OpenRouter } from './openRouter';
-import * as GrokAPI from './grok';
-import { PplxAPI } from './perplexity';
+import * as OpenAPI from '../fetch/openAI';
+import { AnthropicAPI } from '../fetch/anthropic';
+import * as DeepmindAPI from '../fetch/deepmind';
+import { OpenRouter } from '../fetch/openRouter';
 
 import { type Data } from "../utils/types";
-import { type StreamPipeline } from "../answer";
+import { type StreamPipeline } from "../views/answer";
 
 
 export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
@@ -22,17 +20,10 @@ export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
       await AnthropicAPI(data, streamPipeline);
       break;
     case 'deepmind':
-      // await DeepmindAPI.RunOpenAI(data, streamPipeline);
       await DeepmindAPI.RunGoogle(data, streamPipeline);
       break;
     case 'openrouter':
       await OpenRouter(data, streamPipeline);
-      break;
-    case 'grok':
-      await GrokAPI.RunChat(data, streamPipeline);
-      break;
-    case 'perplexity':
-      await PplxAPI(data, streamPipeline);
       break;
   }
 }

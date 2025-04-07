@@ -5,7 +5,7 @@ import * as fs from 'fs/promises';
 import { API_KEYS } from '../enums/api_keys';
 
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
-import { type StreamPipeline } from "../answer";
+import { type StreamPipeline } from "../views/answer";
 import { type Data } from "../utils/types";
 
 type Content = Data["messages"][0]["content"]

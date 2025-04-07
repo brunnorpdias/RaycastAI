@@ -19,19 +19,12 @@ export const APItoModels = {
     { name: 'Claude 3.5 Haiku', code: 'claude-3-5-haiku-latest' },
   ],
   'openrouter': [
-    { name: 'GPT 4o', code: 'openai/chatgpt-4o-latest' },
-    { name: 'Gemini 2.5 Pro', code: 'google/gemini-2.5-pro-preview-03-25' },
-    { name: 'Claude 3.7 Sonnet', code: 'anthropic/claude-3.7-sonnet' },
     { name: 'Gemini 2.0 Flash', code: 'google/gemini-2.0-flash-001' },
-  ],
-  'perplexity': [
-    { name: 'Sonar Deep Research', code: 'sonar-deep-research' },
-    { name: 'Sonar Reasoning Pro', code: 'sonar-reasoning-pro' },
-    { name: 'Sonar Pro', code: 'sonar-pro' },
-    { name: 'Sonar', code: 'sonar' },
-  ],
-  'grok': [
-    { name: 'Grok 2', code: 'grok-2-latest' },
+    { name: 'Gemini 2.5 Pro', code: 'google/gemini-2.5-pro-preview-03-25' },
+    { name: 'GPT 4o', code: 'openai/chatgpt-4o-latest' },
+    { name: 'Claude 3.7 Sonnet', code: 'anthropic/claude-3.7-sonnet' },
+    { name: 'Perplexity Sonar Pro', code: 'perplexity/sonar-reasoning-pro' },
+    { name: 'Sonar Deep Research', code: 'perplexity/sonar-deep-research' },
   ],
 } as const;
 
@@ -51,13 +44,14 @@ export type Data = {
   messages: Array<{
     id?: string,
     timestamp: number,
-    role: 'user' | 'assistant' | 'system',
+    role: 'user' | 'assistant' | 'system' | 'model',
     content: string | Array<{  // change this formatting, this is irrelevant for storing purposes
       type: 'text' | 'file' | 'image' | 'document' | 'input_text' | 'input_file' | 'input_image',
       source?: object,
       text?: string,
       file?: object
     }>,
+    fileData?: Array<{ fileUri: string, mimeType: 'application/pdf' }>
   }>;
   model: Model;
   api: API;

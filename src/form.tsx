@@ -3,7 +3,7 @@ import { useState } from 'react';
 
 import { type Data, type API, type Model, APItoModels } from './utils/types'
 import { reasoningModels, toolSupportModels, attachmentModels, transcriptionModels } from './utils/types';
-import Answer from "./answer";
+import Answer from "./views/answer";
 import instructionsObject from './enums/instructions.json';
 
 type Values = {
@@ -25,18 +25,18 @@ export default function ChatForm() {
   const [selectedModel, setModel] = useState<Model>('chatgpt-4o-latest');
 
   async function handleSubmit(values: Values) {
-    let instructions: string;
+    let instructions: string = instructionsObject.technical;
     const personalInfo: string = instructionsObject.personal;
 
     switch (values.instructions) {
       case 'traditional':
-        instructions = instructionsObject.traditional;
+        instructions += instructionsObject.traditional;
         break;
       case 'concise':
-        instructions = instructionsObject.concise;
+        instructions += instructionsObject.concise;
         break;
       case 'socratic':
-        instructions = instructionsObject.socratic;
+        instructions += instructionsObject.socratic;
         break;
     }
 
@@ -49,7 +49,7 @@ export default function ChatForm() {
       timestamp: Date.now(),
       model: values.model,
       api: values.api,
-      instructions: values.private ? `${personalInfo} ${instructions}` : instructions,
+      instructions: values.private ? instructions : `${personalInfo} ${instructions}`,
       messages: messages,
       temperature: 1, // Number(values.temperature),
       tools: values.web ? 'web' : undefined,
@@ -149,9 +149,7 @@ export default function ChatForm() {
         <Form.Checkbox id="web" label="Search the Web" defaultValue={false} />
       )}
 
-      {(selectedAPI === 'openai' && !reasoningModels.includes(selectedModel)) && (
-        <Form.Checkbox id="private" label="Data Privacy" defaultValue={true} />
-      )}
+      <Form.Checkbox id="private" label="Data Privacy" defaultValue={false} />
 
     </Form>
   );

@@ -1,25 +1,23 @@
-import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation, showToast, Toast } from "@raycast/api";
+import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
 import ChatHistory from "./history";
-import * as OpenAPI from "./fetch/openAI";
 
-import { type Data } from "./utils/types";
+import { type Data } from "../utils/types";
 type Bookmark = { title: string, data: Data };
+type ListItem = Data & { summary?: string };
 
 const apiToIcon = {
   'openai': { name: 'OpenAI', icon: '../assets/openai-logo.svg' },
   'deepmind': { name: 'Deep Mind', icon: '../assets/deepmind-icon.png' },
   'anthropic': { name: 'Anthropic', icon: '../assets/anthropic-icon.png' },
   'openrouter': { name: 'OpenRouter', icon: '../assets/open_router-logo.png' },
-  'perplexity': { name: 'Perplexity', icon: '../assets/perplexity-icon.png' },
-  'grok': { name: 'Grok', icon: '../assets/grok-logo-icon.png' },
 }
 
 
 export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'cache' | 'bookmarks' }) {
   const { push } = useNavigation();
-  const [dataList, setDataList] = useState<Data[]>();
+  const [listItem, setListItem] = useState<ListItem[]>();
 
   useEffect(() => {
     loadData();
@@ -29,36 +27,39 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
     if (cacheOrBookmarks === 'cache') {
       const raycastCache = new RaycastCache();
       const stringCache = raycastCache.get('cachedData');
-      const cachedData: Data[] = stringCache ? JSON.parse(stringCache) : [];
-      setDataList(cachedData);
+      const cachedData: ListItem[] = stringCache ? JSON.parse(stringCache) : [];
+      setListItem(cachedData);
     } else {
       const stringBookmarks = await LocalStorage.getItem('bookmarks') as string;
-      const bookmarksData = stringBookmarks ? JSON.parse(stringBookmarks) : [];
-      const dataList: Data[] = bookmarksData.map((item: Bookmark) => item.data)
-      setDataList(dataList);
+      const bookmarksData: Bookmark[] = stringBookmarks ? JSON.parse(stringBookmarks) : [];
+      const dataList: ListItem[] = bookmarksData.map((bookmark: Bookmark) => ({
+        ...bookmark.data,
+        summary: bookmark.title
+      }))
+      setListItem(dataList);
     }
   }
 
 
-  if (dataList) {
+  if (listItem) {
     return (
       <RaycastList isShowingDetail>
-        {dataList
+        {listItem
           .filter(item => item.messages && item.messages.length > 0)
           .sort((a, b) => {
             const aLastMsgTime = a.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
             const bLastMsgTime = b.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
             return bLastMsgTime - aLastMsgTime;
           })
-          .map((data: Data, index) => (
+          .map((data: ListItem) => (
 
             <RaycastList.Item
               key={`${data.timestamp}`}
-              title={`${//
+              title={
                 cacheOrBookmarks === 'cache' ?
-                  typeof data.messages.at(0)?.content === 'string' ? data.messages[0].content : data.messages.at(0)?.content.at(0)?.text || '' :
-                  ''
-                }`}
+                  Array.isArray(data.messages[0].content) ? data.messages[0].content[0].text || 'Empty array...' : data.messages[0].content :
+                  data.summary || 'No summary...'
+              }
               detail={
                 <RaycastList.Item.Detail
                   markdown={
@@ -71,7 +72,12 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                       <RaycastList.Item.Detail.Metadata.Label title="Provider" text={apiToIcon[data.api].name} icon={apiToIcon[data.api].icon} />
                       <RaycastList.Item.Detail.Metadata.Label title="Model" text={data.model} />
                       <RaycastList.Item.Detail.Metadata.Label title="Date" text={DateFormat(data.timestamp, 'HH:mm:ss dd/MM/yy')} />
-                      <RaycastList.Item.Detail.Metadata.Label title="Attachments" text={data.attachments?.map(att => att.name).join(', ')} />
+                      {cacheOrBookmarks === 'bookmarks' && data.summary && (
+                        <RaycastList.Item.Detail.Metadata.Label title="Summary" text={data.summary} />
+                      )}
+                      {data.attachments && data.attachments.length > 0 && (
+                        <RaycastList.Item.Detail.Metadata.Label title="Attachments" text={data.attachments?.map(att => att.name).join(', ')} />
+                      )}
                     </RaycastList.Item.Detail.Metadata>
                   }
                 />

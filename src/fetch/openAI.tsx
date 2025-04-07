@@ -5,7 +5,7 @@ import fs from 'fs';
 import { API_KEYS } from '../enums/api_keys';
 
 import { type Data } from "../utils/types";
-import { type StreamPipeline } from "../answer";
+import { type StreamPipeline } from "../views/answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
 type Input = string | Array<{
@@ -89,17 +89,17 @@ export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
 //  Helper Functions  //
 async function GenerateInput(data: Data) {
   let input: Input;
-  if (data.private) {
+  if (!data.private) {
     input = data.messages
-      .map(({ id, timestamp, ...msg }) => {
+      .map(({ id, timestamp, fileData, ...msg }) => {
         return {
           ...msg,
           content: typeof msg.content === 'string' ?
             msg.content :
-            msg.content
-              .filter(item => ['input_text', 'input_file', 'input_image'].includes(item.type)) as Content
+            msg.content.filter(item => ['input_text', 'input_file', 'input_image'].includes(item.type)) as Content
         }
       })
+      .filter(msg => msg.role === 'user' || msg.role === 'assistant' || msg.role === 'system') as Input
   } else {
     const lastMsgUser = data.messages.filter(msg => msg.role === 'user').at(-1)
     input = typeof lastMsgUser?.content === 'string' ? lastMsgUser.content : lastMsgUser?.content.at(-1)?.text || '';
