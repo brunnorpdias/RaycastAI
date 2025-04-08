@@ -1,9 +1,10 @@
-import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation } from "@raycast/api";
+import { Action, ActionPanel, Icon, List as RaycastList, Cache as RaycastCache, LocalStorage, useNavigation, showToast, Toast } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { format as DateFormat } from "date-fns";
 import ChatHistory from "./history";
 
 import { type Data } from "../utils/types";
+import { Bookmark } from "../utils/functions";
 type Bookmark = { title: string, data: Data };
 type ListItem = Data & { summary?: string };
 
@@ -20,10 +21,10 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
   const [listItem, setListItem] = useState<ListItem[]>();
 
   useEffect(() => {
-    loadData();
+    LoadData();
   }, [cacheOrBookmarks]);
 
-  async function loadData() {
+  async function LoadData() {
     if (cacheOrBookmarks === 'cache') {
       const raycastCache = new RaycastCache();
       const stringCache = raycastCache.get('cachedData');
@@ -47,8 +48,8 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
         {listItem
           .filter(item => item.messages && item.messages.length > 0)
           .sort((a, b) => {
-            const aLastMsgTime = a.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
-            const bLastMsgTime = b.messages.sort(msg => msg.timestamp).at(-1)?.timestamp || 0;
+            const aLastMsgTime = a.messages.map(msg => msg.timestamp).at(-1) || 0;
+            const bLastMsgTime = b.messages.map(msg => msg.timestamp).at(-1) || 0;
             return bLastMsgTime - aLastMsgTime;
           })
           .map((data: ListItem) => (
@@ -64,6 +65,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                 <RaycastList.Item.Detail
                   markdown={
                     data.messages
+                      .slice(0, 2)  // select only the first two (better performance)
                       .map(msg => typeof msg.content === 'string' ? msg.content : msg.content.at(0)?.text || '')
                       .join(`\n\r---\n\r---\n\r`)
                   }
@@ -93,48 +95,49 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                     }}
                   />
 
+                  <Action.CopyToClipboard
+                    title="Copy Data"
+                    icon={Icon.CopyClipboard}
+                    shortcut={{ modifiers: ["cmd"], key: "c" }}
+                    content={JSON.stringify(data)}
+                  // onCopy={() => JSON.stringify(data)}
+                  />
+
+                  {cacheOrBookmarks === 'cache' && (
+                    <Action
+                      title="Bookmark"
+                      icon={Icon.Bookmark}
+                      shortcut={{ modifiers: ["cmd"], key: "d" }}
+                      onAction={async () => {
+                        Bookmark(data, true)
+                      }}
+                    />
+                  )}
+
                   <Action
                     title="Delete Item"
                     icon={Icon.Trash}
                     shortcut={{ modifiers: ["cmd"], key: "backspace" }}
-                    onAction={() => {
-                      // const deleteID = data.timestamp;
-                      // const newCache = cache.filter(messages => messages.timestamp !== deleteID);
-                      // setCache(newCache);
-                      // const raycastCache = new RaycastCache();
-                      // raycastCache.set('cachedData', JSON.stringify(newCache))
+                    onAction={async () => {
+                      const deleteID = data.timestamp;
+                      if (cacheOrBookmarks === 'cache') {
+                        const raycastCache = new RaycastCache();
+                        const cachedString: string | undefined = raycastCache.get('cachedData');
+                        const cache: Data[] = cachedString ? JSON.parse(cachedString) : []
+                        const newCache = cache.filter(messages => messages.timestamp !== deleteID);
+                        raycastCache.set('cachedData', JSON.stringify(newCache))
+                        showToast({ title: 'Deleted', style: Toast.Style.Success })
+                      } else if (cacheOrBookmarks === 'bookmarks') {
+                        const stringBookmarks = await LocalStorage.getItem('bookmarks');
+                        if (typeof stringBookmarks !== 'string') return;
+                        const bookmarks: Bookmark[] = JSON.parse(stringBookmarks)
+                        const newBookmarks = bookmarks.filter(bookmark => bookmark.data.timestamp !== deleteID)
+                        LocalStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
+                        showToast({ title: 'Deleted', style: Toast.Style.Success })
+                      }
+                      LoadData()
                     }}
                   />
-
-                  {/* <Action */}
-                  {/*   title="Bookmark" */}
-                  {/*   icon={Icon.Bookmark} */}
-                  {/*   shortcut={{ modifiers: ["cmd"], key: "d" }} */}
-                  {/*   onAction={async () => { */}
-                  {/*     const title = await OpenAPI.TitleConversation(data); */}
-                  {/*     let newBookmark: Bookmark; */}
-                  {/*     if (title) { */}
-                  {/*       newBookmark = { title: title, data: data }; */}
-                  {/*     } else { */}
-                  {/*       showToast({ title: 'Could not create a title to the conversation', style: Toast.Style.Failure }) */}
-                  {/*       return */}
-                  {/*     } */}
-                  {/*     const bookmarksString = await LocalStorage.getItem("bookmarks") */}
-                  {/*     let newBookmarks: Bookmarks; */}
-                  {/*     if (typeof (bookmarksString) == 'string') { */}
-                  {/*       const bookmarks: Bookmarks = JSON.parse(bookmarksString) */}
-                  {/*       const filteredBookmarks = bookmarks.filter(bm => bm.data.timestamp !== data.timestamp) */}
-                  {/*       newBookmarks = [...filteredBookmarks, newBookmark] */}
-                  {/*     } else { */}
-                  {/*       newBookmarks = [newBookmark] */}
-                  {/*     } */}
-                  {/*     await LocalStorage.setItem( */}
-                  {/*       'bookmarks', */}
-                  {/*       JSON.stringify(newBookmarks) */}
-                  {/*     ) */}
-                  {/*     showToast({ title: 'Bookmarked' }); */}
-                  {/*   }} */}
-                  {/* /> */}
 
                 </ActionPanel>
               }

@@ -217,6 +217,7 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
     } else if (event.type === 'response.output_text.delta') {
       streamPipeline(event.delta, 'streaming')
     } else if (event.type === 'response.completed') {
+      // event.response.usage?.total_tokens
       streamPipeline('', 'done', id)
       // console.log(`id: ${id}`)
       data.attachments.map(att => att.status === 'staged' ? att.status = 'uploaded' : att)

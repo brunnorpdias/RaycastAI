@@ -66,7 +66,8 @@ export default function ChatHistory({ data }: { data: Data }) {
                   <Action.CopyToClipboard
                     title="Copy"
                     icon={Icon.CopyClipboard}
-                    content={message.content ? String(message.content) : "Not a string"}
+                    content={typeof message.content === 'string' ? message.content : message.content.at(0)?.text || "Not a string"}
+                    shortcut={{ modifiers: ['cmd'], key: 'c' }}
                   />
 
                 </ActionPanel>

@@ -7,22 +7,6 @@ export default function Saved() {
   return (
     // Try to remove the search bar
     <RaycastList filtering={false} >
-      {/* <RaycastList.Item */}
-      {/*   title={"Chat"} */}
-      {/*   subtitle={"Create a quick chat with different llms"} */}
-      {/*   icon={Icon.Message} */}
-      {/*   actions={ */}
-      {/*     <ActionPanel> */}
-      {/*       <Action */}
-      {/*         title="Open Chat" */}
-      {/*         icon={Icon.Message} */}
-      {/*         onAction={() => { */}
-      {/*           push(<ChatForm />) */}
-      {/*         }} */}
-      {/*       /> */}
-      {/*     </ActionPanel> */}
-      {/*   } */}
-      {/* /> */}
 
       <RaycastList.Item
         title={"Cache"}

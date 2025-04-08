@@ -1,10 +1,10 @@
-import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon, LocalStorage } from "@raycast/api";
+import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon } from "@raycast/api";
 import NewEntry from './new_entry';
-import * as OpenAPI from '../fetch/openAI';
 import { useEffect, useRef, useState } from 'react';
-import { APIHandler } from '../utils/api_handler';
 
-type Bookmarks = Array<{ title: string, data: Data }>;
+import { APIHandler } from '../utils/api_handler';
+import { Bookmark } from "../utils/functions";
+
 import { type Data } from "../utils/types";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: string) => void;
@@ -155,28 +155,6 @@ async function Cache(data: Data) {
     raycastCache.set('cachedData', JSON.stringify(list));
   }
   // showToast({ title: 'Cached', style: Toast.Style.Success });
-}
-
-
-async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
-  const stringBookmarks = await LocalStorage.getItem('bookmarks');
-  if (typeof stringBookmarks !== 'string') return false;
-  const bookmarks: Bookmarks = JSON.parse(stringBookmarks);
-  const bookmarkIndex: number = bookmarks.findIndex(bookmark => bookmark.data.timestamp === data.timestamp);
-
-  if (bookmarkIndex >= 0) {  // bookmark already exists
-    const title = await OpenAPI.TitleConversation(data);
-    if (typeof title !== 'string') return false;
-    bookmarks[bookmarkIndex] = { title: title, data: data };
-    LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    // showToast({ title: 'Bookmark modified', style: Toast.Style.Success })
-  } else if (isManuallyBookmarked) {
-    const title = await OpenAPI.TitleConversation(data);
-    if (typeof title !== 'string') return false;
-    bookmarks.push({ title: title, data: data });
-    LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    showToast({ title: 'Bookmarked', style: Toast.Style.Success })
-  }
 }
 
 
