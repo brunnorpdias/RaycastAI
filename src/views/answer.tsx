@@ -1,11 +1,11 @@
-import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon, LocalStorage } from "@raycast/api";
+import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon } from "@raycast/api";
 import NewEntry from './new_entry';
-import * as OpenAPI from './fetch/openAI';
 import { useEffect, useRef, useState } from 'react';
-import { APIHandler } from './api_handler';
 
-type Bookmarks = Array<{ title: string, data: Data }>;
-import { type Data } from "./form";
+import { APIHandler } from '../utils/api_handler';
+import { Bookmark } from "../utils/functions";
+
+import { type Data } from "../utils/types";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: string) => void;
 
@@ -43,7 +43,7 @@ export default function Answer({ data, msgTimestamp }: {
   const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status, messageId?: string) => {
     setStatus(apiStatus);
     if (apiStatus !== 'reset') {
-      setResponse((prevResponse) => prevResponse + apiResponse);
+      setResponse((prevResponse: string) => prevResponse + apiResponse);
     } else {
       setResponse('')
     }
@@ -59,33 +59,49 @@ export default function Answer({ data, msgTimestamp }: {
     Bookmark(finalData, false);
   }
 
+
   return (
     <Detail
       markdown={response}
       actions={
         <ActionPanel>
+
           <Action.CopyToClipboard
             title='Copy Response'
-            icon={Icon.Paragraph}
+            icon={Icon.Clipboard}
             content={response}
           />
 
-          <Action
-            title="New Entry"
-            icon={Icon.Plus}
-            onAction={() => {
-              CreateNewEntry(data, newData, push, msgTimestamp)
-            }}
-          />
+          {data.model !== 'gpt-4o-transcribe' && (
+            <Action
+              title="New Entry"
+              icon={Icon.Plus}
+              onAction={() => {
+                CreateNewEntry(data, newData, push, msgTimestamp)
+              }}
+            />
+          )}
 
-          <Action
-            title="Bookmark"
-            icon={Icon.Bookmark}
-            shortcut={{ modifiers: ["cmd"], key: "d" }}
-            onAction={async () => {
-              Bookmark(data, true)
-            }}
-          />
+          {data.model !== 'gpt-4o-transcribe' && (
+            <Action
+              title="Bookmark"
+              icon={Icon.Bookmark}
+              shortcut={{ modifiers: ["cmd"], key: "d" }}
+              onAction={async () => {
+                Bookmark(data, true)
+              }}
+            />
+          )}
+
+          {data.model === 'gpt-4o-transcribe' && (
+            <Action
+              title="Improve Transcript"
+              icon={Icon.Paragraph}
+              onAction={() => {
+                ImproveTranscript(response, push)
+              }}
+            />
+          )}
 
         </ActionPanel>
       }
@@ -100,13 +116,13 @@ async function NewData(data: Data, response: string, msgId?: string) {
   let assistantMessage: Data["messages"][0];
   if (userMessage && typeof userMessage.content === 'string') {
     assistantMessage = {
-      role: 'assistant',
+      role: data.api !== 'deepmind' ? 'assistant' : 'model',
       content: response,
       timestamp: Date.now(),
     };
   } else {
     assistantMessage = {
-      role: 'assistant',
+      role: data.api !== 'deepmind' ? 'assistant' : 'model',
       content: [{ type: 'text', text: response }],
       timestamp: Date.now(),
     };
@@ -142,32 +158,10 @@ async function Cache(data: Data) {
 }
 
 
-async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
-  const stringBookmarks = await LocalStorage.getItem('bookmarks');
-  if (typeof stringBookmarks !== 'string') return false;
-  const bookmarks: Bookmarks = JSON.parse(stringBookmarks);
-  const bookmarkIndex: number = bookmarks.findIndex(bookmark => bookmark.data.timestamp === data.timestamp);
-
-  if (bookmarkIndex >= 0) {  // bookmark already exists
-    const title = await OpenAPI.TitleConversation(data);
-    if (typeof title !== 'string') return false;
-    bookmarks[bookmarkIndex] = { title: title, data: data };
-    LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    // showToast({ title: 'Bookmark modified', style: Toast.Style.Success })
-  } else if (isManuallyBookmarked) {
-    const title = await OpenAPI.TitleConversation(data);
-    if (typeof title !== 'string') return false;
-    bookmarks.push({ title: title, data: data });
-    LocalStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    showToast({ title: 'Bookmarked', style: Toast.Style.Success })
-  }
-}
-
-
 function CreateNewEntry(data: Data, newData: Data, push: Function, msgTimestamp?: number) {
   // is this a cached or bookmarked chat?
   const lastTimestamp = data.messages.at(-1)?.timestamp
-  if (msgTimestamp && msgTimestamp === lastTimestamp) {
+  if (msgTimestamp && msgTimestamp !== lastTimestamp) {
     const messageIndex: number = data.messages
       .findLastIndex(msg => msg.timestamp === msgTimestamp) || data.messages.length - 1
     const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
@@ -203,4 +197,27 @@ async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewDa
   } else {
     showToast({ title: 'Error opening message', style: Toast.Style.Failure })
   }
+}
+
+
+function ImproveTranscript(response: string, push: Function) {
+  const prompt: string = `Analyze the following transcript. Identify the core themes and key points. 
+                          Reorganize and rewrite the content into a coherent narrative. Eliminate 
+                          redundancies, filler words, and tangents. Ensure a smooth flow between ideas, 
+                          presenting the information as a structured piece rather than a fragmented 
+                          conversation/monologue. Maintain the original meaning and the tone, but with 
+                          a clear flow of ideas.\n\n**Transcript**\n${response}`
+
+  const transcriptData: Data = {
+    timestamp: Date.now(),
+    messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+    model: 'chatgpt-4o-latest',
+    api: 'openai',
+    reasoning: 'none',
+    instructions: '',
+    temperature: 1,
+    attachments: []
+  }
+
+  push(<Answer data={transcriptData} />)
 }

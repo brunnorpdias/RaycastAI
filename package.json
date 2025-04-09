@@ -32,7 +32,7 @@
     "@anthropic-ai/sdk": "latest",
     "@eslint/config-array": "latest",
     "@google/genai": "latest",
-    "@raycast/api": "^1.93.0",
+    "@raycast/api": "latest",
     "axios": "latest",
     "date-fns": "latest",
     "eventsource": "latest",
@@ -43,7 +43,7 @@
   "devDependencies": {
     "@eslint/js": "latest",
     "@raycast/eslint-config": "latest",
-    "@types/react": "18.2.27",
+    "@types/react": "latest",
     "eslint": "latest",
     "eslint-plugin-react": "latest",
     "globals": "latest",

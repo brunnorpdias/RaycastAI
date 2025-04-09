@@ -2,11 +2,11 @@ import { Anthropic } from '@anthropic-ai/sdk';
 import { showToast, Toast } from "@raycast/api";
 import * as fs from 'fs/promises';
 
-import { API_KEYS } from '../enums/index';
+import { API_KEYS } from '../enums/api_keys';
 
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
-import { type StreamPipeline } from "../answer";
-import { type Data } from "../form";
+import { type StreamPipeline } from "../views/answer";
+import { type Data } from "../utils/types";
 
 type Content = Data["messages"][0]["content"]
 type AnthropicRequest = {
@@ -56,9 +56,10 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
         attachment.status = 'staged';
       }
 
-      const lastMessage = data.messages.at(-1);
-      if (lastMessage) {
-        lastMessage.content = contentArray
+      // update local instance of messages with information
+      let lastMsg: Data["messages"][number] | undefined = data.messages.at(-1)
+      if (lastMsg) {
+        lastMsg.content = contentArray
       }
 
       messages = [{

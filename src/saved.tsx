@@ -1,31 +1,12 @@
 import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@raycast/api";
-// import ChatForm from './chat_form';
-import Bookmarks from "./bookmarks";
-import Cache from "./cache";
+import CacheAndBookmarks from "./views/cache_bookmarks";
 
 
-// export default function Index() {
-export default function Options() {
+export default function Saved() {
   const { push } = useNavigation();
   return (
     // Try to remove the search bar
     <RaycastList filtering={false} >
-      {/* <RaycastList.Item */}
-      {/*   title={"Chat"} */}
-      {/*   subtitle={"Create a quick chat with different llms"} */}
-      {/*   icon={Icon.Message} */}
-      {/*   actions={ */}
-      {/*     <ActionPanel> */}
-      {/*       <Action */}
-      {/*         title="Open Chat" */}
-      {/*         icon={Icon.Message} */}
-      {/*         onAction={() => { */}
-      {/*           push(<ChatForm />) */}
-      {/*         }} */}
-      {/*       /> */}
-      {/*     </ActionPanel> */}
-      {/*   } */}
-      {/* /> */}
 
       <RaycastList.Item
         title={"Cache"}
@@ -37,7 +18,7 @@ export default function Options() {
               title="Open Cache"
               icon={Icon.Sidebar}
               onAction={() => {
-                push(<Cache />)
+                push(<CacheAndBookmarks cacheOrBookmarks={'cache'} />)
               }}
             />
           </ActionPanel>
@@ -54,7 +35,7 @@ export default function Options() {
               title="Open Bookmarks"
               icon={Icon.Bookmark}
               onAction={() => {
-                push(<Bookmarks />)
+                push(<CacheAndBookmarks cacheOrBookmarks={'bookmarks'} />)
               }}
             />
           </ActionPanel>

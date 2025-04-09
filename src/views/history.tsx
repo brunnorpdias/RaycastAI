@@ -2,7 +2,7 @@ import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@
 import NewEntry from "./new_entry";
 import Answer from "./answer";
 import { useEffect, useState } from "react";
-import { type Data } from "./form";
+import { type Data } from "../utils/types";
 
 export default function ChatHistory({ data }: { data: Data }) {
   const { push } = useNavigation();
@@ -42,15 +42,15 @@ export default function ChatHistory({ data }: { data: Data }) {
                     title={message.role === 'user' ? 'Edit' : 'Open Message'}
                     icon={Icon.Text}
                     onAction={() => {
-                      if (message.role === 'assistant') {
+                      if (message.role === 'user') {
+                        push(<NewEntry data={data} promptTimestamp={message.timestamp} />)
+                      } else {
                         // added if statements because of change in formatting of data, not necessary for new users
                         if (message.timestamp) {
                           push(<Answer data={data} msgTimestamp={message.timestamp} />)
                         } else {
                           push(<Answer data={data} msgTimestamp={Number(message.id)} />)
                         }
-                      } else {
-                        push(<NewEntry data={data} promptTimestamp={message.timestamp} />)
                       }
                     }}
                   />
@@ -66,7 +66,8 @@ export default function ChatHistory({ data }: { data: Data }) {
                   <Action.CopyToClipboard
                     title="Copy"
                     icon={Icon.CopyClipboard}
-                    content={message.content ? String(message.content) : "Not a string"}
+                    content={typeof message.content === 'string' ? message.content : message.content.at(0)?.text || "Not a string"}
+                    shortcut={{ modifiers: ['cmd'], key: 'c' }}
                   />
 
                 </ActionPanel>

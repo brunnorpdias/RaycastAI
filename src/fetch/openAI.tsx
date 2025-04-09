@@ -2,10 +2,10 @@ import { showToast, Toast } from "@raycast/api";
 
 import OpenAI from "openai";
 import fs from 'fs';
-import { API_KEYS } from '../enums/index';
+import { API_KEYS } from '../enums/api_keys';
 
-import { type Data } from "../form";
-import { type StreamPipeline } from "../answer";
+import { type Data } from "../utils/types";
+import { type StreamPipeline } from "../views/answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 
 type Input = string | Array<{
@@ -25,7 +25,7 @@ type Content = string | Array<{
 
 const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
-export async function RunChat(data: Data, streamPipeline: StreamPipeline) {
+export async function Responses(data: Data, streamPipeline: StreamPipeline) {
   // make privacy switch to enable / disable storage at OpenAI
   // get id from the server
   const input: Input = await GenerateInput(data)
@@ -55,20 +55,51 @@ export async function TitleConversation(data: Data) {
 }
 
 
+export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
+  const lastMsg = data.messages.at(-1)
+  if (!lastMsg) return
+  const prompt: string = typeof lastMsg.content === 'string' ? lastMsg.content : '';
+  const stream = await openai.audio.transcriptions.create({
+    file: fs.createReadStream(data.attachments[0].path),
+    model: "gpt-4o-transcribe",
+    prompt: prompt,
+    response_format: 'json', //  "text",
+    stream: true,
+  });
+
+  let isStreaming = false;
+  for await (const event of stream) {
+    if (event.type === 'transcript.text.delta') {
+      streamPipeline(event.delta, 'streaming')
+      if (!isStreaming) {
+        isStreaming = true;
+        showToast({ title: 'Streaming', style: Toast.Style.Animated })
+      }
+    } else if (event.type === 'transcript.text.done') {
+      streamPipeline('', 'done')
+    } else {
+      showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure })
+      console.log('Not planned')
+    }
+  }
+}
+
+
+
 //  Helper Functions  //
 async function GenerateInput(data: Data) {
   let input: Input;
-  if (data.private) {
+  if (!data.private) {
     input = data.messages
-      .map(({ id, timestamp, ...msg }) => {
+      .map(({ id, timestamp, fileData, ...msg }) => {
         return {
           ...msg,
           content: typeof msg.content === 'string' ?
             msg.content :
-            msg.content
-              .filter(item => ['input_text', 'input_file', 'input_image'].includes(item.type)) as Content
+            msg.content.filter(item => ['input_text', 'input_file', 'input_image'].includes(item.type)) as Content
         }
       })
+      .filter(msg => msg.role === 'user' || msg.role === 'assistant' || msg.role === 'system') as Input
   } else {
     const lastMsgUser = data.messages.filter(msg => msg.role === 'user').at(-1)
     input = typeof lastMsgUser?.content === 'string' ? lastMsgUser.content : lastMsgUser?.content.at(-1)?.text || '';
@@ -84,7 +115,6 @@ async function AddFiles(data: Data, input: Input) {
 
   if (
     data.attachments?.length === 0 ||
-    !['gpt-4o', 'gpt-4o-mini', 'gpt-4.5-preview', 'o1'].includes(data.model) ||
     !lastInput || !lastInputContent || !attachmentsQueue
   ) {
     return input;
@@ -114,7 +144,6 @@ async function AddFiles(data: Data, input: Input) {
         image_url: !isPDF ? `data:image/${attachment.extension};base64,${base64String}` : undefined,
       })
       attachment.status = 'staged';
-      // attachment.data = base64String;
     } else {
       showToast({ title: 'Uploading file', style: Toast.Style.Animated })
       const file = await openai.files.create({
@@ -131,9 +160,12 @@ async function AddFiles(data: Data, input: Input) {
     }
   }
 
-  const lastMessage = data.messages.at(-1);
-  if (lastMessage) {
-    lastMessage.content = content;  // update local data with new content
+  if (data.private) {
+    const lastMessage = data.messages.at(-1);
+    // use assert instead
+    if (lastMessage) {
+      lastMessage.content = content;  // update local data with new content
+    }
   }
 
   let inputWithFiles: Input;
@@ -147,6 +179,7 @@ async function AddFiles(data: Data, input: Input) {
       { role: 'user', content: content }
     ]
   }
+
   return inputWithFiles
 }
 
@@ -160,7 +193,7 @@ async function ResponsesObject(data: Data, input: Input) {
     model: data.model,
     tools: data.tools === 'web' ? [{ type: 'web_search' }] : undefined,
     instructions: data.instructions.length > 0 ? data.instructions : undefined,
-    reasoning: ['o1', 'o3-mini'].includes(data.model) && data.reasoning ? { effort: data.reasoning } : undefined,
+    reasoning: data.reasoning !== 'none' ? { effort: data.reasoning } : undefined,
     store: !data.private ? true : false,
     previous_response_id: !data.private ? previousResponseId : undefined,
     // tools: [],
@@ -183,7 +216,9 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
     } else if (event.type === 'response.output_text.delta') {
       streamPipeline(event.delta, 'streaming')
     } else if (event.type === 'response.completed') {
+      // event.response.usage?.total_tokens
       streamPipeline('', 'done', id)
+      // console.log(`id: ${id}`)
       data.attachments.map(att => att.status === 'staged' ? att.status = 'uploaded' : att)
       break;
     }
