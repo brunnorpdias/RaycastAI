@@ -2,6 +2,8 @@ import { showToast, Toast } from "@raycast/api";
 
 import OpenAI from "openai";
 import fs from 'fs';
+import path from "path";
+import os from 'os';
 import { API_KEYS } from '../enums/api_keys';
 
 import { type Data } from "../utils/types";
@@ -81,6 +83,27 @@ export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
       showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure })
       console.log('Not planned')
     }
+  }
+}
+
+
+export async function STT(text: string) {
+  const speechFile = path.resolve(os.homedir(), "Downloads", "RaycastAI_speech.wav");
+
+  try {
+    showToast({ title: 'Generating Audio', style: Toast.Style.Animated })
+    const audio = await openai.audio.speech.create({
+      model: "gpt-4o-mini-tts",
+      voice: "alloy",
+      input: text,
+      response_format: "wav"
+      // instructions: "Speak in a cheerful and positive tone.",
+    });
+    const buffer = Buffer.from(await audio.arrayBuffer());
+    await fs.promises.writeFile(speechFile, buffer);
+    if (buffer) showToast({ title: 'Audio is ready', style: Toast.Style.Success })
+  } catch (err) {
+    showToast({ title: 'Error generating audio', style: Toast.Style.Failure })
   }
 }
 

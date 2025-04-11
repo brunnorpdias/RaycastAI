@@ -2,12 +2,15 @@ import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as 
 import NewEntry from './new_entry';
 import { useEffect, useRef, useState } from 'react';
 
+import * as OpenAI from "../fetch/openAI";
+
 import { APIHandler } from '../utils/api_handler';
 import { Bookmark } from "../utils/functions";
 
 import { type Data } from "../utils/types";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: string) => void;
+
 
 
 export default function Answer({ data, msgTimestamp }: {
@@ -102,6 +105,14 @@ export default function Answer({ data, msgTimestamp }: {
               }}
             />
           )}
+
+          <Action
+            title="TTS"
+            icon={Icon.SpeakerOn}
+            onAction={() => {
+              OpenAI.STT(response)
+            }}
+          />
 
         </ActionPanel>
       }

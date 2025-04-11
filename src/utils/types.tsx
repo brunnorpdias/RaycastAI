@@ -29,12 +29,13 @@ export const APItoModels = {
   ],
 } as const;
 
-export const reasoningModels: Model[] = ['o3-mini', 'o1', 'claude-3-7-sonnet-latest'];
-export const transcriptionModels: Model[] = ['gpt-4o-transcribe'];
-export const attachmentModels: Model[] = ['gpt-4.5-preview', 'o1', 'chatgpt-4o-latest', 'gpt-4o',
+export const reasoningModels = ['o3-mini', 'o1', 'claude-3-7-sonnet-latest'];
+export const sttModels = ['gpt-4o-transcribe'];
+export const ttsModels = ['gpt-4o-mini-tts'];
+export const attachmentModels = ['gpt-4.5-preview', 'o1', 'chatgpt-4o-latest', 'gpt-4o',
   'gemini-2.0-flash', 'gemini-2.5-pro-preview-03-25',
   'gemini-2.0-flash-thinking-exp-01-21', 'claude-3-7-sonnet-latest'];
-export const toolSupportModels: Model[] = ['gpt-4o', 'o1', 'gpt-4.5-preview'];
+export const toolSupportModels = ['gpt-4o', 'o1', 'gpt-4.5-preview'];
 
 export type API = keyof typeof APItoModels;
 

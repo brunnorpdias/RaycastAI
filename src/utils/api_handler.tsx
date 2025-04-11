@@ -5,15 +5,16 @@ import { OpenRouter } from '../fetch/openRouter';
 
 import { type Data } from "../utils/types";
 import { type StreamPipeline } from "../views/answer";
+import { sttModels } from '../utils/types';
 
 
 export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
   switch (data.api) {
     case 'openai':
-      if (data.model !== 'gpt-4o-transcribe') {
-        await OpenAPI.Responses(data, streamPipeline);
-      } else {
+      if (sttModels.includes(data.model)) {
         await OpenAPI.Transcribe(data, streamPipeline);
+      } else {
+        await OpenAPI.Responses(data, streamPipeline);
       }
       break;
     case 'anthropic':

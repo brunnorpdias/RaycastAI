@@ -2,9 +2,10 @@ import { Form, ActionPanel, Action, useNavigation, Cache as RaycastCache } from 
 import { useState } from 'react';
 
 import { type Data, type API, type Model, APItoModels } from './utils/types'
-import { reasoningModels, toolSupportModels, attachmentModels, transcriptionModels } from './utils/types';
+import { reasoningModels, toolSupportModels, attachmentModels, sttModels } from './utils/types';
 import Answer from "./views/answer";
 import instructionsObject from './enums/instructions.json';
+import personalObj from './enums/personal_info.json';
 
 type Values = {
   prompt: string;
@@ -12,7 +13,7 @@ type Values = {
   model: Model;
   private: boolean,
   web: boolean,
-  instructions: 'traditional' | 'concise' | 'socratic';
+  instructions: 'traditional' | 'concise' | 'socratic' | 'developer';
   temperature: string;
   stream: boolean;
   attatchmentPaths: [string];
@@ -25,37 +26,41 @@ export default function ChatForm() {
   const [selectedModel, setModel] = useState<Model>('chatgpt-4o-latest');
 
   async function handleSubmit(values: Values) {
-    let instructions: string = instructionsObject.technical;
-    const personalInfo: string = instructionsObject.personal;
-
-    switch (values.instructions) {
-      case 'traditional':
-        instructions += instructionsObject.traditional;
-        break;
-      case 'concise':
-        instructions += instructionsObject.concise;
-        break;
-      case 'socratic':
-        instructions += instructionsObject.socratic;
-        break;
-    }
-
     const messages: Data["messages"] = values.api === 'openai' ?
       [{ role: 'user', content: [{ type: 'input_text', text: values.prompt }], timestamp: Date.now() }] :
       [{ role: 'user', content: values.prompt, timestamp: Date.now() }]
+
+    let instructions: string;
+    switch (values.instructions) {
+      case 'traditional':
+        instructions = instructionsObject.traditional;
+        break;
+      case 'socratic':
+        instructions = instructionsObject.socratic;
+        break;
+      case 'developer':
+        instructions = instructionsObject.developer;
+        break
+      case 'concise':
+        instructions = instructionsObject.concise;
+        break;
+    }
+
+    instructions += ('' + `Always provide the answer of mathematical equations in latex using the delimiters
+                           \\( for inline math and \\[ for block equations. Provide the answers in markdown.`);
+    const personalInfo: string | undefined = personalObj ? personalObj.personal_info : undefined;
 
     const data: Data = {
       timestamp: Date.now(),
       model: values.model,
       api: values.api,
-      instructions: values.private ? instructions : `${personalInfo} ${instructions}`,
+      instructions: values.private ? instructions : `${instructions} ${personalInfo}`,
       messages: messages,
       temperature: 1, // Number(values.temperature),
       tools: values.web ? 'web' : undefined,
       attachments: [],
       reasoning: values.reasoning,
       private: values.private,
-      // status: 'streaming',
     }
 
     if (data.attachments && values.attatchmentPaths && values.attatchmentPaths.length > 0) {
@@ -128,11 +133,12 @@ export default function ChatForm() {
         </Form.Dropdown>
       )}
 
-      {!transcriptionModels.includes(selectedModel) && (
+      {!sttModels.includes(selectedModel) && (
         <Form.Dropdown id='instructions' title='instructions' >
           <Form.Dropdown.Item value='traditional' title='Traditional' />
           <Form.Dropdown.Item value='concise' title='Concise' />
           <Form.Dropdown.Item value='socratic' title='Socratic' />
+          <Form.Dropdown.Item value='developer' title='Developer' />
         </Form.Dropdown>
       )}
 
