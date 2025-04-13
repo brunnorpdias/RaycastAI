@@ -12,7 +12,7 @@ export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
   switch (data.api) {
     case 'openai':
       if (sttModels.includes(data.model)) {
-        await OpenAPI.Transcribe(data, streamPipeline);
+        await OpenAPI.STT(data, streamPipeline);
       } else {
         await OpenAPI.Responses(data, streamPipeline);
       }

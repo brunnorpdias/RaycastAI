@@ -4,7 +4,7 @@ import { format as DateFormat } from "date-fns";
 import ChatHistory from "./history";
 
 import { type Data } from "../utils/types";
-import { Bookmark } from "../utils/functions";
+import * as Functions from "../utils/functions";
 type Bookmark = { title: string, data: Data };
 type ListItem = Data & { summary?: string };
 
@@ -80,6 +80,14 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                       {data.attachments && data.attachments.length > 0 && (
                         <RaycastList.Item.Detail.Metadata.Label title="Attachments" text={data.attachments?.map(att => att.name).join(', ')} />
                       )}
+                      {data.messages.some(msg => msg.tokenCount && msg.tokenCount > 0) && (
+                        <RaycastList.Item.Detail.Metadata.Label title="Token count" text={`${data.messages
+                          .map(msg => msg.tokenCount)
+                          .filter(value => typeof value === 'number')
+                          .reduce((sum, value) => sum + value, 0)
+                          .toLocaleString()
+                          } tokens`} />
+                      )}
                     </RaycastList.Item.Detail.Metadata>
                   }
                 />
@@ -109,7 +117,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                       icon={Icon.Bookmark}
                       shortcut={{ modifiers: ["cmd"], key: "d" }}
                       onAction={async () => {
-                        Bookmark(data, true)
+                        Functions.Bookmark(data, true)
                       }}
                     />
                   )}

@@ -27,7 +27,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
   let max_tokens: number;
   let thinking_budget: number;
-  const inputMessages = data.messages.map(({ timestamp, id, ...rest }) => rest);
+  const inputMessages = data.messages.map(({ timestamp, id, tokenCount, fileData, ...rest }) => rest);
   let messages;
 
   if (data.model === 'claude-3-7-sonnet-latest' && data.attachments && data.attachments.length > 0) {
@@ -115,26 +115,50 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   const stream = client.messages.stream(request as MessageCreateParamsBase)
   let thinking_text = '';  // collect on data later on? cannot be at message to avoid feeding back to the model
   let msgID: string = '';
+  let promptTokens: number | undefined;
+  let responseTokens: number | undefined;
+
   for await (const chunk of stream) {
     if (chunk.type === 'message_start') {
       msgID = chunk.message.id;
+      promptTokens = chunk.message.usage.input_tokens;
     } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'thinking') {
       thinking_started = true
       showToast({ title: 'Thinking...', style: Toast.Style.Animated })
-      streamPipeline('### Thinking...\n```\n', 'streaming')
+      streamPipeline({
+        apiResponse: '### Thinking...\n```\n',
+        apiStatus: 'streaming'
+      })
     } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'thinking_delta') {
       thinking_text += chunk.delta.thinking;
-      streamPipeline(chunk.delta.thinking, 'streaming')
+      streamPipeline({
+        apiResponse: chunk.delta.thinking,
+        apiStatus: 'streaming'
+      })
     } else if (chunk.type === 'content_block_start' && chunk.content_block.type === 'text') {
       if (thinking_started) {
-        streamPipeline('\n```\n\n---\n\n', 'streaming')
-        streamPipeline('', 'reset')
+        // streamPipeline('\n```\n\n---\n\n', 'streaming')
+        streamPipeline({
+          apiResponse: '',
+          apiStatus: 'reset'
+        })
       }
       showToast({ title: 'Streaming', style: Toast.Style.Animated })
     } else if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-      streamPipeline(chunk.delta.text, 'streaming')
+      streamPipeline({
+        apiResponse: chunk.delta.text,
+        apiStatus: 'streaming'
+      })
+    } else if (chunk.type === 'message_delta') {
+      responseTokens = chunk.usage.output_tokens;
     } else if (chunk.type === 'message_stop') {
-      streamPipeline('', 'done', msgID)
+      streamPipeline({
+        apiResponse: '',
+        apiStatus: 'done',
+        msgID: msgID,
+        promptTokens: promptTokens,
+        responseTokens: responseTokens,
+      })
       data.attachments.map(attachment =>
         attachment.status === 'staged' ?
           attachment.status = 'uploaded' :

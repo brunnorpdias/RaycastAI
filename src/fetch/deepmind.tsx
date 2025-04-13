@@ -24,7 +24,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
   const deepmind = new GoogleGenAI({ apiKey: API_KEYS.DEEPMIND })
   const inputMessages: InputMessages = data.messages
     .filter(msg => msg.role !== 'system')
-    .map(({ timestamp, id, ...rest }) => {
+    .map(({ timestamp, id, tokenCount, fileData, ...rest }) => {
       return {
         role: rest.role === 'assistant' || rest.role === 'model' ? 'model' : 'user',
         parts: [{ text: typeof rest.content === 'string' ? rest.content : rest.content[0].text || '' }],
@@ -72,6 +72,8 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
     config: {
       systemInstruction: data.instructions,
       temperature: data.temperature,
+      maxOutputTokens: 60000000,
+      // thinkingConfig: true ? { includeThoughts: true } : undefined,
     },
   }
 
@@ -80,14 +82,24 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
   let isStreaming: boolean = false;
   for await (const chunk of response) {
     if (chunk.text) {
-      streamPipeline(chunk.text, 'streaming');
+      streamPipeline({
+        apiResponse: chunk.text,
+        apiStatus: 'streaming',
+      });
       if (!isStreaming) {
         showToast({ title: 'Streaming...', style: Toast.Style.Animated });
         isStreaming = true;
       }
     }
     if (chunk.candidates?.at(0)?.finishReason === 'STOP') {
-      streamPipeline('', 'done');
+      let promptTokens: number | undefined = chunk.usageMetadata?.promptTokenCount;
+      let responseTokens: number | undefined = chunk.usageMetadata?.candidatesTokenCount;
+      streamPipeline({
+        apiResponse: '',
+        apiStatus: 'done',
+        promptTokens: promptTokens,
+        responseTokens: responseTokens,
+      });
       data.attachments.map(att => att.status === 'staged' ? att.status = 'uploaded' : att.status)
       break
     }

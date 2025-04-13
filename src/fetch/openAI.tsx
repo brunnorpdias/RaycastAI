@@ -57,7 +57,7 @@ export async function TitleConversation(data: Data) {
 }
 
 
-export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
+export async function STT(data: Data, streamPipeline: StreamPipeline) {
   const lastMsg = data.messages.at(-1)
   if (!lastMsg) return
   const prompt: string = typeof lastMsg.content === 'string' ? lastMsg.content : '';
@@ -72,13 +72,20 @@ export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
   let isStreaming = false;
   for await (const event of stream) {
     if (event.type === 'transcript.text.delta') {
-      streamPipeline(event.delta, 'streaming')
+      streamPipeline({
+        apiResponse: event.delta,
+        apiStatus: 'streaming',
+      })
+
       if (!isStreaming) {
         isStreaming = true;
         showToast({ title: 'Streaming', style: Toast.Style.Animated })
       }
     } else if (event.type === 'transcript.text.done') {
-      streamPipeline('', 'done')
+      streamPipeline({
+        apiResponse: '',
+        apiStatus: 'done',
+      })
     } else {
       showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure })
       console.log('Not planned')
@@ -87,7 +94,8 @@ export async function Transcribe(data: Data, streamPipeline: StreamPipeline) {
 }
 
 
-export async function STT(text: string) {
+
+export async function TTS(text: string) {
   const speechFile = path.resolve(os.homedir(), "Downloads", "RaycastAI_speech.wav");
 
   try {
@@ -114,7 +122,7 @@ async function GenerateInput(data: Data) {
   let input: Input;
   if (!data.private) {
     input = data.messages
-      .map(({ id, timestamp, fileData, ...msg }) => {
+      .map(({ id, timestamp, fileData, tokenCount, ...msg }) => {
         return {
           ...msg,
           content: typeof msg.content === 'string' ?
@@ -227,9 +235,9 @@ async function ResponsesObject(data: Data, input: Input) {
 }
 
 
-async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: Function, data: Data) {
-  const stream = await openai.responses.create(responsesObject);
+async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: StreamPipeline, data: Data) {
   let id: string = '';
+  const stream = await openai.responses.create(responsesObject);
   for await (const event of stream) {
     if (event.type === 'response.created') {
       showToast({ title: 'Request Received', style: Toast.Style.Success })
@@ -237,11 +245,21 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
     } else if (event.type === 'response.content_part.added') {
       showToast({ title: 'Streaming', style: Toast.Style.Animated })
     } else if (event.type === 'response.output_text.delta') {
-      streamPipeline(event.delta, 'streaming')
+      streamPipeline({
+        apiResponse: event.delta,
+        apiStatus: 'streaming',
+      })
     } else if (event.type === 'response.completed') {
       // event.response.usage?.total_tokens
-      streamPipeline('', 'done', id)
-      // console.log(`id: ${id}`)
+      let promptTokens: number | undefined = event.response.usage?.input_tokens;
+      let responseTokens: number | undefined = event.response.usage?.output_tokens;
+      streamPipeline({
+        apiResponse: '',
+        apiStatus: 'done',
+        msgID: id,
+        promptTokens: promptTokens,
+        responseTokens: responseTokens,
+      })
       data.attachments.map(att => att.status === 'staged' ? att.status = 'uploaded' : att)
       break;
     }

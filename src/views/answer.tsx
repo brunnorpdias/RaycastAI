@@ -1,15 +1,26 @@
-import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Cache as RaycastCache, Icon } from "@raycast/api";
+import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Icon } from "@raycast/api";
 import NewEntry from './new_entry';
 import { useEffect, useRef, useState } from 'react';
 
 import * as OpenAI from "../fetch/openAI";
-
+import * as Functions from "../utils/functions";
 import { APIHandler } from '../utils/api_handler';
-import { Bookmark } from "../utils/functions";
 
 import { type Data } from "../utils/types";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
-export type StreamPipeline = (apiResponse: string, apiStatus: Status, msgID?: string) => void;
+export type StreamPipeline = ({
+  apiResponse,
+  apiStatus,
+  msgID,
+  promptTokens,
+  responseTokens
+}: {
+  apiResponse: string,
+  apiStatus: Status,
+  msgID?: string,
+  promptTokens?: number,
+  responseTokens?: number
+}) => void;
 
 
 
@@ -23,6 +34,8 @@ export default function Answer({ data, msgTimestamp }: {
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
   const [newData, setNewData] = useState<Data>(data);
+  const [promptTokens, setPromptTokens] = useState<number>();
+  const [responseTokens, setResponseTokens] = useState<number>();
   const [msgID, setMsgId] = useState<string | undefined>();
 
   useEffect(() => {
@@ -38,28 +51,37 @@ export default function Answer({ data, msgTimestamp }: {
   useEffect(() => {
     if (status === 'done') {
       const duration: number = Math.round((Date.now() - startTime) / 100) / 10;
-      showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });  // style add?
       SaveData();
+      if (responseTokens) {
+        const tokensPerSecond: number = Math.round(responseTokens / duration)
+        showToast({
+          title: 'Done', message: `Response took ${duration}s (${responseTokens.toLocaleString()} tokens; ${tokensPerSecond}t/s)`
+        });
+      } else {
+        showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });  // style add?
+      }
     }
   }, [status])
 
-  const streamPipeline: StreamPipeline = (apiResponse: string, apiStatus: Status, messageId?: string) => {
+  const streamPipeline: StreamPipeline = ({ apiResponse, apiStatus, msgID, promptTokens, responseTokens }) => {
     setStatus(apiStatus);
     if (apiStatus !== 'reset') {
       setResponse((prevResponse: string) => prevResponse + apiResponse);
     } else {
       setResponse('')
     }
-    if (messageId) {
-      setMsgId(messageId)
+    if (apiStatus === 'done') {
+      setMsgId(msgID)
+      setPromptTokens(promptTokens);
+      setResponseTokens(responseTokens);
     }
   };
 
   async function SaveData() {
-    const finalData: Data = await NewData(data, response, msgID);
+    const finalData: Data = await NewData(data, response, promptTokens, responseTokens, msgID);
     setNewData(finalData);
-    Cache(finalData);
-    Bookmark(finalData, false);
+    Functions.Cache(finalData);
+    Functions.Bookmark(finalData, false);
   }
 
 
@@ -91,7 +113,7 @@ export default function Answer({ data, msgTimestamp }: {
               icon={Icon.Bookmark}
               shortcut={{ modifiers: ["cmd"], key: "d" }}
               onAction={async () => {
-                Bookmark(data, true)
+                Functions.Bookmark(data, true)
               }}
             />
           )}
@@ -110,7 +132,7 @@ export default function Answer({ data, msgTimestamp }: {
             title="TTS"
             icon={Icon.SpeakerOn}
             onAction={() => {
-              OpenAI.STT(response)
+              OpenAI.TTS(response)
             }}
           />
 
@@ -122,20 +144,23 @@ export default function Answer({ data, msgTimestamp }: {
 
 
 //  Helper Functions  //
-async function NewData(data: Data, response: string, msgId?: string) {
-  let userMessage = data.messages.at(-1);
+async function NewData(data: Data, response: string, promptTokens?: number, responseTokens?: number, msgId?: string) {
+  let userMessage = data.messages.filter(msg => msg.role === 'user').at(-1);
   let assistantMessage: Data["messages"][0];
   if (userMessage && typeof userMessage.content === 'string') {
+    userMessage.tokenCount = promptTokens ? promptTokens : undefined;
     assistantMessage = {
       role: data.api !== 'deepmind' ? 'assistant' : 'model',
       content: response,
       timestamp: Date.now(),
+      tokenCount: responseTokens,
     };
   } else {
     assistantMessage = {
       role: data.api !== 'deepmind' ? 'assistant' : 'model',
       content: [{ type: 'text', text: response }],
       timestamp: Date.now(),
+      tokenCount: responseTokens,
     };
   }
   if (msgId) {
@@ -146,26 +171,6 @@ async function NewData(data: Data, response: string, msgId?: string) {
     messages: [...data.messages, assistantMessage],
   }
   return newData
-}
-
-
-async function Cache(data: Data) {
-  const raycastCache = new RaycastCache();
-  const cachedDataString = raycastCache.get('cachedData');
-  let cachedData: Data[] = cachedDataString ? JSON.parse(cachedDataString) : undefined;
-  if (cachedData?.length > 0) {
-    const filteredCache: Data[] = cachedData
-      .filter(cache => cache.timestamp !== data.timestamp) // remove data if it's already cached
-    const newList = [...filteredCache, data];
-    const newCachedData: Data[] = newList
-      .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
-      .slice(0, 30)
-    raycastCache.set('cachedData', JSON.stringify(newCachedData));
-  } else {
-    const list = [data];
-    raycastCache.set('cachedData', JSON.stringify(list));
-  }
-  // showToast({ title: 'Cached', style: Toast.Style.Success });
 }
 
 

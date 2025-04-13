@@ -10,7 +10,7 @@ export default function Saved() {
 
       <RaycastList.Item
         title={"Cache"}
-        subtitle={"View cached chats and assistant threads"}
+        subtitle={"View cached chats"}
         icon={Icon.Sidebar}
         actions={
           <ActionPanel>
@@ -27,7 +27,7 @@ export default function Saved() {
 
       <RaycastList.Item
         title={"Bookmarks"}
-        subtitle={"View bookmarked chats and assistant threads"}
+        subtitle={"View bookmarked chats"}
         icon={Icon.Bookmark}
         actions={
           <ActionPanel>

@@ -47,6 +47,7 @@ export type Data = {
     id?: string,
     timestamp: number,
     role: 'user' | 'assistant' | 'system' | 'model',
+    tokenCount?: number,
     content: string | Array<{  // change this formatting, this is irrelevant for storing purposes
       type: 'text' | 'file' | 'image' | 'document' | 'input_text' | 'input_file' | 'input_image',
       source?: object,

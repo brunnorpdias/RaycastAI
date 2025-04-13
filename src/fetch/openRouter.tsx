@@ -6,12 +6,13 @@ import { showToast, Toast } from "@raycast/api";
 
 export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
   const url = 'https://openrouter.ai/api/v1/chat/completions';
+  const messages = data.messages.map(({ id, timestamp, fileData, tokenCount, ...msg }) => msg);
   const options = {
     method: 'POST',
     headers: { Authorization: `Bearer ${API_KEYS.OPENROUTER}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
       "model": data.model,
-      "messages": data.messages,
+      "messages": messages,
       "stream": true,
     })
   };
@@ -54,13 +55,19 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
           }
           const dataString = line.slice(6);
           if (dataString === '[DONE]') {
-            streamPipeline('', 'done');
+            streamPipeline({
+              apiResponse: '',
+              apiStatus: 'done'
+            });
             break;
           }
           try {
             const parsed = JSON.parse(dataString);
             const content = parsed.choices[0].delta.content;
-            streamPipeline(content, 'streaming');
+            streamPipeline({
+              apiResponse: content,
+              apiStatus: 'streaming'
+            });
           } catch (e) {
             showToast({ title: 'Invalid JSON', style: Toast.Style.Failure })
             console.log('Invalid JSON')
