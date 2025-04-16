@@ -10,7 +10,7 @@ This extension is meant to be used with [﻿Raycast](https://www.raycast.com/) t
 Simply, the main advantages are the speed of interaction with the LLM, the privacy (in most cases companies don't collect data from API interactions), and reduced cost while using the latest LLMs.
 
 ## Architecture
-![architecture](/.eraser/VBvaCBKt77TFWhQELege___voy3D43Ta3VlYP0pyhSh3YYlfle2___---figure---DT_g-Y6tzVCMJ6yttSZbX---figure---Yc791tpbY0sd8sfmHtU-0g.png "architecture")
+![architecture](/.eraser/VBvaCBKt77TFWhQELege___voy3D43Ta3VlYP0pyhSh3YYlfle2___---figure---h7qhxwH0zQUPIt3WMrznh---figure---Gq5dr3FkC13ihAfY-xWi0w.png "architecture")
 
 ## Limitations
 This is a quick list of some of the limitations on this current version.
