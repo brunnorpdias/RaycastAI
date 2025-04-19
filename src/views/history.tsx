@@ -21,19 +21,11 @@ export default function ChatHistory({ data }: { data: Data }) {
           .map((message, index) => (
             <RaycastList.Item
               key={`#${index}`}
-              title={
-                typeof message.content === 'string' ?
-                  message.content :
-                  message.content[0].text || 'Not found'
-              }
+              title={message.content}
               subtitle={message.role}
               detail={
                 <RaycastList.Item.Detail
-                  markdown={
-                    typeof message.content === 'string' ?
-                      message.content :
-                      message.content[0].text
-                  }
+                  markdown={message.content}
                 />
               }
               actions={
@@ -66,7 +58,7 @@ export default function ChatHistory({ data }: { data: Data }) {
                   <Action.CopyToClipboard
                     title="Copy"
                     icon={Icon.CopyClipboard}
-                    content={typeof message.content === 'string' ? message.content : message.content.at(0)?.text || "Not a string"}
+                    content={message.content}
                     shortcut={{ modifiers: ['cmd'], key: 'c' }}
                   />
 

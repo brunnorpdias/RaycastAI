@@ -8,10 +8,11 @@ import { API_KEYS } from '../enums/api_keys';
 // import { ChatCompletionChunk } from "openai/resources";
 import { type Data } from "../utils/types";
 import { type StreamPipeline } from "../views/answer";
+import assert from "assert";
 
 type InputMessages = Array<{
   role?: 'user' | 'model',
-  parts?: Array<{ text?: string }>,
+  parts?: Array<{ text?: string, inlineData?: { mimeType: string, data: string } }>,
   fileData?: FileData,
 }>
 
@@ -22,45 +23,58 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
   // port summarisation and title creation to gemini 2.0 flash
   // add code execution, pdf, files, and thinking
   const deepmind = new GoogleGenAI({ apiKey: API_KEYS.DEEPMIND })
-  const inputMessages: InputMessages = data.messages
+  let inputMessages: InputMessages = data.messages
     .filter(msg => msg.role !== 'system')
-    .map(({ timestamp, id, tokenCount, fileData, ...rest }) => {
+    .map(({ timestamp, id, tokenCount, ...rest }) => {
       return {
         role: rest.role === 'assistant' || rest.role === 'model' ? 'model' : 'user',
-        parts: [{ text: typeof rest.content === 'string' ? rest.content : rest.content[0].text || '' }],
+        parts: [
+          { text: typeof rest.content === 'string' ? rest.content : rest.content[0].text || '' },
+          // { inlineData: rest.inlineData ?? undefined },
+        ],
       }
-    });
+    }) as InputMessages;
 
   const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
+  let lastMsg: Data["messages"][number] | undefined = data.messages.at(-1)
+  assert(lastMsg !== undefined, "Data doesn't contain messages")
   for (const attachment of attachmentsQueue) {
+    // check if files are larger than 20mb and file type
     const arrayBuffer = fs.readFileSync(attachment.path);
-    // check if files are larger than 20mb
     const parts = inputMessages.at(-1)?.parts
-    if (data.private && parts) {
-      // const base64String = arrayBuffer.toString('base64');
-      // parts.push({ inlineData: { mimeType: 'application/pdf', data: base64String } })
-      // attachment.status = 'staged';
-      showToast({ title: 'Doesn\'t accept files in private mode yet', style: Toast.Style.Success })
+    if (data.private) {
+      assert(parts !== undefined, 'Input messages is empty or doesn\'t contain "parts" attribute')
+      const base64String = arrayBuffer.toString('base64');
+      const inlineDatum = { inlineData: { mimeType: 'application/pdf', data: base64String } }
+      parts.push(inlineDatum)
+      attachment.status = 'staged';
+      // update local data
+      lastMsg = inputMessages
+      if (lastMsg.inlineData) {
+        lastMsg.inlineData.push(inlineDatum)
+      } else {
+        lastMsg.inlineData = [inlineDatum]
+      }
     } else {
       const fileBlob = new Blob([arrayBuffer], { type: 'application/pdf' });
       const file = await deepmind.files.upload({
         file: fileBlob,
         config: { displayName: attachment.name },
       })
-      const lastMsg: Data["messages"][number] | undefined = data.messages.at(-1)
 
-      if (file.uri && file.mimeType && lastMsg) {
-        const fileContent: FileData = createPartFromUri(file.uri, file.mimeType) as FileData;
-        inputMessages.push(fileContent as InputMessages[number])  // used coercion, don't know how to solve otherwise
+      try {
+        assert(file.uri && file.mimeType, 'error')
+        const fileData: FileData = createPartFromUri(file.uri, file.mimeType) as FileData;
+        inputMessages.push(fileData as InputMessages[number])  // used coercion, don't know how to solve otherwise
         attachment.status = 'staged';
         showToast({ title: `File ${attachment.name} uploaded`, style: Toast.Style.Success })
         // update local data
         if (lastMsg.fileData) {
-          lastMsg.fileData.push(fileContent)
+          lastMsg.fileData.push(fileData)
         } else {
-          lastMsg.fileData = [fileContent]
+          lastMsg.fileData = [fileData]
         }
-      } else {
+      } catch (err) {
         showToast({ title: `Error uploading ${attachment.name}`, style: Toast.Style.Failure })
       }
     }

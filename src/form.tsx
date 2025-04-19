@@ -1,5 +1,6 @@
 import { Form, ActionPanel, Action, useNavigation, Cache as RaycastCache } from '@raycast/api';
 import { useState } from 'react';
+import fs from 'fs';
 
 import { type Data, type API, type Model, APItoModels } from './utils/types'
 import { reasoningModels, toolSupportModels, attachmentModels, sttModels } from './utils/types';
@@ -26,10 +27,6 @@ export default function ChatForm() {
   const [selectedModel, setModel] = useState<Model>('chatgpt-4o-latest');
 
   async function handleSubmit(values: Values) {
-    const messages: Data["messages"] = values.api === 'openai' ?
-      [{ role: 'user', content: [{ type: 'input_text', text: values.prompt }], timestamp: Date.now() }] :
-      [{ role: 'user', content: values.prompt, timestamp: Date.now() }]
-
     let instructions: string;
     switch (values.instructions) {
       case 'traditional':
@@ -50,29 +47,38 @@ export default function ChatForm() {
                            \\( for inline math and \\[ for block equations. Provide the answers in markdown.`);
     const personalInfo: string | undefined = personalObj ? personalObj.personal_info : undefined;
 
+    const timestamp = Date.now();
+    const messages: Data["messages"] = [{ role: 'user', content: values.prompt, timestamp: timestamp }]
+
     const data: Data = {
-      timestamp: Date.now(),
+      timestamp: timestamp,
       model: values.model,
       api: values.api,
-      instructions: values.private ? instructions : `${instructions} ${personalInfo}`,
       messages: messages,
-      temperature: 1, // Number(values.temperature),
+      instructions: values.private ? instructions : `${instructions} ${personalInfo}`,
       tools: values.web ? 'web' : undefined,
-      attachments: [],
+      files: [],
       reasoning: values.reasoning,
       private: values.private,
     }
 
-    if (data.attachments && values.attatchmentPaths && values.attatchmentPaths.length > 0) {
+    if (values.attatchmentPaths?.length > 0) {
       for (const path of values.attatchmentPaths) {
-        const file = path.slice(path.lastIndexOf('/') + 1);
-        const name = file.slice(0, file.lastIndexOf('.'))
-        const extension = file.slice(file.lastIndexOf('.') + 1)
-        data.attachments.push({
+        let sizeInBytes: number | undefined;
+        let base64String: string | undefined;
+        if (data.private) {
+          const arrayBuffer = fs.readFileSync(path);
+          base64String = arrayBuffer.toString('base64');
+          const padding = base64String.endsWith('==') ? 2 : base64String.endsWith('=') ? 1 : 0;
+          sizeInBytes = base64String.length * 3 / 4 - padding;
+        }
+
+        data.files.push({
           status: 'idle',
-          name: name,
-          extension: extension,
+          timestamp: timestamp,
           path: path,
+          base64String: base64String,
+          size: sizeInBytes
         })
       }
     }

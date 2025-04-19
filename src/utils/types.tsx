@@ -1,14 +1,12 @@
 export const APItoModels = {
   'openai': [
+    { name: 'GPT 4.1 mini', code: 'gpt-4.1-mini' },
+    { name: 'GPT 4.1', code: 'gpt-4.1' },
     { name: 'GPT 4o Latest', code: 'chatgpt-4o-latest' },
-    { name: 'GPT 4o', code: 'gpt-4o' },
-    { name: 'o3 mini', code: 'o3-mini' },
-    { name: 'o1', code: 'o1' },
-    { name: 'GPT 4.5', code: 'gpt-4.5-preview' },
+    { name: 'o4 mini', code: 'o4-mini' },
+    { name: 'o3', code: 'o3' },
     { name: 'GPT 4o Transcribe', code: 'gpt-4o-transcribe' },
-    // { name: 'Whisper', code: 'whisper-1' },
-    // { name: 'GPT 4o Search', code: 'gpt-4o-search-preview' },  // no support through responses api
-    // { name: 'GPT 4o Mini', code: 'gpt-4o-mini' },
+    // { name: 'GPT 4o TTS', code: 'gpt-4o-mini-tts' },
   ],
   'deepmind': [
     { name: 'Gemini 2.0 Flash', code: 'gemini-2.0-flash' },
@@ -29,13 +27,13 @@ export const APItoModels = {
   ],
 } as const;
 
-export const reasoningModels = ['o3-mini', 'o1', 'claude-3-7-sonnet-latest'];
+export const reasoningModels = ['o4-mini', 'o3', 'claude-3-7-sonnet-latest'];
 export const sttModels = ['gpt-4o-transcribe'];
 export const ttsModels = ['gpt-4o-mini-tts'];
-export const attachmentModels = ['gpt-4.5-preview', 'o1', 'chatgpt-4o-latest', 'gpt-4o',
+export const attachmentModels = ['o3', 'o4-mini', 'chatgpt-4o-latest', 'gpt-4.1-mini', 'gpt-4.1',
   'gemini-2.0-flash', 'gemini-2.5-pro-preview-03-25',
   'gemini-2.0-flash-thinking-exp-01-21', 'claude-3-7-sonnet-latest'];
-export const toolSupportModels = ['gpt-4o', 'o1', 'gpt-4.5-preview'];
+export const toolSupportModels = ['gpt-4o', 'o3', 'o4-mini', 'gpt-4.1-mini', 'gpt-4.1'];
 
 export type API = keyof typeof APItoModels;
 
@@ -46,28 +44,22 @@ export type Data = {
   messages: Array<{
     id?: string,
     timestamp: number,
-    role: 'user' | 'assistant' | 'system' | 'model',
+    role: 'user' | 'assistant',
+    content: string,
     tokenCount?: number,
-    content: string | Array<{  // change this formatting, this is irrelevant for storing purposes
-      type: 'text' | 'file' | 'image' | 'document' | 'input_text' | 'input_file' | 'input_image',
-      source?: object,
-      text?: string,
-      file?: object
-    }>,
-    fileData?: Array<{ fileUri: string, mimeType: 'application/pdf' }>
   }>;
+  instructions: string,
   model: Model;
   api: API;
-  instructions: string;
   tools?: string;
   reasoning: 'none' | 'low' | 'medium' | 'high';
-  attachments: Array<{
+  files: Array<{
     id?: string,
+    timestamp: number,
     status: 'idle' | 'staged' | 'uploaded',
-    name: string,
-    extension: string,
     path: string,
+    base64String?: string,
+    size?: number,
   }>;
-  temperature: number;
   private?: boolean;
 };

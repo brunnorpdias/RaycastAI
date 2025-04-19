@@ -7,6 +7,7 @@ import * as Functions from "../utils/functions";
 import { APIHandler } from '../utils/api_handler';
 
 import { type Data } from "../utils/types";
+import assert from "assert";
 export type Status = 'idle' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = ({
   apiResponse,
@@ -145,31 +146,32 @@ export default function Answer({ data, msgTimestamp }: {
 
 //  Helper Functions  //
 async function NewData(data: Data, response: string, promptTokens?: number, responseTokens?: number, msgId?: string) {
-  let userMessage = data.messages.filter(msg => msg.role === 'user').at(-1);
-  let assistantMessage: Data["messages"][0];
-  if (userMessage && typeof userMessage.content === 'string') {
-    userMessage.tokenCount = promptTokens ? promptTokens : undefined;
-    assistantMessage = {
-      role: data.api !== 'deepmind' ? 'assistant' : 'model',
-      content: response,
-      timestamp: Date.now(),
-      tokenCount: responseTokens,
-    };
-  } else {
-    assistantMessage = {
-      role: data.api !== 'deepmind' ? 'assistant' : 'model',
-      content: [{ type: 'text', text: response }],
-      timestamp: Date.now(),
-      tokenCount: responseTokens,
-    };
+  const userMsg = data.messages.filter(msg => msg.role === 'user').at(-1);
+
+  const previousTokenCount = data.messages
+    .map(msg => msg.tokenCount)
+    .filter(tokens => typeof tokens === 'number')
+    .reduce((sum, n) => sum + n, 0);
+
+  if (userMsg && promptTokens) {
+    userMsg.tokenCount = data.private ?
+      promptTokens - (previousTokenCount ?? 0) :
+      promptTokens
   }
-  if (msgId) {
-    assistantMessage.id = msgId
+
+  let assistantMessage: Data["messages"][0] = {
+    id: msgId ? msgId : undefined,
+    role: 'assistant',
+    content: response,
+    timestamp: Date.now(),
+    tokenCount: responseTokens,
   }
+
   const newData: Data = {
     ...data,
     messages: [...data.messages, assistantMessage],
   }
+
   return newData
 }
 
@@ -201,18 +203,12 @@ async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewDa
       msg.timestamp === msgTimestamp :
       Number(msg.id) === msgTimestamp
   )
-  if (selected_message) {
-    let api_response: string;
-    if (typeof selected_message.content === 'string') {
-      api_response = selected_message.content;
-    } else {
-      api_response = selected_message.content.at(-1)?.text || '';
-    }
-    setResponse(api_response)
-    setNewData(data)
-  } else {
-    showToast({ title: 'Error opening message', style: Toast.Style.Failure })
-  }
+  assert(selected_message, 'Error finding selected message')
+
+  let api_response: string;
+  api_response = selected_message.content;
+  setResponse(api_response)
+  setNewData(data)
 }
 
 
@@ -227,12 +223,11 @@ function ImproveTranscript(response: string, push: Function) {
   const transcriptData: Data = {
     timestamp: Date.now(),
     messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
-    model: 'chatgpt-4o-latest',
+    model: 'gpt-4.1-mini',
     api: 'openai',
     reasoning: 'none',
     instructions: '',
-    temperature: 1,
-    attachments: []
+    files: [],
   }
 
   push(<Answer data={transcriptData} />)

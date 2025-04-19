@@ -10,32 +10,25 @@ type Values = {
 
 export default function NewEntry({ data, promptTimestamp }: { data: Data, promptTimestamp?: number }) {
   const { push } = useNavigation();
-  const [fieldText, setFieldText] = useState<string>('');
+  const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState<Data["messages"][number]>();
-  // const [selectedModel, setSelectedModel] = useState<string>('');  // add model selector for new prompts
 
   useEffect(() => {
-    const message = data.messages.findLast(msg => msg.timestamp === promptTimestamp);
-    console.log(JSON.stringify(message))
-    if (message) {
-      const msgPrompt = typeof message.content === 'string' ?
-        message.content :
-        message.content.filter(item => item.type === 'input_text').at(0)?.text || 'Error to define prompt...'
-      setFieldText(msgPrompt)
-      setInputMessage(message);
+    if (promptTimestamp) {
+      const message = data.messages.findLast(msg => msg.timestamp === promptTimestamp);
+      if (message) {
+        setInitialPrompt(message.content)
+        setInputMessage(message);
+      }
+    } else {
+      setInitialPrompt('')
     }
+    // setIsLoading(false)
   }, [promptTimestamp])
-
-  // useEffect(() => {
-  //   setSelectedModel(data.model)
-  // }, [data])
-
 
   async function handleSubmit(values: Values) {
     const lastMessage: Data["messages"][number] | undefined = data.messages.at(-1);
-    const newMessage: Data["messages"][number] = data.api === 'openai' ?
-      { role: 'user', content: [{ type: 'input_text', text: values.prompt }], timestamp: Date.now() } :
-      { role: 'user', content: values.prompt, timestamp: Date.now() }
+    const newMessage: Data["messages"][number] = { role: 'user', content: values.prompt, timestamp: Date.now() }
 
     if (promptTimestamp && lastMessage?.timestamp !== inputMessage?.timestamp) {
       const messages: Data["messages"] = data.messages;
@@ -69,39 +62,38 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
     }
   }
 
-
-  return (
-    <Form
-      actions={
-        <ActionPanel>
-          <Action.SubmitForm title="Submit" onSubmit={handleSubmit} />
-        </ActionPanel>
-      }
-    >
-      <Form.TextArea id="prompt" value={fieldText} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
-
-      {/* {[ */}
-      {/*   'claude-3-7-sonnet-latest', */}
-      {/*   'gpt-4o', 'gpt-4o-mini', 'o1', 'gpt-4.5-preview', */}
-      {/*   'gemini-2.0-flash', 'gemini-2.5-pro-exp-03-25' */}
-      {/* ].includes(selectedModel) && ( */}
-      {/*     <Form.FilePicker id="attatchmentPaths" /> */}
-      {/*   )} */}
-
-    </Form>
-  );
-}
-
-async function Cache(newData: Data) {
-  const cache = new RaycastCache()
-  const stringCache = cache.get('cachedData')
-  let newCache: Data[];
-  if (stringCache) {
-    let oldCache: Data[] = JSON.parse(stringCache)
-    oldCache = oldCache.filter(item => item.timestamp !== newData.timestamp)
-    newCache = [newData, ...oldCache]
+  if (initialPrompt !== null) {
+    return (
+      <Form
+        actions={
+          <ActionPanel>
+            <Action.SubmitForm title="Submit" onSubmit={handleSubmit} />
+          </ActionPanel>
+        }
+      >
+        <Form.TextArea id="prompt" defaultValue={initialPrompt ?? 'nothing'} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
+      </Form>
+    );
   } else {
-    newCache = [newData]
+    return (
+      <Form isLoading={true} >
+        {/* <Form.TextArea id="prompt" defaultValue={''} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} /> */}
+      </Form>
+    );
   }
-  cache.set('cachedData', JSON.stringify(newCache))
+
+
+  async function Cache(newData: Data) {
+    const cache = new RaycastCache()
+    const stringCache = cache.get('cachedData')
+    let newCache: Data[];
+    if (stringCache) {
+      let oldCache: Data[] = JSON.parse(stringCache)
+      oldCache = oldCache.filter(item => item.timestamp !== newData.timestamp)
+      newCache = [newData, ...oldCache]
+    } else {
+      newCache = [newData]
+    }
+    cache.set('cachedData', JSON.stringify(newCache))
+  }
 }
