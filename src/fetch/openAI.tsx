@@ -143,32 +143,35 @@ async function AddFiles(data: Data, input: Input) {
     let item: Input[number] | undefined = inputWithFiles.find(item => item.timestamp === file.timestamp);
     assert(Array.isArray(item?.content), 'Content attribute was not converted to array format')
     assert(fileExtension && fileName, 'Error parsing file name and extension')
-    assert(['pdf', 'jpg', 'png', 'webp', 'gif'].includes(fileExtension), 'File isn\'t pdf or supported image types')
+    assert(['pdf', 'jpg', 'png', 'webp', 'gif'].includes(fileExtension), `File type ${fileExtension} not supported`)
 
     if (data.private) {
-      assert(file.base64String, 'Attachment data not found')
+      const base64 = file.rawData?.toString('base64');
+      assert(base64, 'Attachment data not found')
       item.content.push({
         type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
         filename: fileExtension === 'pdf' ? fileName : undefined,
-        file_data: fileExtension === 'pdf' ? `data:application/pdf;base64,${file.base64String}` : undefined,
-        image_url: ['jpg', 'png', 'webp', 'gif'].includes(fileExtension) ? `data:image/${fileExtension};base64,${file.base64String}` : undefined,
+        file_data: fileExtension === 'pdf' ? `data:application/pdf;base64,${base64}` : undefined,
+        image_url: ['jpg', 'png', 'webp', 'gif'].includes(fileExtension) ? `data:image/${fileExtension};base64,${base64}` : undefined,
       })
       file.status = 'staged';
-    } else if (file.status !== 'uploaded') {
-      assert(inputWithFiles.length === 1, 'Input has unexpected size')
-      showToast({ title: 'Uploading file', style: Toast.Style.Animated })
-      const uploadedFile = await openai.files.create({
-        file: fs.createReadStream(file.path),
-        purpose: 'user_data',
-      })
-      assert(uploadedFile.id !== undefined, 'File not uploaded')
-      item.content.push({
-        type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
-        file_id: uploadedFile.id
-      })
-      file.id = uploadedFile.id
-      file.status = 'uploaded';
-      showToast({ title: 'File Uploaded', style: Toast.Style.Success })
+    } else {
+      if (file.status !== 'uploaded') {
+        assert(inputWithFiles.length === 1, 'Input has unexpected size')
+        showToast({ title: 'Uploading file', style: Toast.Style.Animated })
+        const uploadedFile = await openai.files.create({
+          file: fs.createReadStream(file.path),
+          purpose: 'user_data',
+        })
+        assert(uploadedFile.id !== undefined, 'File not uploaded')
+        item.content.push({
+          type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
+          file_id: uploadedFile.id
+        })
+        file.id = uploadedFile.id
+        file.status = 'uploaded';
+        showToast({ title: `File ${fileName} was uploaded`, style: Toast.Style.Success })
+      }
     }
   }
 

@@ -1,18 +1,17 @@
 import { Anthropic } from '@anthropic-ai/sdk';
 import { showToast, Toast } from "@raycast/api";
-import * as fs from 'fs/promises';
 
 import { API_KEYS } from '../enums/api_keys';
 
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { type StreamPipeline } from "../views/answer";
 import { type Data } from "../utils/types";
+import assert from 'assert';
 
-type Content = Data["messages"][0]["content"]
 type AnthropicRequest = {
   model: string,
   system: string | undefined,
-  messages: object,
+  messages: Messages,
   max_tokens: number,
   temperature: number,
   stream?: boolean,
@@ -22,57 +21,73 @@ type AnthropicRequest = {
   },
 }
 
+type Messages = Array<{
+  role: 'user' | 'assistant',
+  content: Content,
+}>
+
+type Content = string | Array<{
+  type: 'text' | 'document' | 'image',
+  text?: string,
+  source?: {
+    type: 'url' | 'base64',
+    media_type?: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+    data?: string,
+    url?: string,
+  },
+  cache_control?: { type: 'ephemeral' | '' }
+}>
+
+
+const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
 
 export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
-  const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
+  console.log('start', data.files)
   let max_tokens: number;
   let thinking_budget: number;
-  const inputMessages = data.messages.map(({ timestamp, id, tokenCount, fileData, ...rest }) => rest);
-  let messages;
+  const messages = data.messages.map(({ id, tokenCount, ...rest }) => rest);
+  const timestamps = data.files.map(file => file.timestamp);
+  let inputMessages: (Messages[number] & { timestamp?: number })[];
 
-  if (data.model === 'claude-3-7-sonnet-latest' && data.attachments && data.attachments.length > 0) {
-    if (inputMessages.length === 1 && typeof inputMessages[0].content == 'string') {
-      let contentArray: Content = [
-        {
-          type: 'text',
-          text: inputMessages[0].content,
-        },
-      ];
-
-      const attachmentsQueue = data.attachments.filter(({ status }) => status !== 'uploaded')
-      for (const attachment of attachmentsQueue) {
-        if (!['pdf'].includes(attachment.extension)) break  // only accept pdf and images
-        const arrayBuffer = await fs.readFile(attachment.path);
-        const pdfBase64 = Buffer.from(arrayBuffer).toString('base64');
-        // attachment.data = pdfBase64;
-        contentArray.push({
-          type: 'document',
-          source: {
-            media_type: 'application/pdf',
-            type: 'base64',
-            data: pdfBase64,
-          }
-        })
-        attachment.status = 'staged';
+  // 5mb image limit; 32mb pdf and 100 pages
+  if (data.model === 'claude-3-7-sonnet-latest' && data.files?.length > 0) {
+    inputMessages = messages.map(msg => {
+      if (timestamps.includes(msg.timestamp)) {
+        return {
+          ...msg,
+          content: [{
+            type: 'text',
+            text: msg.content
+          }],
+        }
+      } else {
+        return {
+          ...msg
+        }
       }
+    })
 
-      // update local instance of messages with information
-      let lastMsg: Data["messages"][number] | undefined = data.messages.at(-1)
-      if (lastMsg) {
-        lastMsg.content = contentArray
-      }
-
-      messages = [{
-        role: 'user',
-        content: contentArray,
-      }]
-    } else {
-      messages = inputMessages;
-      // add logic for additional pdf's and images when chat_newentry makes it possible (also, need to differentiate new files)
+    for (const file of data.files) {
+      const base64: string | undefined = file.rawData?.toString('base64');
+      let inputMessage = inputMessages.find(msg => msg.timestamp === file.timestamp);
+      const fileExtension = file.path.slice(file.path.lastIndexOf('.') + 1);
+      assert(['pdf'].includes(fileExtension), `File type ${fileExtension} not supported`);
+      assert(Array.isArray(inputMessage?.content), 'Content was not converted to an array')
+      console.log('string', base64)
+      inputMessage?.content.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: base64,
+        }
+      })
+      file.status = 'staged';
     }
   } else {
-    messages = inputMessages;
+    inputMessages = messages;
   }
+  inputMessages = inputMessages.map(({ timestamp, ...msg }) => msg)  // remove timestamp attribute
 
   switch (data.reasoning) {
     case 'low':
@@ -96,9 +111,9 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   let request: AnthropicRequest = {
     model: data.model,
     system: data.instructions,
-    messages: messages,
+    messages: inputMessages,
     max_tokens: max_tokens,
-    temperature: data.temperature,
+    temperature: 1,
     stream: true,
   }
 
@@ -159,10 +174,10 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       })
-      data.attachments.map(attachment =>
-        attachment.status === 'staged' ?
-          attachment.status = 'uploaded' :
-          attachment
+      data.files.map(file =>
+        file.status === 'staged' ?
+          file.status = 'uploaded' :
+          file
       )
       break;
     }

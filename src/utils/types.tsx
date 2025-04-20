@@ -34,6 +34,7 @@ export const attachmentModels = ['o3', 'o4-mini', 'chatgpt-4o-latest', 'gpt-4.1-
   'gemini-2.0-flash', 'gemini-2.5-pro-preview-03-25',
   'gemini-2.0-flash-thinking-exp-01-21', 'claude-3-7-sonnet-latest'];
 export const toolSupportModels = ['gpt-4o', 'o3', 'o4-mini', 'gpt-4.1-mini', 'gpt-4.1'];
+export const privateModeAPIs = ['openai', 'deepmind']
 
 export type API = keyof typeof APItoModels;
 
@@ -58,7 +59,8 @@ export type Data = {
     timestamp: number,
     status: 'idle' | 'staged' | 'uploaded',
     path: string,
-    base64String?: string,
+    fileUri?: string,
+    rawData?: Buffer,  // this or Buffer<ArrayBufferLike>?
     size?: number,
   }>;
   private?: boolean;

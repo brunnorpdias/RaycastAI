@@ -54,40 +54,31 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
 
     const optimisedList: ListItem[] = rawList
       .filter(item => item.messages.length > 0)
+      .sort((a, b) => {
+        const aLastTimestamp = Math.max(...a.messages.map(msg => msg.timestamp))
+        const bLastTimestamp = Math.max(...b.messages.map(msg => msg.timestamp))
+        return bLastTimestamp - aLastTimestamp
+      })
       .map(item => {
-        try {
-          return {
-            data: item,
-            key: item.timestamp,
-            title: cacheOrBookmarks === 'cache' ?
-              item.messages.at(0)?.content ?? '' :
-              item.summary ?? 'No summary...',
-            markdown: item.messages
-              .slice(0, 2)
-              .map(msg => msg.content)
-              .join(`\n\r---\n\r---\n\r`),
-            provider: { name: apiToIcon[item.api].name, iconDir: apiToIcon[item.api].icon },
-            model: item.model,
-            date: DateFormat(item.timestamp, 'HH:mm:ss dd/MM/yy'),
-            summary: item.summary,
-            attachmentNames: item.files.map(file => file.path.slice(file.path.lastIndexOf('/') + 1, file.path.lastIndexOf('.'))),
-            tokenCount: item.messages
-              .map(msg => msg.tokenCount)
-              .filter(value => typeof value === 'number')
-              .reduce((sum, value) => sum + value, 0)
-          }
-        } catch (err) {
-          console.log(err)
-          showToast({ title: 'Error displaying item(s)', style: Toast.Style.Failure })
-        }
         return {
           data: item,
           key: item.timestamp,
-          title: 'Error displaying',
-          markdown: '...',
+          title: cacheOrBookmarks === 'cache' ?
+            item.messages.at(0)?.content ?? '' :
+            item.summary ?? 'No summary...',
+          markdown: item.messages
+            .slice(0, 2)
+            .map(msg => msg.content)
+            .join(`\n\r---\n\r---\n\r`),
           provider: { name: apiToIcon[item.api].name, iconDir: apiToIcon[item.api].icon },
-          model: '',
+          model: item.model,
           date: DateFormat(item.timestamp, 'HH:mm:ss dd/MM/yy'),
+          summary: item.summary,
+          attachmentNames: item.files?.map(file => file.path.slice(file.path.lastIndexOf('/') + 1, file.path.lastIndexOf('.'))) ?? [],
+          tokenCount: item.messages
+            .map(msg => msg.tokenCount)
+            .filter(value => typeof value === 'number')
+            .reduce((sum, value) => sum + value, 0)
         }
       })
     setList(optimisedList);
@@ -115,8 +106,8 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                       {listItem.attachmentNames && listItem.attachmentNames.length > 0 && (
                         <RaycastList.Item.Detail.Metadata.Label title="Attachments" text={listItem.attachmentNames.join(', ')} />
                       )}
-                      {listItem.tokenCount && (
-                        <RaycastList.Item.Detail.Metadata.Label title="Token count" text={`${listItem.tokenCount.toLocaleString()} tokens`} />
+                      {(listItem.tokenCount ?? 0) > 0 && (
+                        <RaycastList.Item.Detail.Metadata.Label title="Token Count" text={`${listItem.tokenCount?.toLocaleString()} tokens`} />
                       )}
                     </RaycastList.Item.Detail.Metadata>
                   }

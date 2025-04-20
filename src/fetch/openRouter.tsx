@@ -6,7 +6,7 @@ import { showToast, Toast } from "@raycast/api";
 
 export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
   const url = 'https://openrouter.ai/api/v1/chat/completions';
-  const messages = data.messages.map(({ id, timestamp, fileData, tokenCount, ...msg }) => msg);
+  const messages = data.messages.map(({ id, timestamp, tokenCount, ...msg }) => msg);
   const options = {
     method: 'POST',
     headers: { Authorization: `Bearer ${API_KEYS.OPENROUTER}`, 'Content-Type': 'application/json' },

@@ -3,10 +3,11 @@ import { useState } from 'react';
 import fs from 'fs';
 
 import { type Data, type API, type Model, APItoModels } from './utils/types'
-import { reasoningModels, toolSupportModels, attachmentModels, sttModels } from './utils/types';
+import { reasoningModels, toolSupportModels, attachmentModels, privateModeAPIs, sttModels } from './utils/types';
 import Answer from "./views/answer";
 import instructionsObject from './enums/instructions.json';
 import personalObj from './enums/personal_info.json';
+import { arrayBuffer } from 'stream/consumers';
 
 type Values = {
   prompt: string;
@@ -65,19 +66,18 @@ export default function ChatForm() {
     if (values.attatchmentPaths?.length > 0) {
       for (const path of values.attatchmentPaths) {
         let sizeInBytes: number | undefined;
-        let base64String: string | undefined;
-        if (data.private) {
-          const arrayBuffer = fs.readFileSync(path);
-          base64String = arrayBuffer.toString('base64');
-          const padding = base64String.endsWith('==') ? 2 : base64String.endsWith('=') ? 1 : 0;
-          sizeInBytes = base64String.length * 3 / 4 - padding;
-        }
+        let arrayBuffer;
+        arrayBuffer = fs.readFileSync(path);
+        const base64String = arrayBuffer.toString('base64');
+        const padding = base64String.endsWith('==') ? 2 : base64String.endsWith('=') ? 1 : 0;
+        sizeInBytes = base64String.length * 3 / 4 - padding;
 
+        // check which is a larger memmory burden, arrayBuffer or base64 formatting
         data.files.push({
           status: 'idle',
           timestamp: timestamp,
           path: path,
-          base64String: base64String,
+          rawData: arrayBuffer,
           size: sizeInBytes
         })
       }
@@ -158,7 +158,9 @@ export default function ChatForm() {
         <Form.Checkbox id="web" label="Search the Web" defaultValue={false} />
       )}
 
-      <Form.Checkbox id="private" label="Data Privacy" defaultValue={false} />
+      {privateModeAPIs.includes(selectedAPI) && (
+        <Form.Checkbox id="private" label="Data Privacy" defaultValue={false} />
+      )}
 
     </Form>
   );
