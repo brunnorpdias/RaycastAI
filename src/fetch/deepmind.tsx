@@ -11,12 +11,12 @@ type Content = Array<{
   role: 'user' | 'model',
   parts?: Array<{
     text?: string,
-    inlineData?: { data: string, mimeType: 'application/pdf' },
+    inlineData?: { data: string, mimeType: string },
     fileData?: FileData,
   }>,
 }>
 
-type FileData = { fileUri: string, mimeType: 'application/pdf' };
+type FileData = { fileUri: string, mimeType: string };
 
 
 const deepmind = new GoogleGenAI({ apiKey: API_KEYS.DEEPMIND })
@@ -38,23 +38,41 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
       const fileName = file.path.slice(file.path.lastIndexOf('/') + 1, file.path.lastIndexOf('.'))
       const fileExtension = file.path.slice(file.path.lastIndexOf('.') + 1)
       const base64: string | undefined = file.rawData?.toString('base64');
-      assert(['pdf'].includes(fileExtension), `File format ${fileExtension} not supported`)
-      // check if files are larger than 20mb and file type
-      // const parts = inputMessages.at(-1)?.parts
+      const mimeType: string | undefined =
+        ['pdf'].includes(fileExtension) ?  // documents
+          `application/${fileExtension}` :
+          ['txt', 'html', 'md', 'csv'].includes(fileExtension) ?  // text
+            `text/${fileExtension}` :
+            // is text correct?
+            ['png', 'jpeg', 'webp', 'heic', 'heif'].includes(fileExtension) ?  // images
+              `image/${fileExtension}` :
+              undefined
+      assert(mimeType !== undefined, `File format ${fileExtension} not supported`)
       let message: Content[number] | undefined = messages.find(msg => msg.timestamp === file.timestamp)
       assert(message !== undefined, 'No messages match the timestamp of one of the files')
       assert(message.parts !== undefined, 'Message doesn\'t contain contents attribute')
       assert(Array.isArray(message.parts), 'Message content attribute was not converted to an array')
       if (data.private) {
+        // check if files are larger than 20mb and file type
+        const totalFilesSize: number = data.files
+          .map(file => file.size)
+          .filter(size => typeof size === 'number')
+          .reduce((totalSize, size) => totalSize + size, 0)
+        assert(totalFilesSize <= 20 * 10 ** 6, `Total file size ${totalFilesSize / 10 ** 6}mb is over private size limit`)
         assert(base64, 'File data not found')
-        const inlineData = { inlineData: { mimeType: 'application/pdf' as const, data: base64 } }
+        const inlineData = {
+          inlineData: {
+            mimeType: mimeType,
+            data: base64
+          }
+        }
         message?.parts.push(inlineData)
         file.status = 'staged';
       } else {
         if (file.status !== 'uploaded') {
           const arrayBuffer = file.rawData
           assert(arrayBuffer !== undefined, 'File data was not found')
-          const fileBlob = new Blob([arrayBuffer], { type: 'application/pdf' });
+          const fileBlob = new Blob([arrayBuffer], { type: mimeType });
           const uploadedFile = await deepmind.files.upload({
             file: fileBlob,
             config: { displayName: fileName },
@@ -66,7 +84,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
         const fileData = {
           fileData: {
             fileUri: file.fileUri,
-            mimeType: fileExtension === 'pdf' ? 'application/pdf' : 'error'
+            mimeType: mimeType,
           } as FileData
         }
         message.parts.push(fileData)

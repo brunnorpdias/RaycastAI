@@ -16,14 +16,8 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
       "stream": true,
     })
   };
-
-  // try {
-  //   const response = await fetch(url, options);
-  //   const data = await response.json();
-  //   console.log(JSON.stringify(data));
-  // } catch (error) {
-  //   console.error(error);
-  // }
+  // add token count capabilities
+  // https://x.com/OpenRouterAI/status/1913345350397460758
 
   const response = await fetch(url, options);
   const reader = response.body?.getReader();

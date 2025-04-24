@@ -1,5 +1,4 @@
 import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Icon } from "@raycast/api";
-import NewEntry from './new_entry';
 import { useEffect, useRef, useState } from 'react';
 
 import * as OpenAI from "../fetch/openAI";
@@ -72,14 +71,15 @@ export default function Answer({ data, msgTimestamp }: {
       setResponse('')
     }
     if (apiStatus === 'done') {
-      setMsgId(msgID)
-      setPromptTokens(promptTokens);
-      setResponseTokens(responseTokens);
+      msgID ?? setMsgId(msgID)
+      promptTokens ?? setPromptTokens(promptTokens);
+      responseTokens ?? setResponseTokens(responseTokens);
     }
   };
 
   async function SaveData() {
     const finalData: Data = await NewData(data, response, promptTokens, responseTokens, msgID);
+    assert(finalData !== undefined, 'Data is not defined')
     setNewData(finalData);
     Functions.Cache(finalData);
     Functions.Bookmark(finalData, false);
@@ -103,7 +103,7 @@ export default function Answer({ data, msgTimestamp }: {
               title="New Entry"
               icon={Icon.Plus}
               onAction={() => {
-                CreateNewEntry(data, newData, push, msgTimestamp)
+                Functions.CreateNewEntry(data, newData, push, msgTimestamp)
               }}
             />
           )}
@@ -176,26 +176,6 @@ async function NewData(data: Data, response: string, promptTokens?: number, resp
 }
 
 
-function CreateNewEntry(data: Data, newData: Data, push: Function, msgTimestamp?: number) {
-  // is this a cached or bookmarked chat?
-  const lastTimestamp = data.messages.at(-1)?.timestamp
-  if (msgTimestamp && msgTimestamp !== lastTimestamp) {
-    const messageIndex: number = data.messages
-      .findLastIndex(msg => msg.timestamp === msgTimestamp) || data.messages.length - 1
-    const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) }
-    // Confirm overwrite of conversation
-    showToast({
-      title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
-        title: "Yes",
-        onAction: () => { push(<NewEntry data={truncData} />) }
-      }
-    })
-  } else {
-    push(<NewEntry data={newData} />)
-  }
-}
-
-
 async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewData: Function, msgTimestamp: number) {
   // Changed from id to timestamp, later added id separately, on the future remove the if condition, unnecessary for new users
   let selected_message = data.messages.findLast(msg =>
@@ -205,9 +185,7 @@ async function OpenHistoricalMessage(data: Data, setResponse: Function, setNewDa
   )
   assert(selected_message, 'Error finding selected message')
 
-  let api_response: string;
-  api_response = selected_message.content;
-  setResponse(api_response)
+  setResponse(selected_message.content)
   setNewData(data)
 }
 

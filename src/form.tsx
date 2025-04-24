@@ -1,13 +1,12 @@
 import { Form, ActionPanel, Action, useNavigation, Cache as RaycastCache } from '@raycast/api';
 import { useState } from 'react';
-import fs from 'fs';
 
 import { type Data, type API, type Model, APItoModels } from './utils/types'
 import { reasoningModels, toolSupportModels, attachmentModels, privateModeAPIs, sttModels } from './utils/types';
 import Answer from "./views/answer";
 import instructionsObject from './enums/instructions.json';
 import personalObj from './enums/personal_info.json';
-import { arrayBuffer } from 'stream/consumers';
+import * as Functions from './utils/functions';
 
 type Values = {
   prompt: string;
@@ -23,9 +22,11 @@ type Values = {
 };
 
 export default function ChatForm() {
+  const api: API = Object.keys(APItoModels).at(0) as API;
+  const model: Model = APItoModels[api].at(0)?.code as Model;
   const { push } = useNavigation();
-  const [selectedAPI, setAPI] = useState<API>('openai');
-  const [selectedModel, setModel] = useState<Model>('chatgpt-4o-latest');
+  const [selectedAPI, setAPI] = useState<API>(api);
+  const [selectedModel, setModel] = useState<Model>(model);
 
   async function handleSubmit(values: Values) {
     let instructions: string;
@@ -51,7 +52,7 @@ export default function ChatForm() {
     const timestamp = Date.now();
     const messages: Data["messages"] = [{ role: 'user', content: values.prompt, timestamp: timestamp }]
 
-    const data: Data = {
+    let data: Data = {
       timestamp: timestamp,
       model: values.model,
       api: values.api,
@@ -64,23 +65,7 @@ export default function ChatForm() {
     }
 
     if (values.attatchmentPaths?.length > 0) {
-      for (const path of values.attatchmentPaths) {
-        let sizeInBytes: number | undefined;
-        let arrayBuffer;
-        arrayBuffer = fs.readFileSync(path);
-        const base64String = arrayBuffer.toString('base64');
-        const padding = base64String.endsWith('==') ? 2 : base64String.endsWith('=') ? 1 : 0;
-        sizeInBytes = base64String.length * 3 / 4 - padding;
-
-        // check which is a larger memmory burden, arrayBuffer or base64 formatting
-        data.files.push({
-          status: 'idle',
-          timestamp: timestamp,
-          path: path,
-          rawData: arrayBuffer,
-          size: sizeInBytes
-        })
-      }
+      Functions.ProcessFiles(data, values.attatchmentPaths, timestamp)
     }
 
     const cache = new RaycastCache()
@@ -114,8 +99,8 @@ export default function ChatForm() {
         value={selectedAPI}
         onChange={(api) => setAPI(api as API)}
       >
-        <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
         <Form.Dropdown.Item value='deepmind' title='Deepmind' icon='deepmind-icon.png' />
+        <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
         <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
         <Form.Dropdown.Item value='openrouter' title='OpenRouter' icon='open_router-logo.png' />
       </Form.Dropdown>

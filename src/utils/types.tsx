@@ -1,4 +1,8 @@
 export const APItoModels = {
+  'deepmind': [
+    { name: 'Gemini 2.5 Flash', code: 'gemini-2.5-flash-preview-04-17' },
+    { name: 'Gemini 2.5 Pro', code: 'gemini-2.5-pro-preview-03-25' },
+  ],
   'openai': [
     { name: 'GPT 4.1 mini', code: 'gpt-4.1-mini' },
     { name: 'GPT 4.1', code: 'gpt-4.1' },
@@ -7,11 +11,6 @@ export const APItoModels = {
     { name: 'o3', code: 'o3' },
     { name: 'GPT 4o Transcribe', code: 'gpt-4o-transcribe' },
     // { name: 'GPT 4o TTS', code: 'gpt-4o-mini-tts' },
-  ],
-  'deepmind': [
-    { name: 'Gemini 2.0 Flash', code: 'gemini-2.0-flash' },
-    { name: 'Gemini 2.0 Flash Thinking Experimental', code: 'gemini-2.0-flash-thinking-exp-01-21' },
-    { name: 'Gemini 2.5 Pro', code: 'gemini-2.5-pro-preview-03-25' },
   ],
   'anthropic': [
     { name: 'Claude 3.7 Sonnet', code: 'claude-3-7-sonnet-latest' },
@@ -25,16 +24,18 @@ export const APItoModels = {
     { name: 'Perplexity Sonar Pro', code: 'perplexity/sonar-reasoning-pro' },
     { name: 'Sonar Deep Research', code: 'perplexity/sonar-deep-research' },
   ],
-} as const;
+  // add gemma via Ollama on premise
+  // https://x.com/googleaidevs/status/1913219776656089184
+};
 
 export const reasoningModels = ['o4-mini', 'o3', 'claude-3-7-sonnet-latest'];
 export const sttModels = ['gpt-4o-transcribe'];
 export const ttsModels = ['gpt-4o-mini-tts'];
 export const attachmentModels = ['o3', 'o4-mini', 'chatgpt-4o-latest', 'gpt-4.1-mini', 'gpt-4.1',
-  'gemini-2.0-flash', 'gemini-2.5-pro-preview-03-25',
-  'gemini-2.0-flash-thinking-exp-01-21', 'claude-3-7-sonnet-latest'];
+  'gemini-2.5-flash-preview-04-17', 'gemini-2.5-pro-preview-03-25',
+  'claude-3-7-sonnet-latest'];
 export const toolSupportModels = ['gpt-4o', 'o3', 'o4-mini', 'gpt-4.1-mini', 'gpt-4.1'];
-export const privateModeAPIs = ['openai', 'deepmind']
+export const privateModeAPIs = ['openai', 'deepmind'];
 
 export type API = keyof typeof APItoModels;
 
@@ -60,7 +61,7 @@ export type Data = {
     status: 'idle' | 'staged' | 'uploaded',
     path: string,
     fileUri?: string,
-    rawData?: Buffer,  // this or Buffer<ArrayBufferLike>?
+    rawData?: Buffer,
     size?: number,
   }>;
   private?: boolean;

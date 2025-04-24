@@ -1,24 +1,28 @@
 import { Form, ActionPanel, Action, useNavigation, showToast, Toast, Cache as RaycastCache } from "@raycast/api";
 import Answer from './answer';
-import { type Data } from "../utils/types";
+import assert from 'assert';
 import { useEffect, useState } from "react";
+import { type Data } from '../utils/types'
+import { attachmentModels } from '../utils/types';
+import { ProcessFiles } from "../utils/functions";
 
 type Values = {
-  prompt: string
+  prompt: string,
+  attatchmentPaths: [string];
 }
 
 
 export default function NewEntry({ data, promptTimestamp }: { data: Data, promptTimestamp?: number }) {
   const { push } = useNavigation();
   const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
-  const [inputMessage, setInputMessage] = useState<Data["messages"][number]>();
+  // const [inputMessage, setInputMessage] = useState<Data["messages"][number]>();
 
   useEffect(() => {
     if (promptTimestamp) {
       const message = data.messages.findLast(msg => msg.timestamp === promptTimestamp);
       if (message) {
         setInitialPrompt(message.content)
-        setInputMessage(message);
+        // setInputMessage(message);
       }
     } else {
       setInitialPrompt('')
@@ -27,19 +31,24 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
   }, [promptTimestamp])
 
   async function handleSubmit(values: Values) {
-    const lastMessage: Data["messages"][number] | undefined = data.messages.at(-1);
-    const newMessage: Data["messages"][number] = { role: 'user', content: values.prompt, timestamp: Date.now() }
+    const timestamp: number = Date.now();
+    const newMessage: Data["messages"][number] = {
+      role: 'user',
+      content: values.prompt,
+      timestamp: timestamp
+    };
+    await ProcessFiles(data, values.attatchmentPaths, timestamp);
 
-    if (promptTimestamp && lastMessage?.timestamp !== inputMessage?.timestamp) {
+
+    if (promptTimestamp) {
       const messages: Data["messages"] = data.messages;
       const messageIndex: number = messages
         .findLastIndex(msg => msg.timestamp === promptTimestamp)
-      const truncMessages: Data["messages"] = messageIndex > 1 ?
-        messages.slice(0, messageIndex) :
-        []
+      assert(messageIndex !== undefined && messageIndex > 1, 'Message timestamp didn\'t match')
+      const truncMessages: Data["messages"] = messages.slice(0, messageIndex)
       const truncData: Data = {
         ...data,
-        messages: [...truncMessages, newMessage]
+        messages: [...truncMessages, newMessage],
       }
 
       // Confirm overwrite of conversation
@@ -72,6 +81,11 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         }
       >
         <Form.TextArea id="prompt" defaultValue={initialPrompt ?? 'nothing'} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
+
+        {attachmentModels.includes(data.model) && (
+          <Form.FilePicker id="attatchmentPaths" />
+        )}
+
       </Form>
     );
   } else {
