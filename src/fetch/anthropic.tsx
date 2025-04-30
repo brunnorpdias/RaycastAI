@@ -42,7 +42,7 @@ type Content = string | Array<{
 const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
 
 export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
-  console.log('start', data.files)
+  // console.log('start', data.files)
   let max_tokens: number;
   let thinking_budget: number;
   const messages = data.messages.map(({ id, tokenCount, ...rest }) => rest);
@@ -73,7 +73,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
       const fileExtension = file.path.slice(file.path.lastIndexOf('.') + 1);
       assert(['pdf'].includes(fileExtension), `File type ${fileExtension} not supported`);
       assert(Array.isArray(inputMessage?.content), 'Content was not converted to an array')
-      console.log('string', base64)
+      // console.log('string', base64)
       inputMessage?.content.push({
         type: 'document',
         source: {

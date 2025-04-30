@@ -1,4 +1,4 @@
-import { Detail, showToast, Toast, useNavigation, ActionPanel, Action, Icon } from "@raycast/api";
+import { Detail, showToast, useNavigation, ActionPanel, Action, Icon } from "@raycast/api";
 import { useEffect, useRef, useState } from 'react';
 
 import * as OpenAI from "../fetch/openAI";
@@ -71,9 +71,9 @@ export default function Answer({ data, msgTimestamp }: {
       setResponse('')
     }
     if (apiStatus === 'done') {
-      msgID ?? setMsgId(msgID)
-      promptTokens ?? setPromptTokens(promptTokens);
-      responseTokens ?? setResponseTokens(responseTokens);
+      setMsgId(msgID)
+      setPromptTokens(promptTokens);
+      setResponseTokens(responseTokens);
     }
   };
 
@@ -81,8 +81,8 @@ export default function Answer({ data, msgTimestamp }: {
     const finalData: Data = await NewData(data, response, promptTokens, responseTokens, msgID);
     assert(finalData !== undefined, 'Data is not defined')
     setNewData(finalData);
-    Functions.Cache(finalData);
-    Functions.Bookmark(finalData, false);
+    await Functions.Cache(finalData);
+    await Functions.Bookmark(finalData, false);
   }
 
 
@@ -146,17 +146,17 @@ export default function Answer({ data, msgTimestamp }: {
 
 //  Helper Functions  //
 async function NewData(data: Data, response: string, promptTokens?: number, responseTokens?: number, msgId?: string) {
-  const userMsg = data.messages.filter(msg => msg.role === 'user').at(-1);
+  const userMsgs = data.messages.filter(msg => msg.role === 'user');
+  const userMsg = userMsgs.at(-1);
 
   const previousTokenCount = data.messages
     .map(msg => msg.tokenCount)
     .filter(tokens => typeof tokens === 'number')
     .reduce((sum, n) => sum + n, 0);
 
+  // adjustment to the number of tokens to avoid double counting
   if (userMsg && promptTokens) {
-    userMsg.tokenCount = data.private ?
-      promptTokens - (previousTokenCount ?? 0) :
-      promptTokens
+    userMsg.tokenCount = promptTokens - (previousTokenCount ?? 0);
   }
 
   let assistantMessage: Data["messages"][0] = {

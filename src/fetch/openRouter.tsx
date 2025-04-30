@@ -64,7 +64,7 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
             });
           } catch (e) {
             showToast({ title: 'Invalid JSON', style: Toast.Style.Failure })
-            console.log('Invalid JSON')
+            // console.log('Invalid JSON')
           }
         }
       }

@@ -1,4 +1,5 @@
-import { Form, ActionPanel, Action, useNavigation, showToast, Toast, Cache as RaycastCache } from "@raycast/api";
+import { Form, ActionPanel, Action, useNavigation, showToast, Toast } from "@raycast/api";
+import * as Functions from '../utils/functions';
 import Answer from './answer';
 import assert from 'assert';
 import { useEffect, useState } from "react";
@@ -56,7 +57,7 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
           title: "Yes",
           onAction: async () => {
-            await Cache(truncData);
+            await Functions.Cache(truncData);
             push(<Answer data={truncData} />)
           }
         }
@@ -66,7 +67,7 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         ...data,
         messages: [...data.messages, newMessage]
       }
-      await Cache(newData);
+      await Functions.Cache(newData);
       push(<Answer data={newData} />)
     }
   }
@@ -94,20 +95,5 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         {/* <Form.TextArea id="prompt" defaultValue={''} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} /> */}
       </Form>
     );
-  }
-
-
-  async function Cache(newData: Data) {
-    const cache = new RaycastCache()
-    const stringCache = cache.get('cachedData')
-    let newCache: Data[];
-    if (stringCache) {
-      let oldCache: Data[] = JSON.parse(stringCache)
-      oldCache = oldCache.filter(item => item.timestamp !== newData.timestamp)
-      newCache = [newData, ...oldCache]
-    } else {
-      newCache = [newData]
-    }
-    cache.set('cachedData', JSON.stringify(newCache))
   }
 }

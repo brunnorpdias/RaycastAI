@@ -40,8 +40,8 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
   async function LoadData() {
     let rawList: RawItem[];
     if (cacheOrBookmarks === 'cache') {
-      const raycastCache = new RaycastCache();
-      const stringCache = raycastCache.get('cachedData');
+      const cache = new RaycastCache();//{ capacity: 100 * 1024 * 1024 });
+      const stringCache = cache.get('cachedData');
       rawList = stringCache ? JSON.parse(stringCache) : [];
     } else {
       const stringBookmarks = await LocalStorage.getItem('bookmarks') as string;
@@ -149,11 +149,11 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                     onAction={async () => {
                       const deleteID = listItem.data.timestamp;
                       if (cacheOrBookmarks === 'cache') {
-                        const raycastCache = new RaycastCache();
-                        const cachedString: string | undefined = raycastCache.get('cachedData');
-                        const cache: Data[] = cachedString ? JSON.parse(cachedString) : []
-                        const newCache = cache.filter(messages => messages.timestamp !== deleteID);
-                        raycastCache.set('cachedData', JSON.stringify(newCache))
+                        const cache = new RaycastCache();
+                        const cachedString: string | undefined = cache.get('cachedData');
+                        const cacheData: Data[] = cachedString ? JSON.parse(cachedString) : []
+                        const newCache = cacheData.filter(messages => messages.timestamp !== deleteID);
+                        cache.set('cachedData', JSON.stringify(newCache))
                         showToast({ title: 'Deleted', style: Toast.Style.Success })
                       } else if (cacheOrBookmarks === 'bookmarks') {
                         const stringBookmarks = await LocalStorage.getItem('bookmarks');

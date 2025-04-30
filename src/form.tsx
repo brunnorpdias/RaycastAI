@@ -1,4 +1,4 @@
-import { Form, ActionPanel, Action, useNavigation, Cache as RaycastCache } from '@raycast/api';
+import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
 import { useState } from 'react';
 
 import { type Data, type API, type Model, APItoModels } from './utils/types'
@@ -45,8 +45,7 @@ export default function ChatForm() {
         break;
     }
 
-    instructions += ('' + `Always provide the answer of mathematical equations in latex using the delimiters
-                           \\( for inline math and \\[ for block equations. Provide the answers in markdown.`);
+    instructions += ('' + 'Always provide the answer of mathematical equations in latex using the delimiters \\( for inline math and \\[ for block equations. Provide the answers in markdown.');
     const personalInfo: string | undefined = personalObj ? personalObj.personal_info : undefined;
 
     const timestamp = Date.now();
@@ -64,20 +63,11 @@ export default function ChatForm() {
       private: values.private,
     }
 
-    if (values.attatchmentPaths?.length > 0) {
-      Functions.ProcessFiles(data, values.attatchmentPaths, timestamp)
+    if (values.attatchmentPaths.length > 0) {
+      await Functions.ProcessFiles(data, values.attatchmentPaths, timestamp)
     }
 
-    const cache = new RaycastCache()
-    const stringCache = cache.get('cachedData');
-    let newCache: Data[];
-    if (stringCache) {
-      const oldCache = JSON.parse(stringCache);
-      newCache = [data, ...oldCache]
-    } else {
-      newCache = [data]
-    }
-    cache.set('cachedData', JSON.stringify(newCache))
+    await Functions.Cache(data)
 
     push(<Answer data={data} />);
   }

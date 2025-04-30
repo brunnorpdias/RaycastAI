@@ -84,7 +84,7 @@ export async function STT(data: Data, streamPipeline: StreamPipeline) {
       })
     } else {
       showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure })
-      console.log('Not planned')
+      // console.log('Not planned')
     }
   }
 }

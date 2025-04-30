@@ -57,12 +57,16 @@ export type Data = {
   reasoning: 'none' | 'low' | 'medium' | 'high';
   files: Array<{
     id?: string,
+    hash: string,
     timestamp: number,
     status: 'idle' | 'staged' | 'uploaded',
     path: string,
-    fileUri?: string,
-    rawData?: Buffer,
     size?: number,
   }>;
   private?: boolean;
+};
+
+export type FileData = {
+  hash: string,
+  rawData: number[]
 };

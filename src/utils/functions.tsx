@@ -4,10 +4,11 @@
 // - bookmarking, caching, and other related functions
 
 import { LocalStorage, Cache as RaycastCache, showToast, Toast } from "@raycast/api";
-import { type Data } from "./types";
+import { type Data, type FileData } from "./types";
 import * as OpenAPI from "../fetch/openAI";
 import fs from 'fs';
 import assert from "assert";
+import * as crypto from 'crypto';
 
 import NewEntry from '../views/new_entry';
 
@@ -38,43 +39,54 @@ export async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 }
 
 
-export async function Cache(data: Data) {
-  const raycastCache = new RaycastCache();
-  const cachedDataString = raycastCache.get('cachedData');
-  let cachedData: Data[] = cachedDataString ? JSON.parse(cachedDataString) : undefined;
-  if (cachedData?.length > 0) {
+export async function Cache(newData: Data) {
+  const cache = new RaycastCache();//{ capacity: 100 * 1024 * 1024 });
+  const dataString = cache.get('cachedData');
+  const cachedData: Data[] = dataString ? JSON.parse(dataString) : [];
+  if (cachedData.length > 0) {
     const filteredCache: Data[] = cachedData
-      .filter(cache => cache.timestamp !== data.timestamp) // remove data if it's already cached
-    const newList = [...filteredCache, data];
+      .filter(cache => cache.timestamp !== newData.timestamp) // remove data if it's already cached
+    const newList = [...filteredCache, newData];
     const newCachedData: Data[] = newList
       .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
       .slice(0, 30)
-    raycastCache.set('cachedData', JSON.stringify(newCachedData));
+    cache.set('cachedData', JSON.stringify(newCachedData));
   } else {
-    const list = [data];
-    raycastCache.set('cachedData', JSON.stringify(list));
+    const list = [newData];
+    cache.set('cachedData', JSON.stringify(list));
   }
-  // showToast({ title: 'Cached', style: Toast.Style.Success });
 }
 
 
-export async function ProcessFiles(data: Data, attatchmentPaths: [string], timestamp: number) {
+export async function ProcessFiles(data: Data, attatchmentPaths: [string], messageTimestamp: number) {
+  // await LocalStorage.removeItem('files')
+  let filesString: string | undefined = await LocalStorage.getItem('files');
+  if (filesString === undefined) filesString = JSON.stringify([])
+  let filesData: FileData[] = JSON.parse(filesString).slice(0, 30)
+  let filesObject: FileData[] = [...filesData];
   for (const path of attatchmentPaths) {
-    let sizeInBytes: number | undefined;
-    let arrayBuffer;
-    arrayBuffer = fs.readFileSync(path);
+    let arrayBuffer = fs.readFileSync(path);
     const base64String = arrayBuffer.toString('base64');
-    const padding = base64String.endsWith('==') ? 2 : base64String.endsWith('=') ? 1 : 0;
-    sizeInBytes = base64String.length * 3 / 4 - padding;
-
+    let sizeInBytes: number | undefined = base64String.length * 3 / 4;
+    const hash = crypto.createHash('sha256');
+    hash.update(arrayBuffer);
+    const fileHash = hash.digest('hex');
     data.files.push({
       status: 'idle',
-      timestamp: timestamp,
+      timestamp: messageTimestamp,
+      hash: fileHash,
       path: path,
-      rawData: arrayBuffer,
-      size: sizeInBytes
+      size: sizeInBytes,
+    })
+
+    filesObject.push({
+      hash: fileHash,
+      rawData: Array.from(arrayBuffer),
     })
   }
+
+  console.log(filesObject)
+  await LocalStorage.setItem('files', JSON.stringify(filesObject));
 }
 
 
