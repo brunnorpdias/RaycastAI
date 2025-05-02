@@ -1,17 +1,13 @@
-// add here
-// - summarisation of conversations and title creation (both using openrouter - easy to change models)
-// - add long and short summary (for title and short description to be shown on the metadata)
-// - bookmarking, caching, and other related functions
-
 import { LocalStorage, Cache as RaycastCache, showToast, Toast } from "@raycast/api";
-import { type Data, type FileData } from "./types";
-import * as OpenAPI from "../fetch/openAI";
 import fs from 'fs';
 import assert from "assert";
 import * as crypto from 'crypto';
+import path from 'path';
 
+import * as OpenAPI from "../fetch/openAI";
 import NewEntry from '../views/new_entry';
 
+import { type Data, storageDir } from "./types";
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
@@ -58,35 +54,30 @@ export async function Cache(newData: Data) {
 }
 
 
+// try to add sql
 export async function ProcessFiles(data: Data, attatchmentPaths: [string], messageTimestamp: number) {
-  // await LocalStorage.removeItem('files')
-  let filesString: string | undefined = await LocalStorage.getItem('files');
-  if (filesString === undefined) filesString = JSON.stringify([])
-  let filesData: FileData[] = JSON.parse(filesString).slice(0, 30)
-  let filesObject: FileData[] = [...filesData];
-  for (const path of attatchmentPaths) {
-    let arrayBuffer = fs.readFileSync(path);
-    const base64String = arrayBuffer.toString('base64');
-    let sizeInBytes: number | undefined = base64String.length * 3 / 4;
-    const hash = crypto.createHash('sha256');
-    hash.update(arrayBuffer);
-    const fileHash = hash.digest('hex');
+  for (const attPath of attatchmentPaths) {
+    const ext = path.extname(attPath).replaceAll('.', '')
+    const name = path.basename(attPath, `.${ext}`)
+    const arrayBuffer = fs.readFileSync(attPath);
+    const sizeInBytes: number = arrayBuffer.length;
+    const fileHash = crypto.createHash('sha256').update(arrayBuffer).digest('hex');
     data.files.push({
+      hash: fileHash,
+      name: name,
+      extension: ext,
       status: 'idle',
       timestamp: messageTimestamp,
-      hash: fileHash,
-      path: path,
       size: sizeInBytes,
-    })
+    });
 
-    filesObject.push({
-      hash: fileHash,
-      rawData: Array.from(arrayBuffer),
-    })
+    // limitation of the file path, could be more universal but i wanted to keep on the project dir
+    fs.mkdirSync(storageDir, { recursive: true });
+    const writePath = path.join(storageDir, `${fileHash}${ext}`);
+    if (!fs.existsSync(writePath)) {
+      fs.writeFileSync(writePath, arrayBuffer);
+    }
   }
-
-  console.log(filesObject)
-  await LocalStorage.setItem('files', JSON.stringify(filesObject));
 }
 
 

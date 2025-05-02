@@ -1,11 +1,13 @@
 import { Anthropic } from '@anthropic-ai/sdk';
 import { showToast, Toast } from "@raycast/api";
+import fs from 'fs';
+import path from 'path';
 
 import { API_KEYS } from '../enums/api_keys';
 
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { type StreamPipeline } from "../views/answer";
-import { type Data } from "../utils/types";
+import { type Data, storageDir } from "../utils/types";
 import assert from 'assert';
 
 type AnthropicRequest = {
@@ -68,10 +70,11 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
     })
 
     for (const file of data.files) {
-      const base64: string | undefined = file.rawData?.toString('base64');
+      const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
+      const arrayBuffer = fs.readFileSync(filePath);
+      const base64: string | undefined = arrayBuffer.toString('base64');
       let inputMessage = inputMessages.find(msg => msg.timestamp === file.timestamp);
-      const fileExtension = file.path.slice(file.path.lastIndexOf('.') + 1);
-      assert(['pdf'].includes(fileExtension), `File type ${fileExtension} not supported`);
+      assert(['pdf'].includes(file.extension), `File type ${file.extension} not supported`);
       assert(Array.isArray(inputMessage?.content), 'Content was not converted to an array')
       // console.log('string', base64)
       inputMessage?.content.push({

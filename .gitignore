@@ -4,3 +4,4 @@ src/enums/personal_info.json
 package-lock.json
 raycast-env.d.ts
 node_modules/
+storage/*

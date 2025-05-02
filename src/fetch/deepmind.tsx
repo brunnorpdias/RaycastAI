@@ -1,11 +1,13 @@
-import { showToast, Toast, LocalStorage } from "@raycast/api";
+import { showToast, Toast } from "@raycast/api";
 import { GoogleGenAI } from "@google/genai";
+import path from 'path';
+import assert from "assert";
+import fs from "fs";
 
 import { API_KEYS } from '../enums/api_keys';
 
-import { type Data, type FileData } from "../utils/types";
+import { type Data, storageDir } from "../utils/types";
 import { type StreamPipeline } from "../views/answer";
-import assert from "assert";
 
 type Content = Array<{
   role: 'user' | 'model',
@@ -34,25 +36,20 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
     }) as (Content[number] & { timestamp: number })[]
 
   if (data.files.length > 0) {
-    const filesString: string | undefined = await LocalStorage.getItem('files');
-    assert(filesString !== undefined, 'Files database not found')
-    const filesObject: FileData[] = JSON.parse(filesString);
     for (const file of data.files) {
-      const fileName = file.path.slice(file.path.lastIndexOf('/') + 1, file.path.lastIndexOf('.'))
-      const fileExtension = file.path.slice(file.path.lastIndexOf('.') + 1)
-      const fileObject: FileData | undefined = filesObject.findLast(item => item.hash === file.hash);
-      assert(fileObject !== undefined, 'File is not found')
-      const arrayBuffer = Buffer.from(fileObject?.rawData);
+      const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
+      const arrayBuffer = fs.readFileSync(filePath);
+
       const mimeType: string | undefined =
-        ['pdf'].includes(fileExtension) ?  // documents
-          `application/${fileExtension}` :
-          ['txt', 'html', 'md', 'csv'].includes(fileExtension) ?  // text
-            `text/${fileExtension}` :
+        ['pdf'].includes(file.extension) ?  // documents
+          `application/${file.extension}` :
+          ['txt', 'html', 'md', 'csv'].includes(file.extension) ?  // text
+            `text/${file.extension}` :
             // is text correct?
-            ['png', 'jpeg', 'webp', 'heic', 'heif'].includes(fileExtension) ?  // images
-              `image/${fileExtension}` :
+            ['png', 'jpeg', 'webp', 'heic', 'heif'].includes(file.extension) ?  // images
+              `image/${file.extension}` :
               undefined
-      assert(mimeType !== undefined, `File format ${fileExtension} not supported`)
+      assert(mimeType !== undefined, `File format ${file.extension} not supported`)
       let message: Content[number] | undefined = messages.find(msg => msg.timestamp === file.timestamp)
       assert(message !== undefined, 'No messages match the timestamp of one of the files')
       assert(Array.isArray(message.parts), 'Message content attribute was not converted to an array')
@@ -76,11 +73,12 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
           const fileBlob = new Blob([arrayBuffer], { type: mimeType });
           const uploadedFile = await deepmind.files.upload({
             file: fileBlob,
-            config: { displayName: fileName },
+            config: { displayName: file.name },
           })
           assert(uploadedFile.uri && uploadedFile.mimeType, 'Error uploading file')
-          showToast({ title: `File ${fileName} uploaded`, style: Toast.Style.Success })
+          showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success })
           file.id = uploadedFile.uri;
+          console.log('uri:', uploadedFile.uri)
         }
         const fileData = {
           fileData: {

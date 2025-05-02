@@ -35,17 +35,18 @@ export default function ChatForm() {
         instructions = instructionsObject.traditional;
         break;
       case 'socratic':
-        instructions = instructionsObject.socratic;
+        instructions = instructionsObject.traditional + instructionsObject.socratic;
         break;
       case 'developer':
-        instructions = instructionsObject.developer;
+        instructions = instructionsObject.traditional + instructionsObject.developer;
         break
       case 'concise':
-        instructions = instructionsObject.concise;
+        instructions = instructionsObject.traditional + instructionsObject.concise;
         break;
     }
 
-    instructions += ('' + 'Always provide the answer of mathematical equations in latex using the delimiters \\( for inline math and \\[ for block equations. Provide the answers in markdown.');
+    // add technical instructions
+    instructions += 'Always provide the answer of mathematical equations in latex using the delimiters \\( for inline math and \\[ for block equations. Provide the answers in markdown.';
     const personalInfo: string | undefined = personalObj ? personalObj.personal_info : undefined;
 
     const timestamp = Date.now();

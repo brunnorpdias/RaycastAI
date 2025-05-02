@@ -4,9 +4,9 @@ import OpenAI from "openai";
 import fs from 'fs';
 import path from "path";
 import os from 'os';
-import { API_KEYS } from '../enums/api_keys';
 
-import { type Data } from "../utils/types";
+import { API_KEYS } from '../enums/api_keys';
+import { type Data, storageDir } from "../utils/types";
 import { type StreamPipeline } from "../views/answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import assert from "assert";
@@ -39,6 +39,7 @@ export async function Responses(data: Data, streamPipeline: StreamPipeline) {
 
 export async function TitleConversation(data: Data) {
   let input: Input = await GenerateInput(data)
+  input = input.map(({ timestamp, ...rest }) => rest)  // remove timestamps from the messages (used to match files on responses)
   assert(Array.isArray(input), 'Input has an incorrect format')
   input.push({ role: 'user', content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.' })
   let responsesObject = {
@@ -57,8 +58,11 @@ export async function STT(data: Data, streamPipeline: StreamPipeline) {
   const lastMsg = data.messages.at(-1)
   if (!lastMsg) return
   const prompt: string = lastMsg.content ?? '';
+  const file = data.files.at(0);
+  assert(file !== undefined, 'File was not found')
+  const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
   const stream = await openai.audio.transcriptions.create({
-    file: fs.createReadStream(data.files[0].path),
+    file: fs.createReadStream(filePath),
     model: "gpt-4o-transcribe",
     prompt: prompt,
     response_format: 'json', //  "text",
@@ -118,15 +122,18 @@ async function GenerateInput(data: Data) {
   const timestamps: number[] = data.files.map(file => file.timestamp);
   if (data.files.length <= 0) return data.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
 
-  let input: Input = data.messages.map(({ id, timestamp, tokenCount, ...rest }) => {
-    if (rest.role === 'user' && timestamps.includes(timestamp)) {
+  let input: Input = data.messages.map(({ role, content, timestamp }) => {
+    if (role === 'user' && timestamps.includes(timestamp)) {
       return {
-        ...rest,
-        timestamp: timestamp,
-        content: [{ type: 'input_text', text: rest.content }],
+        role: role,
+        content: [{ type: 'input_text', text: content }],
+        timestamp: timestamp
       }
     } else {
-      return rest
+      return {
+        role: role,
+        content: content
+      }
     }
   })
 
@@ -138,15 +145,19 @@ async function AddFiles(data: Data, input: Input) {
   if (data.files.length < 1) return input
   let inputWithFiles = [...input]
   for (const file of data.files) {
-    const fileName: string | undefined = file.path.slice(file.path.lastIndexOf('/') + 1, file.path.lastIndexOf('.'))
-    const fileExtension: string | undefined = file.path.slice(file.path.lastIndexOf('.') + 1)
+    const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
+    // const arrayBuffer = fs.readFileSync(filePath);
+    const arrayBuffer = fs.readFileSync(filePath);
+    const fileName = file.name;
+    const fileExtension = file.extension;
+
     let item: Input[number] | undefined = inputWithFiles.find(item => item.timestamp === file.timestamp);
     assert(Array.isArray(item?.content), 'Content attribute was not converted to array format')
     assert(fileExtension && fileName, 'Error parsing file name and extension')
     assert(['pdf', 'jpg', 'png', 'webp', 'gif'].includes(fileExtension), `File type ${fileExtension} not supported`)
 
     if (data.private) {
-      const base64 = file.rawData?.toString('base64');
+      const base64 = arrayBuffer.toString('base64');
       assert(base64, 'Attachment data not found')
       item.content.push({
         type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
@@ -160,7 +171,7 @@ async function AddFiles(data: Data, input: Input) {
         assert(inputWithFiles.length === 1, 'Input has unexpected size')
         showToast({ title: 'Uploading file', style: Toast.Style.Animated })
         const uploadedFile = await openai.files.create({
-          file: fs.createReadStream(file.path),
+          file: fs.createReadStream(filePath),
           purpose: 'user_data',
         })
         assert(uploadedFile.id !== undefined, 'File not uploaded')

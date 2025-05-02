@@ -30,26 +30,17 @@
   "type": "module",
   "dependencies": {
     "@anthropic-ai/sdk": "latest",
-    "@eslint/config-array": "latest",
     "@google/genai": "latest",
     "@raycast/api": "latest",
-    "axios": "latest",
     "date-fns": "latest",
-    "eventsource": "latest",
-    "fetch": "latest",
-    "node-fetch": "latest",
     "openai": "latest"
   },
   "devDependencies": {
-    "@eslint/js": "latest",
     "@raycast/eslint-config": "latest",
     "@types/react": "latest",
     "eslint": "latest",
-    "eslint-plugin-react": "latest",
-    "globals": "latest",
     "prettier": "latest",
-    "typescript": "latest",
-    "typescript-eslint": "latest"
+    "typescript": "latest"
   },
   "scripts": {
     "build": "ray build -e dist",

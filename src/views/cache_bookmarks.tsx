@@ -67,14 +67,13 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
             item.messages.at(0)?.content ?? '' :
             item.summary ?? 'No summary...',
           markdown: item.messages
-            .slice(0, 2)
             .map(msg => msg.content)
             .join(`\n\r---\n\r---\n\r`),
           provider: { name: apiToIcon[item.api].name, iconDir: apiToIcon[item.api].icon },
           model: item.model,
           date: DateFormat(item.timestamp, 'HH:mm:ss dd/MM/yy'),
           summary: item.summary,
-          attachmentNames: item.files?.map(file => file.path.slice(file.path.lastIndexOf('/') + 1, file.path.lastIndexOf('.'))) ?? [],
+          attachmentNames: item.files?.map(file => file.name),// ?? [],
           tokenCount: item.messages
             .map(msg => msg.tokenCount)
             .filter(value => typeof value === 'number')
