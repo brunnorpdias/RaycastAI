@@ -44,7 +44,7 @@ export async function TitleConversation(data: Data) {
   input.push({ role: 'user', content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.' })
   let responsesObject = {
     input: input,
-    model: 'gpt-4o-mini',
+    model: 'gpt-4.1-mini',
     stream: false,
   }
   showToast({ title: 'Creating a title', style: Toast.Style.Animated })
@@ -144,14 +144,16 @@ async function GenerateInput(data: Data) {
 async function AddFiles(data: Data, input: Input) {
   if (data.files.length < 1) return input
   let inputWithFiles = [...input]
+  let count = 1;
+  let idleFilesCount: number = data.files.filter(file => file.status === 'idle').length;
   for (const file of data.files) {
     const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
-    // const arrayBuffer = fs.readFileSync(filePath);
     const arrayBuffer = fs.readFileSync(filePath);
     const fileName = file.name;
     const fileExtension = file.extension;
-
     let item: Input[number] | undefined = inputWithFiles.find(item => item.timestamp === file.timestamp);
+
+    assert(arrayBuffer !== undefined, 'File not found')
     assert(Array.isArray(item?.content), 'Content attribute was not converted to array format')
     assert(fileExtension && fileName, 'Error parsing file name and extension')
     assert(['pdf', 'jpg', 'png', 'webp', 'gif'].includes(fileExtension), `File type ${fileExtension} not supported`)
@@ -169,7 +171,6 @@ async function AddFiles(data: Data, input: Input) {
     } else {
       if (file.status !== 'uploaded') {
         assert(inputWithFiles.length === 1, 'Input has unexpected size')
-        showToast({ title: 'Uploading file', style: Toast.Style.Animated })
         const uploadedFile = await openai.files.create({
           file: fs.createReadStream(filePath),
           purpose: 'user_data',
@@ -181,7 +182,7 @@ async function AddFiles(data: Data, input: Input) {
         })
         file.id = uploadedFile.id
         file.status = 'uploaded';
-        showToast({ title: `File ${fileName} was uploaded`, style: Toast.Style.Success })
+        showToast({ title: `File ${fileName} uploaded (${count}/${idleFilesCount})`, style: Toast.Style.Success })
       }
     }
   }
@@ -200,7 +201,12 @@ async function ResponsesObject(data: Data, input: Input) {
     input: input,
     model: data.model,
     instructions: data.instructions.length > 0 ? data.instructions : undefined,
-    reasoning: data.reasoning !== 'none' ? { effort: data.reasoning } : undefined,
+    reasoning: data.reasoning !== 'none' ?
+      {
+        effort: data.reasoning,
+        summary: "auto"
+      } :
+      undefined,
     store: !data.private ? true : false,
     previous_response_id: !data.private ? previousResponseId : undefined,
     tools: data.tools === 'web' ? [{ type: 'web_search' }] : undefined,
@@ -235,7 +241,7 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
       streamPipeline({
         apiResponse: '',
         apiStatus: 'done',
-        msgID: id,
+        msgID: id,  // this is actually the response id, not the message id
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       })

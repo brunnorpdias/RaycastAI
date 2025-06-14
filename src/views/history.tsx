@@ -37,12 +37,11 @@ export default function ChatHistory({ data }: { data: Data }) {
                       if (message.role === 'user') {
                         push(<NewEntry data={data} promptTimestamp={message.timestamp} />)
                       } else {
-                        // added if statements because of change in formatting of data, not necessary for new users
-                        if (message.timestamp) {
-                          push(<Answer data={data} msgTimestamp={message.timestamp} />)
-                        } else {
-                          push(<Answer data={data} msgTimestamp={Number(message.id)} />)
-                        }
+                        push(<Answer data={data} msgTimestamp={message.timestamp} />)
+                        // if (message.timestamp) {
+                        // } else {
+                        //   push(<Answer data={data} msgTimestamp={Number(message.id)} />)
+                        // }
                       }
                     }}
                   />

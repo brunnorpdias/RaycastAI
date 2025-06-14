@@ -33,6 +33,7 @@
     "@google/genai": "latest",
     "@raycast/api": "latest",
     "date-fns": "latest",
+    "ollama": "^0.5.15",
     "openai": "latest"
   },
   "devDependencies": {
@@ -40,7 +41,7 @@
     "@types/react": "latest",
     "eslint": "latest",
     "prettier": "latest",
-    "typescript": "latest"
+    "typescript": "^5.8.3"
   },
   "scripts": {
     "build": "ray build -e dist",

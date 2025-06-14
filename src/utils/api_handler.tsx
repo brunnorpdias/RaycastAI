@@ -2,6 +2,7 @@ import * as OpenAPI from '../fetch/openAI';
 import { AnthropicAPI } from '../fetch/anthropic';
 import * as DeepmindAPI from '../fetch/deepmind';
 import { OpenRouter } from '../fetch/openRouter';
+import * as Ollama from '../fetch/ollama';
 
 import { type Data } from "../utils/types";
 import { type StreamPipeline } from "../views/answer";
@@ -16,15 +17,18 @@ export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
       } else {
         await OpenAPI.Responses(data, streamPipeline);
       }
-      break;
+      break
     case 'anthropic':
       await AnthropicAPI(data, streamPipeline);
-      break;
+      break
     case 'deepmind':
       await DeepmindAPI.RunGoogle(data, streamPipeline);
-      break;
+      break
     case 'openrouter':
       await OpenRouter(data, streamPipeline);
-      break;
+      break
+    case 'ollama':
+      await Ollama.Run(data, streamPipeline);
+      break
   }
 }

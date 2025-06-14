@@ -1,4 +1,4 @@
-import { Detail, showToast, useNavigation, ActionPanel, Action, Icon } from "@raycast/api";
+import { Detail, showToast, useNavigation, ActionPanel, Action, Icon, Toast } from "@raycast/api";
 import { useEffect, useRef, useState } from 'react';
 
 import * as OpenAI from "../fetch/openAI";
@@ -15,8 +15,8 @@ export type StreamPipeline = ({
   promptTokens,
   responseTokens
 }: {
-  apiResponse: string,
-  apiStatus: Status,
+  apiResponse?: string,
+  apiStatus?: Status,
   msgID?: string,
   promptTokens?: number,
   responseTokens?: number
@@ -30,6 +30,7 @@ export default function Answer({ data, msgTimestamp }: {
 }) {
   const { push } = useNavigation();
   const hasRun = useRef(false);
+  const hasStartedStreaming = useRef(false);
   const [status, setStatus] = useState<Status>('idle');
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
@@ -64,13 +65,18 @@ export default function Answer({ data, msgTimestamp }: {
   }, [status])
 
   const streamPipeline: StreamPipeline = ({ apiResponse, apiStatus, msgID, promptTokens, responseTokens }) => {
-    setStatus(apiStatus);
-    if (apiStatus !== 'reset') {
+    if (apiStatus === 'streaming') {
       setResponse((prevResponse: string) => prevResponse + apiResponse);
-    } else {
+      if (!hasStartedStreaming.current) {
+        // showToast({ title: 'Streaming', style: Toast.Style.Animated })
+        setStatus(apiStatus);
+        hasStartedStreaming.current = true
+      }
+    } else if (apiStatus === 'reset') {
       setResponse('')
-    }
-    if (apiStatus === 'done') {
+    } else if (apiStatus === 'done') {
+      setStatus(apiStatus);
+      setResponse((prevResponse: string) => prevResponse + apiResponse);
       setMsgId(msgID)
       setPromptTokens(promptTokens);
       setResponseTokens(responseTokens);
@@ -109,12 +115,14 @@ export default function Answer({ data, msgTimestamp }: {
           )}
 
           {data.model !== 'gpt-4o-transcribe' && (
+            // change this to import transcription / non text models from types.tsx
+            // add option to go to history.tsx directly from the chat (cmd + y) ?
             <Action
               title="Bookmark"
               icon={Icon.Bookmark}
               shortcut={{ modifiers: ["cmd"], key: "d" }}
               onAction={async () => {
-                Functions.Bookmark(data, true)
+                Functions.Bookmark(newData, true)
               }}
             />
           )}

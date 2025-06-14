@@ -6,9 +6,11 @@ export default function Saved() {
   const { push } = useNavigation();
   return (
     // Try to remove the search bar
-    <RaycastList filtering={false} >
+    // setup groups of conversations around a specific subject
+    <RaycastList>
 
       <RaycastList.Item
+        // show the size of the cache and bookmarks
         title={"Cache"}
         subtitle={"View cached chats"}
         icon={Icon.Sidebar}

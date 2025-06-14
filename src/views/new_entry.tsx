@@ -38,7 +38,10 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
       content: values.prompt,
       timestamp: timestamp
     };
-    await ProcessFiles(data, values.attatchmentPaths, timestamp);
+
+    if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
+      await Functions.ProcessFiles(data, values.attatchmentPaths, timestamp)
+    }
 
 
     if (promptTimestamp) {

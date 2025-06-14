@@ -25,7 +25,6 @@ const deepmind = new GoogleGenAI({ apiKey: API_KEYS.DEEPMIND })
 
 export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
   // port summarisation and title creation to gemini 2.0 flash
-  // add code execution, pdf, files, and thinking
   let messages = data.messages
     .map(({ id, tokenCount, role, content, ...msg }) => {
       return {
@@ -39,6 +38,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
     for (const file of data.files) {
       const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
       const arrayBuffer = fs.readFileSync(filePath);
+      assert(arrayBuffer !== undefined, 'File not found')
 
       const mimeType: string | undefined =
         ['pdf'].includes(file.extension) ?  // documents
@@ -78,7 +78,6 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
           assert(uploadedFile.uri && uploadedFile.mimeType, 'Error uploading file')
           showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success })
           file.id = uploadedFile.uri;
-          console.log('uri:', uploadedFile.uri)
         }
         const fileData = {
           fileData: {
@@ -100,6 +99,13 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
       systemInstruction: data.instructions,
       maxOutputTokens: 60000000,
       // thinkingConfig: true ? { includeThoughts: true } : undefined,
+      thinkingConfig: {
+        thinkingBudget: data.reasoning === 'none' ?
+          0 : data.reasoning === 'low' ?
+            8192 : data.reasoning === 'medium' ?
+              16384 : data.reasoning === 'high' ?
+                24576 : undefined
+      }
     },
   }
 

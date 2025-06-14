@@ -26,12 +26,15 @@ const apiToIcon = {
   'deepmind': { name: 'Deep Mind', icon: '../assets/deepmind-icon.png' },
   'anthropic': { name: 'Anthropic', icon: '../assets/anthropic-icon.png' },
   'openrouter': { name: 'OpenRouter', icon: '../assets/open_router-logo.png' },
+  'ollama': { name: 'Ollama', icon: '../assets/ollama-icon.png' },
 }
 
 
 export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'cache' | 'bookmarks' }) {
   const { push } = useNavigation();
   const [list, setList] = useState<ListItem[]>();
+  // setup custom filtering (whole text?)
+  // https://developers.raycast.com/api-reference/user-interface/list#custom-filtering
 
   useEffect(() => {
     LoadData();
@@ -67,6 +70,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
             item.messages.at(0)?.content ?? '' :
             item.summary ?? 'No summary...',
           markdown: item.messages
+            .slice(0, 4)
             .map(msg => msg.content)
             .join(`\n\r---\n\r---\n\r`),
           provider: { name: apiToIcon[item.api].name, iconDir: apiToIcon[item.api].icon },
@@ -114,6 +118,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
               }
 
               actions={
+                // add action to transform a private chat to non-private (in case it's no longer saved on server)
                 <ActionPanel>
                   <Action
                     title="View Conversation"
@@ -144,7 +149,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                   <Action
                     title="Delete Item"
                     icon={Icon.Trash}
-                    shortcut={{ modifiers: ["cmd"], key: "backspace" }}
+                    shortcut={{ modifiers: ["cmd"], key: "deleteForward" }}
                     onAction={async () => {
                       const deleteID = listItem.data.timestamp;
                       if (cacheOrBookmarks === 'cache') {

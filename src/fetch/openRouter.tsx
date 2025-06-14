@@ -15,6 +15,8 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
       "messages": messages,
       "stream": true,
     })
+    // add pdf and image capabilities
+    // https://openrouter.ai/docs/features/images-and-pdfs
   };
   // add token count capabilities
   // https://x.com/OpenRouterAI/status/1913345350397460758

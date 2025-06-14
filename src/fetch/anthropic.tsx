@@ -72,6 +72,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
     for (const file of data.files) {
       const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
       const arrayBuffer = fs.readFileSync(filePath);
+      assert(arrayBuffer !== undefined, 'File not found')
       const base64: string | undefined = arrayBuffer.toString('base64');
       let inputMessage = inputMessages.find(msg => msg.timestamp === file.timestamp);
       assert(['pdf'].includes(file.extension), `File type ${file.extension} not supported`);
@@ -118,6 +119,8 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
     max_tokens: max_tokens,
     temperature: 1,
     stream: true,
+    // tools: web search
+    // https://docs.anthropic.com/en/docs/build-with-claude/tool-use/web-search-tool
   }
 
   if (data.model === 'claude-3-7-sonnet-latest' && data.reasoning && ['low', 'medium', 'high'].includes(data.reasoning)) {

@@ -2,6 +2,7 @@ import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
 import { useState } from 'react';
 
 import { type Data, type API, type Model, APItoModels } from './utils/types'
+
 import { reasoningModels, toolSupportModels, attachmentModels, privateModeAPIs, sttModels } from './utils/types';
 import Answer from "./views/answer";
 import instructionsObject from './enums/instructions.json';
@@ -17,7 +18,7 @@ type Values = {
   instructions: 'traditional' | 'concise' | 'socratic' | 'developer';
   temperature: string;
   stream: boolean;
-  attatchmentPaths: [string];
+  attatchmentPaths?: [string];
   reasoning: 'none' | 'low' | 'medium' | 'high';
 };
 
@@ -64,7 +65,7 @@ export default function ChatForm() {
       private: values.private,
     }
 
-    if (values.attatchmentPaths.length > 0) {
+    if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
       await Functions.ProcessFiles(data, values.attatchmentPaths, timestamp)
     }
 
@@ -90,10 +91,12 @@ export default function ChatForm() {
         value={selectedAPI}
         onChange={(api) => setAPI(api as API)}
       >
+        {/* change this to list according to the types list */}
         <Form.Dropdown.Item value='deepmind' title='Deepmind' icon='deepmind-icon.png' />
         <Form.Dropdown.Item value='openai' title='Open AI' icon='openai-logo.svg' />
         <Form.Dropdown.Item value='anthropic' title='Anthropic' icon='anthropic-icon.png' />
         <Form.Dropdown.Item value='openrouter' title='OpenRouter' icon='open_router-logo.png' />
+        <Form.Dropdown.Item value='ollama' title='Ollama' icon='ollama-icon.png' />
       </Form.Dropdown>
 
       <Form.Dropdown
@@ -107,7 +110,7 @@ export default function ChatForm() {
       </Form.Dropdown>
 
       {reasoningModels.includes(selectedModel) && (
-        <Form.Dropdown id='reasoning' title='Reasoning Effort' >
+        <Form.Dropdown id='reasoning' title='Reasoning Effort' defaultValue='low' >
           <Form.Dropdown.Item value='none' title='None' />
           <Form.Dropdown.Item value='low' title='Low' />
           <Form.Dropdown.Item value='medium' title='Medium' />

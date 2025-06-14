@@ -36,7 +36,7 @@ export async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 
 
 export async function Cache(newData: Data) {
-  const cache = new RaycastCache();//{ capacity: 100 * 1024 * 1024 });
+  const cache = new RaycastCache();
   const dataString = cache.get('cachedData');
   const cachedData: Data[] = dataString ? JSON.parse(dataString) : [];
   if (cachedData.length > 0) {
@@ -45,7 +45,7 @@ export async function Cache(newData: Data) {
     const newList = [...filteredCache, newData];
     const newCachedData: Data[] = newList
       .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
-      .slice(0, 30)
+      .slice(0, 128)
     cache.set('cachedData', JSON.stringify(newCachedData));
   } else {
     const list = [newData];
@@ -73,11 +73,19 @@ export async function ProcessFiles(data: Data, attatchmentPaths: [string], messa
 
     // limitation of the file path, could be more universal but i wanted to keep on the project dir
     fs.mkdirSync(storageDir, { recursive: true });
-    const writePath = path.join(storageDir, `${fileHash}${ext}`);
+    const writePath = path.join(storageDir, `${fileHash}.${ext}`);
     if (!fs.existsSync(writePath)) {
       fs.writeFileSync(writePath, arrayBuffer);
     }
   }
+
+  // add section to remove files if they are not used as reference in any chat (current, cache, or bookmarks)
+  // const cache = new RaycastCache();
+  // const dataString = cache.get('cachedData');
+  // const bookmarksString = await LocalStorage.getItem('bookmarks');
+  // const hash_data = data.files.map(({ hash }) => hash)
+  // const hash_cache =
+  // const hash_bookmarks =
 }
 
 
@@ -92,7 +100,11 @@ export function CreateNewEntry(data: Data, newData: Data, push: Function, msgTim
     showToast({
       title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
         title: "Yes",
-        onAction: () => { push(<NewEntry data={truncData} />) }
+        onAction: () => {
+          // delete all previous responses on the api in case it's a non-private message (saved on server)
+          // https://platform.openai.com/docs/api-reference/responses/delete
+          push(<NewEntry data={truncData} />)
+        }
       }
     })
   } else {
