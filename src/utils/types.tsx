@@ -38,12 +38,16 @@ export const APItoModels = {
   ]
 };
 
-export const reasoningModels = ['o4-mini', 'o3', 'claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-06-05']// 'qwen3:8b', 'qwen3:14b', 'qwen3:32b'];
+export const reasoningModels = ['o4-mini', 'o3', 'o3-pro', 'claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-06-05']// 'qwen3:8b', 'qwen3:14b', 'qwen3:32b'];
 export const attachmentModels = ['o3', 'o3-pro', 'o4-mini', 'chatgpt-4o-latest', 'gpt-4.1-mini', 'gpt-4.1',
   'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-06-05',
-  'claude-sonnet-4-20250514', 'claude-opus-4-20250514'];
-export const toolSupportModels = ['gpt-4.1-mini', 'gpt-4.1'];
-export const privateModeAPIs = ['openai', 'deepmind'];
+  'claude-sonnet-4-20250514', 'claude-opus-4-20250514'
+];
+export const toolSupportModels = ['gpt-4.1-mini', 'gpt-4.1',
+  'claude-sonnet-4-20250514', 'claude-opus-4-20250514',
+  'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-06-05'
+];
+export const privateModeAPIs = ['openai', 'deepmind'];  // deprecate
 export const sttModels = ['gpt-4o-transcribe'];
 export const ttsModels = ['gpt-4o-mini-tts'];
 
@@ -55,9 +59,8 @@ export type Model = typeof APItoModels[API][number]['code'];
 
 export type Data = {
   timestamp: number;
-  id?: number,  // response id
   messages: Array<{
-    id?: string,  // message id (on openai is switched with response id)
+    id?: string,  // response id on openai
     timestamp: number,
     role: 'user' | 'assistant',
     content: string,
@@ -77,7 +80,7 @@ export type Data = {
     status: 'idle' | 'staged' | 'uploaded',
     size?: number,
   }>;
-  private?: boolean;
+  // private?: boolean;
 };
 
 export type FileData = {

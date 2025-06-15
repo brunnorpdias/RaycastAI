@@ -53,41 +53,41 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
       let message: Content[number] | undefined = messages.find(msg => msg.timestamp === file.timestamp)
       assert(message !== undefined, 'No messages match the timestamp of one of the files')
       assert(Array.isArray(message.parts), 'Message content attribute was not converted to an array')
-      if (data.private) {
-        // check if files are larger than 20mb and file type
-        const totalFilesSize: number = data.files
-          .map(file => file.size)
-          .filter(size => typeof size === 'number')
-          .reduce((totalSize, size) => totalSize + size, 0)
-        assert(totalFilesSize <= 20 * 10 ** 6, `Total file size ${totalFilesSize / 10 ** 6}mb is over private size limit`)
-        const inlineData = {
-          inlineData: {
-            mimeType: mimeType,
-            data: arrayBuffer.toString('base64')
-          }
+      // if (data.private) {
+      // check if files are larger than 20mb and file type
+      const totalFilesSize: number = data.files
+        .map(file => file.size)
+        .filter(size => typeof size === 'number')
+        .reduce((totalSize, size) => totalSize + size, 0)
+      assert(totalFilesSize <= 20 * 10 ** 6, `Total file size ${totalFilesSize / 10 ** 6}mb is over private size limit`)
+      const inlineData = {
+        inlineData: {
+          mimeType: mimeType,
+          data: arrayBuffer.toString('base64')
         }
-        message.parts.push(inlineData)
-        file.status = 'staged';
-      } else {
-        if (file.status !== 'uploaded') {
-          const fileBlob = new Blob([arrayBuffer], { type: mimeType });
-          const uploadedFile = await deepmind.files.upload({
-            file: fileBlob,
-            config: { displayName: file.name },
-          })
-          assert(uploadedFile.uri && uploadedFile.mimeType, 'Error uploading file')
-          showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success })
-          file.id = uploadedFile.uri;
-        }
-        const fileData = {
-          fileData: {
-            fileUri: file.id,
-            mimeType: mimeType,
-          } as FileReference
-        };
-        message.parts.push(fileData)
-        file.status = file.status === 'uploaded' ? 'uploaded' : 'staged';
       }
+      message.parts.push(inlineData)
+      file.status = 'staged';
+      // } else {
+      // if (file.status !== 'uploaded') {
+      //   const fileBlob = new Blob([arrayBuffer], { type: mimeType });
+      //   const uploadedFile = await deepmind.files.upload({
+      //     file: fileBlob,
+      //     config: { displayName: file.name },
+      //   })
+      //   assert(uploadedFile.uri && uploadedFile.mimeType, 'Error uploading file')
+      //   showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success })
+      //   file.id = uploadedFile.uri;
+      // }
+      // const fileData = {
+      //   fileData: {
+      //     fileUri: file.id,
+      //     mimeType: mimeType,
+      //   } as FileReference
+      // };
+      // message.parts.push(fileData)
+      // file.status = file.status === 'uploaded' ? 'uploaded' : 'staged';
+      // }
     }
   }
   const content: Content = messages.map(({ timestamp, ...msg }) => msg)
@@ -98,31 +98,49 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
     config: {
       systemInstruction: data.instructions,
       maxOutputTokens: 60000000,
-      // thinkingConfig: true ? { includeThoughts: true } : undefined,
       thinkingConfig: {
+        includeThoughts: data.reasoning === 'none' || !data.reasoning ? false : true,
         thinkingBudget: data.reasoning === 'none' ?
           0 : data.reasoning === 'low' ?
             8192 : data.reasoning === 'medium' ?
               16384 : data.reasoning === 'high' ?
                 24576 : undefined
-      }
+      },
+      tools: data.tools === 'web' ? [{ googleSearch: {} }] : undefined,
     },
   }
 
   const response = await deepmind.models.generateContentStream(responseObject)// as GenerateContentParameters)
 
   let isStreaming: boolean = false;
+  let isThinking: boolean = false;
   for await (const chunk of response) {
-    if (chunk.text) {
+    if (chunk.candidates?.at(0)?.content?.parts?.at(0)?.thought) {
+      if (!isThinking) {
+        isThinking = true;
+        showToast({ title: 'Thinking', style: Toast.Style.Animated });
+        streamPipeline({ apiResponse: '# Thinking Summary\n', apiStatus: 'thinking' })
+      }
+      streamPipeline({
+        apiResponse: chunk.candidates?.at(0)?.content?.parts?.at(0)?.text,
+        apiStatus: 'thinking'
+      })
+    } else if (chunk.text) {
+      if (isThinking) {
+        isThinking = false;
+        // streamPipeline({ apiResponse: '\n---\n---\n# Answer\n', apiStatus: 'streaming' })
+        streamPipeline({ apiStatus: 'reset' });
+      }
       streamPipeline({
         apiResponse: chunk.text,
         apiStatus: 'streaming',
       });
       if (!isStreaming) {
-        showToast({ title: 'Streaming...', style: Toast.Style.Animated });
+        showToast({ title: 'Streaming', style: Toast.Style.Animated });
         isStreaming = true;
       }
     }
+
     if (chunk.candidates?.at(0)?.finishReason === 'STOP') {
       let promptTokens: number | undefined = chunk.usageMetadata?.promptTokenCount;
       let responseTokens: number | undefined = chunk.usageMetadata?.candidatesTokenCount;

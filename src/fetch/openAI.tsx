@@ -158,33 +158,33 @@ async function AddFiles(data: Data, input: Input) {
     assert(fileExtension && fileName, 'Error parsing file name and extension')
     assert(['pdf', 'jpg', 'png', 'webp', 'gif'].includes(fileExtension), `File type ${fileExtension} not supported`)
 
-    if (data.private) {
-      const base64 = arrayBuffer.toString('base64');
-      assert(base64, 'Attachment data not found')
-      item.content.push({
-        type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
-        filename: fileExtension === 'pdf' ? fileName : undefined,
-        file_data: fileExtension === 'pdf' ? `data:application/pdf;base64,${base64}` : undefined,
-        image_url: ['jpg', 'png', 'webp', 'gif'].includes(fileExtension) ? `data:image/${fileExtension};base64,${base64}` : undefined,
-      })
-      file.status = 'staged';
-    } else {
-      if (file.status !== 'uploaded') {
-        assert(inputWithFiles.length === 1, 'Input has unexpected size')
-        const uploadedFile = await openai.files.create({
-          file: fs.createReadStream(filePath),
-          purpose: 'user_data',
-        })
-        assert(uploadedFile.id !== undefined, 'File not uploaded')
-        item.content.push({
-          type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
-          file_id: uploadedFile.id
-        })
-        file.id = uploadedFile.id
-        file.status = 'uploaded';
-        showToast({ title: `File ${fileName} uploaded (${count}/${idleFilesCount})`, style: Toast.Style.Success })
-      }
-    }
+    // if (data.private) {
+    const base64 = arrayBuffer.toString('base64');
+    assert(base64, 'Attachment data not found')
+    item.content.push({
+      type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
+      filename: fileExtension === 'pdf' ? fileName : undefined,
+      file_data: fileExtension === 'pdf' ? `data:application/pdf;base64,${base64}` : undefined,
+      image_url: ['jpg', 'png', 'webp', 'gif'].includes(fileExtension) ? `data:image/${fileExtension};base64,${base64}` : undefined,
+    })
+    file.status = 'staged';
+    // } else {
+    // if (file.status !== 'uploaded') {
+    //   assert(inputWithFiles.length === 1, 'Input has unexpected size')
+    //   const uploadedFile = await openai.files.create({
+    //     file: fs.createReadStream(filePath),
+    //     purpose: 'user_data',
+    //   })
+    //   assert(uploadedFile.id !== undefined, 'File not uploaded')
+    //   item.content.push({
+    //     type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
+    //     file_id: uploadedFile.id
+    //   })
+    //   file.id = uploadedFile.id
+    //   file.status = 'uploaded';
+    //   showToast({ title: `File ${fileName} uploaded (${count}/${idleFilesCount})`, style: Toast.Style.Success })
+    // }
+    // }
   }
 
   inputWithFiles = inputWithFiles.map(({ timestamp, ...rest }) => rest)
@@ -201,14 +201,14 @@ async function ResponsesObject(data: Data, input: Input) {
     input: input,
     model: data.model,
     instructions: data.instructions.length > 0 ? data.instructions : undefined,
-    reasoning: data.reasoning !== 'none' ?
+    reasoning: data.reasoning === 'none' || data.reasoning === undefined ?
+      undefined :
       {
         effort: data.reasoning,
-        summary: "auto"
-      } :
-      undefined,
-    store: !data.private ? true : false,
-    previous_response_id: !data.private ? previousResponseId : undefined,
+        summary: 'detailed'
+      },
+    // store: ,
+    // previous_response_id: !data.private ? previousResponseId : undefined,
     tools: data.tools === 'web' ? [{ type: 'web_search' }] : undefined,
     max_output_tokens: data.model === 'gpt-4.1' || data.model === 'gpt-4.1-mini' ? 32000 : undefined,
     stream: true,
@@ -220,28 +220,30 @@ async function ResponsesObject(data: Data, input: Input) {
 
 
 async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: StreamPipeline, data: Data) {
-  let id: string = '';
+  let responseID = undefined;
   const stream = await openai.responses.create(responsesObject);
   for await (const event of stream) {
     if (event.type === 'response.created') {
       showToast({ title: 'Request Received', style: Toast.Style.Success })
-      id = event.response.id;
+      responseID = event.response.id;
+      streamPipeline({ apiStatus: 'processing' })
     } else if (event.type === 'response.output_item.added' && event.item.type === 'reasoning') {
       showToast({ title: 'Thinking...', style: Toast.Style.Animated })
+      // streamPipeline({ apiResponse: '# Thinking\n', apiStatus: 'thinking' })
+    } else if (event.type === 'response.reasoning_summary_text.delta') {
+      streamPipeline({ apiResponse: event.delta, apiStatus: 'thinking' })
     } else if (event.type === 'response.content_part.added') {
+      streamPipeline({ apiStatus: 'reset' })
       showToast({ title: 'Streaming', style: Toast.Style.Animated })
     } else if (event.type === 'response.output_text.delta') {
-      streamPipeline({
-        apiResponse: event.delta,
-        apiStatus: 'streaming',
-      })
+      streamPipeline({ apiResponse: event.delta, apiStatus: 'streaming' })
     } else if (event.type === 'response.completed') {
       let promptTokens: number | undefined = event.response.usage?.input_tokens;
       let responseTokens: number | undefined = event.response.usage?.output_tokens;
       streamPipeline({
         apiResponse: '',
         apiStatus: 'done',
-        msgID: id,  // this is actually the response id, not the message id
+        responseID: responseID ?? undefined,
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       })

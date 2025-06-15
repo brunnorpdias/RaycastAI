@@ -15,6 +15,11 @@ type AnthropicRequest = {
   system: string | undefined,
   messages: Messages,
   max_tokens: number,
+  tools?: {
+    type: string,
+    name?: string,
+    max_uses?: number
+  }[],
   temperature: number,
   stream?: boolean,
   thinking?: {
@@ -117,6 +122,13 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
     system: data.instructions,
     messages: inputMessages,
     max_tokens: max_tokens,
+    tools: data.tools === 'web' ?
+      [{
+        type: "web_search_20250305",
+        name: 'web_search',
+        max_uses: 5  // change this later to allow more research on certain topics (generally aligned with thinking?)
+      }] :
+      undefined,
     temperature: 1,
     stream: true,
     // tools: web search
@@ -176,7 +188,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
       streamPipeline({
         apiResponse: '',
         apiStatus: 'done',
-        msgID: msgID,
+        responseID: msgID,
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       })

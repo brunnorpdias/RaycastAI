@@ -1,4 +1,4 @@
-import { Detail, showToast, useNavigation, ActionPanel, Action, Icon, Toast } from "@raycast/api";
+import { Detail, showToast, useNavigation, ActionPanel, Action, Icon } from "@raycast/api";
 import { useEffect, useRef, useState } from 'react';
 
 import * as OpenAI from "../fetch/openAI";
@@ -7,17 +7,17 @@ import { APIHandler } from '../utils/api_handler';
 
 import { type Data } from "../utils/types";
 import assert from "assert";
-export type Status = 'idle' | 'streaming' | 'done' | 'reset';
+export type Status = 'idle' | 'processing' | 'thinking' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = ({
   apiResponse,
   apiStatus,
-  msgID,
+  responseID,
   promptTokens,
   responseTokens
 }: {
   apiResponse?: string,
   apiStatus?: Status,
-  msgID?: string,
+  responseID?: string,
   promptTokens?: number,
   responseTokens?: number
 }) => void;
@@ -37,7 +37,7 @@ export default function Answer({ data, msgTimestamp }: {
   const [newData, setNewData] = useState<Data>(data);
   const [promptTokens, setPromptTokens] = useState<number>();
   const [responseTokens, setResponseTokens] = useState<number>();
-  const [msgID, setMsgId] = useState<string | undefined>();
+  const [responseID, setResponseID] = useState<string | undefined>();
 
   useEffect(() => {
     if (msgTimestamp) {
@@ -64,8 +64,8 @@ export default function Answer({ data, msgTimestamp }: {
     }
   }, [status])
 
-  const streamPipeline: StreamPipeline = ({ apiResponse, apiStatus, msgID, promptTokens, responseTokens }) => {
-    if (apiStatus === 'streaming') {
+  const streamPipeline: StreamPipeline = ({ apiResponse, apiStatus, responseID, promptTokens, responseTokens }) => {
+    if (apiStatus === 'streaming' || apiStatus === 'thinking') {
       setResponse((prevResponse: string) => prevResponse + apiResponse);
       if (!hasStartedStreaming.current) {
         // showToast({ title: 'Streaming', style: Toast.Style.Animated })
@@ -77,14 +77,14 @@ export default function Answer({ data, msgTimestamp }: {
     } else if (apiStatus === 'done') {
       setStatus(apiStatus);
       setResponse((prevResponse: string) => prevResponse + apiResponse);
-      setMsgId(msgID)
+      setResponseID(responseID)
       setPromptTokens(promptTokens);
       setResponseTokens(responseTokens);
     }
   };
 
   async function SaveData() {
-    const finalData: Data = await NewData(data, response, promptTokens, responseTokens, msgID);
+    const finalData: Data = await NewData(data, response, promptTokens, responseTokens, responseID);
     assert(finalData !== undefined, 'Data is not defined')
     setNewData(finalData);
     await Functions.Cache(finalData);
@@ -153,7 +153,7 @@ export default function Answer({ data, msgTimestamp }: {
 
 
 //  Helper Functions  //
-async function NewData(data: Data, response: string, promptTokens?: number, responseTokens?: number, msgId?: string) {
+async function NewData(data: Data, response: string, promptTokens?: number, responseTokens?: number, responseID?: string) {
   const userMsgs = data.messages.filter(msg => msg.role === 'user');
   const userMsg = userMsgs.at(-1);
 
@@ -167,8 +167,8 @@ async function NewData(data: Data, response: string, promptTokens?: number, resp
     userMsg.tokenCount = promptTokens - (previousTokenCount ?? 0);
   }
 
-  let assistantMessage: Data["messages"][0] = {
-    id: msgId ? msgId : undefined,
+  let responseMsg: Data["messages"][0] = {
+    id: responseID ?? undefined,
     role: 'assistant',
     content: response,
     timestamp: Date.now(),
@@ -177,7 +177,7 @@ async function NewData(data: Data, response: string, promptTokens?: number, resp
 
   const newData: Data = {
     ...data,
-    messages: [...data.messages, assistantMessage],
+    messages: [...data.messages, responseMsg],
   }
 
   return newData

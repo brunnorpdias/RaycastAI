@@ -15,7 +15,7 @@ type Values = {
   model: Model;
   private: boolean,
   web: boolean,
-  instructions: 'traditional' | 'concise' | 'socratic' | 'developer';
+  intent: ('base' | 'researcher' | 'practitioner' | 'coach' | 'tutor' | 'concise' | 'socratic' | 'exploratory')[];
   temperature: string;
   stream: boolean;
   attatchmentPaths?: [string];
@@ -30,26 +30,12 @@ export default function ChatForm() {
   const [selectedModel, setModel] = useState<Model>(model);
 
   async function handleSubmit(values: Values) {
-    let instructions: string;
-    switch (values.instructions) {
-      case 'traditional':
-        instructions = instructionsObject.traditional;
-        break;
-      case 'socratic':
-        instructions = instructionsObject.traditional + instructionsObject.socratic;
-        break;
-      case 'developer':
-        instructions = instructionsObject.traditional + instructionsObject.developer;
-        break
-      case 'concise':
-        instructions = instructionsObject.traditional + instructionsObject.concise;
-        break;
-    }
+    // let instructions: string = instructionsObject["base"];
+    // let additionalInstructions: string[] = values.intent.map(key => instructionsObject[key]);
+    // instructions += additionalInstructions.join(' ');
+    let instructions: string = values.intent.map(key => instructionsObject[key]).join(" ");
 
-    // add technical instructions
-    instructions += 'Always provide the answer of mathematical equations in latex using the delimiters \\( for inline math and \\[ for block equations. Provide the answers in markdown.';
     const personalInfo: string | undefined = personalObj ? personalObj.personal_info : undefined;
-
     const timestamp = Date.now();
     const messages: Data["messages"] = [{ role: 'user', content: values.prompt, timestamp: timestamp }]
 
@@ -62,7 +48,6 @@ export default function ChatForm() {
       tools: values.web ? 'web' : undefined,
       files: [],
       reasoning: values.reasoning,
-      private: values.private,
     }
 
     if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
@@ -118,13 +103,28 @@ export default function ChatForm() {
         </Form.Dropdown>
       )}
 
+      {/* {!sttModels.includes(selectedModel) && ( */}
+      {/*   <Form.Dropdown id='instructions' title='instructions' > */}
+      {/*     <Form.Dropdown.Item value='traditional' title='Traditional' /> */}
+      {/*     <Form.Dropdown.Item value='concise' title='Concise' /> */}
+      {/*     <Form.Dropdown.Item value='socratic' title='Socratic' /> */}
+      {/*     <Form.Dropdown.Item value='developer' title='Developer' /> */}
+      {/*   </Form.Dropdown> */}
+      {/* )} */}
+
+
       {!sttModels.includes(selectedModel) && (
-        <Form.Dropdown id='instructions' title='instructions' >
-          <Form.Dropdown.Item value='traditional' title='Traditional' />
-          <Form.Dropdown.Item value='concise' title='Concise' />
-          <Form.Dropdown.Item value='socratic' title='Socratic' />
-          <Form.Dropdown.Item value='developer' title='Developer' />
-        </Form.Dropdown>
+        <Form.TagPicker id='intent' title='Intent' defaultValue={["base"]} >
+          <Form.TagPicker.Item value='base' title='Base' />
+          <Form.TagPicker.Item value='researcher' title='Researcher' />
+          <Form.TagPicker.Item value='practitioner' title='Practitioner' />
+          <Form.TagPicker.Item value='coach' title='Coach' />
+          <Form.TagPicker.Item value='concise' title='Concise' />
+          <Form.TagPicker.Item value='tutor' title='Tutor' />
+          <Form.TagPicker.Item value='concise' title='Concise' />
+          <Form.TagPicker.Item value='socratic' title='Socratic' />
+          <Form.TagPicker.Item value='exploratory' title='Exploratory' />
+        </Form.TagPicker>
       )}
 
       {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
