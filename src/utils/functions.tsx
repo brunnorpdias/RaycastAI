@@ -7,7 +7,7 @@ import path from 'path';
 import * as OpenAPI from "../fetch/openAI";
 import NewEntry from '../views/new_entry';
 
-import { type Data, storageDir } from "./types";
+import { type Data, storageDir } from "./models";
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
@@ -37,8 +37,8 @@ export async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 
 export async function Cache(newData: Data) {
   const cache = new RaycastCache();
-  const dataString = cache.get('cachedData');
-  const cachedData: Data[] = dataString ? JSON.parse(dataString) : [];
+  const cacheString = cache.get('cachedData');
+  const cachedData: Data[] = cacheString ? JSON.parse(cacheString) : [];
   if (cachedData.length > 0) {
     const filteredCache: Data[] = cachedData
       .filter(cache => cache.timestamp !== newData.timestamp) // remove data if it's already cached
@@ -54,7 +54,6 @@ export async function Cache(newData: Data) {
 }
 
 
-// try to add sql
 export async function ProcessFiles(data: Data, attatchmentPaths: [string], messageTimestamp: number) {
   for (const attPath of attatchmentPaths) {
     const ext = path.extname(attPath).replaceAll('.', '')
@@ -78,14 +77,25 @@ export async function ProcessFiles(data: Data, attatchmentPaths: [string], messa
       fs.writeFileSync(writePath, arrayBuffer);
     }
   }
+}
 
-  // add section to remove files if they are not used as reference in any chat (current, cache, or bookmarks)
-  // const cache = new RaycastCache();
-  // const dataString = cache.get('cachedData');
-  // const bookmarksString = await LocalStorage.getItem('bookmarks');
-  // const hash_data = data.files.map(({ hash }) => hash)
-  // const hash_cache =
-  // const hash_bookmarks =
+
+export async function FilesCleanup() {
+  const cache = new RaycastCache();
+  const cacheString = cache.get('cachedData');
+  const cachedData: Data[] = cacheString ? JSON.parse(cacheString) : [];
+  const bookmarksString = await LocalStorage.getItem('bookmarks');
+  assert(typeof bookmarksString === 'string', 'Bookmarks not found')
+  const bookmarks: Bookmarks = JSON.parse(bookmarksString);
+  const cachedFileNames: string[] = cachedData.flatMap(data => data.files.map(file => `${file.hash}.${file.extension}`));
+  const bookmarkFileNames: string[] = bookmarks.flatMap(bookmark => bookmark.data.files.map(file => `${file.hash}.${file.extension}`));
+  const savedFiles: string[] = cachedFileNames.concat(bookmarkFileNames);
+  const existingFiles = fs.readdirSync(storageDir);
+  for (const file of existingFiles) {
+    if (!savedFiles.includes(file)) {
+      fs.unlinkSync(`${storageDir}/${file}`);
+    }
+  }
 }
 
 

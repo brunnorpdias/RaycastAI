@@ -5,8 +5,8 @@ import fs from 'fs';
 import path from "path";
 import os from 'os';
 
-import { API_KEYS } from '../enums/api_keys';
-import { type Data, storageDir } from "../utils/types";
+import { API_KEYS } from '../config/api_keys';
+import { type Data, storageDir } from "../utils/models";
 import { type StreamPipeline } from "../views/answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import assert from "assert";
@@ -144,8 +144,6 @@ async function GenerateInput(data: Data) {
 async function AddFiles(data: Data, input: Input) {
   if (data.files.length < 1) return input
   let inputWithFiles = [...input]
-  let count = 1;
-  let idleFilesCount: number = data.files.filter(file => file.status === 'idle').length;
   for (const file of data.files) {
     const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
     const arrayBuffer = fs.readFileSync(filePath);
@@ -158,7 +156,7 @@ async function AddFiles(data: Data, input: Input) {
     assert(fileExtension && fileName, 'Error parsing file name and extension')
     assert(['pdf', 'jpg', 'png', 'webp', 'gif'].includes(fileExtension), `File type ${fileExtension} not supported`)
 
-    // if (data.private) {
+    // manual conversation state management
     const base64 = arrayBuffer.toString('base64');
     assert(base64, 'Attachment data not found')
     item.content.push({
@@ -168,23 +166,6 @@ async function AddFiles(data: Data, input: Input) {
       image_url: ['jpg', 'png', 'webp', 'gif'].includes(fileExtension) ? `data:image/${fileExtension};base64,${base64}` : undefined,
     })
     file.status = 'staged';
-    // } else {
-    // if (file.status !== 'uploaded') {
-    //   assert(inputWithFiles.length === 1, 'Input has unexpected size')
-    //   const uploadedFile = await openai.files.create({
-    //     file: fs.createReadStream(filePath),
-    //     purpose: 'user_data',
-    //   })
-    //   assert(uploadedFile.id !== undefined, 'File not uploaded')
-    //   item.content.push({
-    //     type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
-    //     file_id: uploadedFile.id
-    //   })
-    //   file.id = uploadedFile.id
-    //   file.status = 'uploaded';
-    //   showToast({ title: `File ${fileName} uploaded (${count}/${idleFilesCount})`, style: Toast.Style.Success })
-    // }
-    // }
   }
 
   inputWithFiles = inputWithFiles.map(({ timestamp, ...rest }) => rest)
@@ -193,9 +174,17 @@ async function AddFiles(data: Data, input: Input) {
 
 
 async function ResponsesObject(data: Data, input: Input) {
-  const previousResponseId: string | null = data.messages
-    .filter(msg => msg.role === 'assistant')
-    .at(-1)?.id || null
+  const max_output_tokens = (
+    data.model === 'o3' || data.model === 'o3-pro' || data.model === 'o4-mini' ?
+      100000 :
+      32000
+  )
+  const token_divider = (
+    data.reasoning === 'none' ? 8 :
+      data.reasoning === 'low' ? 4 :
+        data.reasoning === 'medium' ? 2 :
+          1
+  )
 
   let responsesObject = {
     input: input,
@@ -207,12 +196,20 @@ async function ResponsesObject(data: Data, input: Input) {
         effort: data.reasoning,
         summary: 'detailed'
       },
-    // store: ,
-    // previous_response_id: !data.private ? previousResponseId : undefined,
-    tools: data.tools === 'web' ? [{ type: 'web_search' }] : undefined,
-    max_output_tokens: data.model === 'gpt-4.1' || data.model === 'gpt-4.1-mini' ? 32000 : undefined,
+    tools: data.tools === 'web' ?
+      [{
+        type: 'web_search',
+        user_location: {
+          type: "approximate",
+          country: "GB",
+          city: "London",
+          region: "London"
+        }
+      }] :
+      undefined,
+    max_output_tokens: max_output_tokens / token_divider,
     stream: true,
-    temperature: 1,
+    temperature: data.temperature
   }
 
   return responsesObject

@@ -1,6 +1,6 @@
 .DS_STORE
-src/enums/api_keys.tsx
-src/enums/personal_info.json
+src/config/api_keys.tsx
+assets/instructions/personal.md
 package-lock.json
 raycast-env.d.ts
 node_modules/

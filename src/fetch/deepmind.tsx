@@ -4,9 +4,9 @@ import path from 'path';
 import assert from "assert";
 import fs from "fs";
 
-import { API_KEYS } from '../enums/api_keys';
+import { API_KEYS } from '../config/api_keys';
 
-import { type Data, storageDir } from "../utils/types";
+import { type Data, storageDir } from "../utils/models";
 import { type StreamPipeline } from "../views/answer";
 
 type Content = Array<{
@@ -53,41 +53,41 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
       let message: Content[number] | undefined = messages.find(msg => msg.timestamp === file.timestamp)
       assert(message !== undefined, 'No messages match the timestamp of one of the files')
       assert(Array.isArray(message.parts), 'Message content attribute was not converted to an array')
-      // if (data.private) {
-      // check if files are larger than 20mb and file type
+
       const totalFilesSize: number = data.files
         .map(file => file.size)
         .filter(size => typeof size === 'number')
         .reduce((totalSize, size) => totalSize + size, 0)
-      assert(totalFilesSize <= 20 * 10 ** 6, `Total file size ${totalFilesSize / 10 ** 6}mb is over private size limit`)
-      const inlineData = {
-        inlineData: {
-          mimeType: mimeType,
-          data: arrayBuffer.toString('base64')
+      // now file upload is not dependent on "private" variable, but on file upload limitations
+      if (totalFilesSize <= 20 * 10 ** 6) {
+        const inlineData = {
+          inlineData: {
+            mimeType: mimeType,
+            data: arrayBuffer.toString('base64')
+          }
         }
+        message.parts.push(inlineData)
+        file.status = 'staged';
+      } else {
+        if (file.status !== 'uploaded') {
+          const fileBlob = new Blob([arrayBuffer], { type: mimeType });
+          const uploadedFile = await deepmind.files.upload({
+            file: fileBlob,
+            config: { displayName: file.name },
+          })
+          assert(uploadedFile.uri && uploadedFile.mimeType, 'Error uploading file')
+          showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success })
+          file.id = uploadedFile.uri;
+        }
+        const fileData = {
+          fileData: {
+            fileUri: file.id,
+            mimeType: mimeType,
+          } as FileReference
+        };
+        message.parts.push(fileData)
+        file.status = file.status === 'uploaded' ? 'uploaded' : 'staged';
       }
-      message.parts.push(inlineData)
-      file.status = 'staged';
-      // } else {
-      // if (file.status !== 'uploaded') {
-      //   const fileBlob = new Blob([arrayBuffer], { type: mimeType });
-      //   const uploadedFile = await deepmind.files.upload({
-      //     file: fileBlob,
-      //     config: { displayName: file.name },
-      //   })
-      //   assert(uploadedFile.uri && uploadedFile.mimeType, 'Error uploading file')
-      //   showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success })
-      //   file.id = uploadedFile.uri;
-      // }
-      // const fileData = {
-      //   fileData: {
-      //     fileUri: file.id,
-      //     mimeType: mimeType,
-      //   } as FileReference
-      // };
-      // message.parts.push(fileData)
-      // file.status = file.status === 'uploaded' ? 'uploaded' : 'staged';
-      // }
     }
   }
   const content: Content = messages.map(({ timestamp, ...msg }) => msg)
@@ -108,6 +108,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
       },
       tools: data.tools === 'web' ? [{ googleSearch: {} }] : undefined,
     },
+    temperature: data.temperature
   }
 
   const response = await deepmind.models.generateContentStream(responseObject)// as GenerateContentParameters)

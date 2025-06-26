@@ -5,7 +5,7 @@ import * as OpenAI from "../fetch/openAI";
 import * as Functions from "../utils/functions";
 import { APIHandler } from '../utils/api_handler';
 
-import { type Data } from "../utils/types";
+import { type Data } from "../utils/models";
 import assert from "assert";
 export type Status = 'idle' | 'processing' | 'thinking' | 'streaming' | 'done' | 'reset';
 export type StreamPipeline = ({

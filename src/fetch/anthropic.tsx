@@ -3,11 +3,11 @@ import { showToast, Toast } from "@raycast/api";
 import fs from 'fs';
 import path from 'path';
 
-import { API_KEYS } from '../enums/api_keys';
+import { API_KEYS } from '../config/api_keys';
 
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { type StreamPipeline } from "../views/answer";
-import { type Data, storageDir } from "../utils/types";
+import { type Data, storageDir } from "../utils/models";
 import assert from 'assert';
 
 type AnthropicRequest = {
@@ -129,7 +129,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
         max_uses: 5  // change this later to allow more research on certain topics (generally aligned with thinking?)
       }] :
       undefined,
-    temperature: 1,
+    temperature: data.temperature ?? 0.6,
     stream: true,
     // tools: web search
     // https://docs.anthropic.com/en/docs/build-with-claude/tool-use/web-search-tool

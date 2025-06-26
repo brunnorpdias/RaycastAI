@@ -1,12 +1,12 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
 import { useState } from 'react';
+import fs from 'fs';
+import path from 'path';
 
-import { type Data, type API, type Model, APItoModels } from './utils/types'
+import { type Data, type API, type Model, APItoModels } from './utils/models'
 
-import { reasoningModels, toolSupportModels, attachmentModels, privateModeAPIs, sttModels } from './utils/types';
+import * as ModelInfo from './utils/models';
 import Answer from "./views/answer";
-import instructionsObject from './enums/instructions.json';
-import personalObj from './enums/personal_info.json';
 import * as Functions from './utils/functions';
 
 type Values = {
@@ -15,11 +15,13 @@ type Values = {
   model: Model;
   private: boolean,
   web: boolean,
-  intent: ('base' | 'researcher' | 'practitioner' | 'coach' | 'tutor' | 'concise' | 'socratic' | 'exploratory')[];
+  persona: 'default' | 'coach' | 'collaborator' | 'tutor',
+  modifiers: ('concise' | 'creative' | 'socratic')[],
   temperature: string;
   stream: boolean;
   attatchmentPaths?: [string];
   reasoning: 'none' | 'low' | 'medium' | 'high';
+  deepResearch: boolean;
 };
 
 export default function ChatForm() {
@@ -30,24 +32,54 @@ export default function ChatForm() {
   const [selectedModel, setModel] = useState<Model>(model);
 
   async function handleSubmit(values: Values) {
-    // let instructions: string = instructionsObject["base"];
-    // let additionalInstructions: string[] = values.intent.map(key => instructionsObject[key]);
-    // instructions += additionalInstructions.join(' ');
-    let instructions: string = values.intent.map(key => instructionsObject[key]).join(" ");
-
-    const personalInfo: string | undefined = personalObj ? personalObj.personal_info : undefined;
     const timestamp = Date.now();
-    const messages: Data["messages"] = [{ role: 'user', content: values.prompt, timestamp: timestamp }]
+    function loadInstruction(filename: string, subDir?: string) {
+      let filePath;
+      if (subDir) {
+        filePath = path.join(__dirname, 'assets', 'instructions', subDir, `${filename}.md`);
+      } else {
+        filePath = path.join(__dirname, 'assets', 'instructions', `${filename}.md`);
+      }
+      return fs.readFileSync(filePath, 'utf8')
+    }
+
+    const instructions = (
+      loadInstruction('base') +
+      (!values.private ? loadInstruction('personal') : '') +
+      loadInstruction(values.persona, 'personas') //+
+      // values.modifiers.map(mod => loadInstruction(mod, 'modifiers')).join('')
+    )
+
+    const personaTemp: Record<string, number> = {
+      default: 0.30,
+      coach: 0.35,
+      collaborator: 0.40,
+      tutor: 0.30,
+    };
+    let temp = personaTemp[values.persona] ?? 0.30;
+
+    // const modifierDelta: Record<string, number> = {
+    //   concise: -0.10,
+    //   creative: 0.35,
+    //   socratic: -0.05,
+    // };
+    // for (const mod of values.modifiers) {
+    //   temp += modifierDelta[mod] ?? 0;
+    // }
+    //
+    // temp = Math.min(Math.max(temp, 0), 1);
 
     let data: Data = {
       timestamp: timestamp,
       model: values.model,
       api: values.api,
-      messages: messages,
-      instructions: values.private ? instructions : `${instructions} ${personalInfo}`,
-      tools: values.web ? 'web' : undefined,
+      messages: [{ role: 'user', content: values.prompt, timestamp: timestamp }],
       files: [],
+      instructions: instructions,
       reasoning: values.reasoning,
+      tools: values.web && !values.deepResearch ? 'web' : undefined,
+      deepResearch: values.deepResearch ?? undefined,
+      temperature: ModelInfo.reasoningModels.includes(values.model) ? undefined : temp
     }
 
     if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
@@ -55,7 +87,6 @@ export default function ChatForm() {
     }
 
     await Functions.Cache(data)
-
     push(<Answer data={data} />);
   }
 
@@ -94,7 +125,7 @@ export default function ChatForm() {
         ))}
       </Form.Dropdown>
 
-      {reasoningModels.includes(selectedModel) && (
+      {ModelInfo.reasoningModels.includes(selectedModel) && (
         <Form.Dropdown id='reasoning' title='Reasoning Effort' defaultValue='low' >
           <Form.Dropdown.Item value='none' title='None' />
           <Form.Dropdown.Item value='low' title='Low' />
@@ -103,43 +134,28 @@ export default function ChatForm() {
         </Form.Dropdown>
       )}
 
-      {/* {!sttModels.includes(selectedModel) && ( */}
-      {/*   <Form.Dropdown id='instructions' title='instructions' > */}
-      {/*     <Form.Dropdown.Item value='traditional' title='Traditional' /> */}
-      {/*     <Form.Dropdown.Item value='concise' title='Concise' /> */}
-      {/*     <Form.Dropdown.Item value='socratic' title='Socratic' /> */}
-      {/*     <Form.Dropdown.Item value='developer' title='Developer' /> */}
-      {/*   </Form.Dropdown> */}
-      {/* )} */}
-
-
-      {!sttModels.includes(selectedModel) && (
-        <Form.TagPicker id='intent' title='Intent' defaultValue={["base"]} >
-          <Form.TagPicker.Item value='base' title='Base' />
-          <Form.TagPicker.Item value='researcher' title='Researcher' />
-          <Form.TagPicker.Item value='practitioner' title='Practitioner' />
-          <Form.TagPicker.Item value='coach' title='Coach' />
-          <Form.TagPicker.Item value='concise' title='Concise' />
-          <Form.TagPicker.Item value='tutor' title='Tutor' />
-          <Form.TagPicker.Item value='concise' title='Concise' />
-          <Form.TagPicker.Item value='socratic' title='Socratic' />
-          <Form.TagPicker.Item value='exploratory' title='Exploratory' />
-        </Form.TagPicker>
+      {!ModelInfo.sttModels.includes(selectedModel) && (
+        <Form.Dropdown id='persona' title='Persona' >
+          <Form.Dropdown.Item value='default' title='Default' />
+          <Form.Dropdown.Item value='coach' title='Coach' />
+          <Form.Dropdown.Item value='collaborator' title='Collaborator' />
+          <Form.Dropdown.Item value='tutor' title='Tutor' />
+        </Form.Dropdown>
       )}
 
-      {/* <Form.TextField id='temperature' title='Temperature' defaultValue='1' info='Value from 0 to 2' /> */}
-
-      {attachmentModels.includes(selectedModel) && (
+      {ModelInfo.attachmentModels.includes(selectedModel) && (
         <Form.FilePicker id="attatchmentPaths" />
       )}
 
-      {toolSupportModels.includes(selectedModel) && (
+      {ModelInfo.toolModels.includes(selectedModel) && (
         <Form.Checkbox id="web" label="Search the Web" defaultValue={false} />
       )}
 
-      {privateModeAPIs.includes(selectedAPI) && (
-        <Form.Checkbox id="private" label="Data Privacy" defaultValue={false} />
+      {ModelInfo.deepResearchModels.includes(selectedModel) && (
+        <Form.Checkbox id="deepresearch" label="Deep Research" defaultValue={false} />
       )}
+
+      <Form.Checkbox id="private" label="Data Privacy" defaultValue={true} />
 
     </Form>
   );

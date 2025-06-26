@@ -4,9 +4,9 @@ import * as DeepmindAPI from '../fetch/deepmind';
 import { OpenRouter } from '../fetch/openRouter';
 import * as Ollama from '../fetch/ollama';
 
-import { type Data } from "../utils/types";
+import { type Data } from "./models";
 import { type StreamPipeline } from "../views/answer";
-import { sttModels } from '../utils/types';
+import { sttModels } from './models';
 
 
 export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {

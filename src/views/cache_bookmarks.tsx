@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { format as DateFormat } from "date-fns";
 import ChatHistory from "./history";
 
-import { type Data } from "../utils/types";
+import { type Data } from "../utils/models";
 import * as Functions from "../utils/functions";
 
 type Bookmark = { title: string, data: Data };
@@ -41,6 +41,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
   }, [cacheOrBookmarks]);
 
   async function LoadData() {
+    await Functions.FilesCleanup();
     let rawList: RawItem[];
     if (cacheOrBookmarks === 'cache') {
       const cache = new RaycastCache();//{ capacity: 100 * 1024 * 1024 });

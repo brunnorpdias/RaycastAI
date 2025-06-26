@@ -2,18 +2,19 @@ import path from 'path';
 import { homedir } from 'os';
 
 export const APItoModels = {
-  'deepmind': [
-    { name: 'Gemini 2.5 Flash', code: 'gemini-2.5-flash-preview-05-20' },
-    { name: 'Gemini 2.5 Pro', code: 'gemini-2.5-pro-preview-06-05' },
-  ],
   'openai': [
     { name: 'GPT 4.1', code: 'gpt-4.1' },
+    { name: 'o3', code: 'o3' },
     { name: 'GPT 4.1 mini', code: 'gpt-4.1-mini' },
     { name: 'o3 Pro', code: 'o3-pro' },
-    { name: 'o3', code: 'o3' },
     { name: 'o4 mini', code: 'o4-mini' },
     { name: 'GPT 4o STT', code: 'gpt-4o-transcribe' },
     // { name: 'GPT 4o TTS', code: 'gpt-4o-mini-tts' },
+  ],
+  'deepmind': [
+    { name: 'Gemini 2.5 Flash', code: 'gemini-2.5-flash' },
+    { name: 'Gemini 2.5 Pro', code: 'gemini-2.5-pro' },
+    { name: 'Gemini 2.5 Flash Lite', code: 'gemini-2.5-flash-lite-preview-06-17' },
   ],
   'anthropic': [
     { name: 'Claude 4 Sonnet', code: 'claude-sonnet-4-20250514' },
@@ -38,16 +39,20 @@ export const APItoModels = {
   ]
 };
 
-export const reasoningModels = ['o4-mini', 'o3', 'o3-pro', 'claude-sonnet-4-20250514', 'claude-opus-4-20250514', 'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-06-05']// 'qwen3:8b', 'qwen3:14b', 'qwen3:32b'];
+export const reasoningModels = [
+  'o4-mini', 'o3', 'o3-pro',
+  'claude-sonnet-4-20250514', 'claude-opus-4-20250514',
+  'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.5-flash', 'gemini-2.5-pro'
+]
 export const attachmentModels = ['o3', 'o3-pro', 'o4-mini', 'chatgpt-4o-latest', 'gpt-4.1-mini', 'gpt-4.1',
-  'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-06-05',
+  'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.5-flash', 'gemini-2.5-pro',
   'claude-sonnet-4-20250514', 'claude-opus-4-20250514'
 ];
-export const toolSupportModels = ['gpt-4.1-mini', 'gpt-4.1',
+export const toolModels = ['gpt-4.1-mini', 'gpt-4.1', 'o3', 'o4-mini', // didn't add o3-pro, too expensive
   'claude-sonnet-4-20250514', 'claude-opus-4-20250514',
-  'gemini-2.5-flash-preview-05-20', 'gemini-2.5-pro-preview-06-05'
+  'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.5-flash', 'gemini-2.5-pro'
 ];
-export const privateModeAPIs = ['openai', 'deepmind'];  // deprecate
+export const deepResearchModels = ['o3', 'o4-mini']
 export const sttModels = ['gpt-4o-transcribe'];
 export const ttsModels = ['gpt-4o-mini-tts'];
 
@@ -71,6 +76,8 @@ export type Data = {
   api: API;
   tools?: string;
   reasoning: 'none' | 'low' | 'medium' | 'high';
+  temperature?: number;
+  deepResearch?: boolean;
   files: Array<{
     id?: string,
     hash: string,
@@ -80,7 +87,6 @@ export type Data = {
     status: 'idle' | 'staged' | 'uploaded',
     size?: number,
   }>;
-  // private?: boolean;
 };
 
 export type FileData = {

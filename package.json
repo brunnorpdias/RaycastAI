@@ -12,8 +12,8 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "form",
-      "title": "Chat",
+      "name": "chat",
+      "title": "Ask a question",
       "description": "Talk with an LLM",
       "mode": "view"
     },

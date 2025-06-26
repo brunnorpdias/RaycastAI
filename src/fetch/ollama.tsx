@@ -1,6 +1,6 @@
 import ollama from 'ollama';
 
-import { Data } from '../utils/types';
+import { Data } from '../utils/models';
 import { type StreamPipeline } from "../views/answer";
 
 // remove optionals later
@@ -15,7 +15,7 @@ export async function Run(data: Data, streamPipeline: StreamPipeline) {
   const response = await ollama.chat({
     model: data?.model ?? 'gemma3:12b',
     messages: messages ?? [{ role: 'user', content: 'This is a test' }],
-    stream: true
+    stream: true,
     // set thinking budget for specific models
   })
 

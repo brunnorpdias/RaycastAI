@@ -1,7 +1,7 @@
-import { type Data } from "../utils/types";
+import { type Data } from "../utils/models";
 import { type StreamPipeline } from "../views/answer";
 
-import { API_KEYS } from '../enums/api_keys';
+import { API_KEYS } from '../config/api_keys';
 import { showToast, Toast } from "@raycast/api";
 
 export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
@@ -14,6 +14,7 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
       "model": data.model,
       "messages": messages,
       "stream": true,
+      "temperature": data.temperature
     })
     // add pdf and image capabilities
     // https://openrouter.ai/docs/features/images-and-pdfs

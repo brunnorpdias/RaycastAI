@@ -3,9 +3,8 @@ import * as Functions from '../utils/functions';
 import Answer from './answer';
 import assert from 'assert';
 import { useEffect, useState } from "react";
-import { type Data } from '../utils/types'
-import { attachmentModels } from '../utils/types';
-import { ProcessFiles } from "../utils/functions";
+import { type Data } from '../utils/models'
+import { attachmentModels } from '../utils/models';
 
 type Values = {
   prompt: string,
@@ -48,7 +47,7 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
       const messages: Data["messages"] = data.messages;
       const messageIndex: number = messages
         .findLastIndex(msg => msg.timestamp === promptTimestamp)
-      assert(messageIndex !== undefined && messageIndex > 1, 'Message timestamp didn\'t match')
+      assert(messageIndex !== undefined && messageIndex !== -1, 'Message timestamp didn\'t match')
       const truncMessages: Data["messages"] = messages.slice(0, messageIndex)
       const truncData: Data = {
         ...data,
