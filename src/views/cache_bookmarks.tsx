@@ -3,14 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import { format as DateFormat } from "date-fns";
 import ChatHistory from "./history";
 
-import { type Data } from "../utils/models";
+import { type ChatSession } from "../utils/models";
 import * as Functions from "../utils/functions";
 
-type Bookmark = { title: string, data: Data };
-type RawItem = Data & { summary?: string };
+type Bookmark = { title: string, chat: ChatSession };
+type RawItem = ChatSession & { summary?: string };
 type ListItem = {
-  data: Data,
-  state: Data["workflowState"],
+  chat: ChatSession,
+  state: ChatSession["workflowState"],
   key: number,
   msg_count: number,
   title: string,
@@ -40,27 +40,27 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
   // https://developers.raycast.com/api-reference/user-interface/list#custom-filtering
 
   useEffect(() => {
-    LoadData();
+    LoadChat();
   }, [cacheOrBookmarks]);
 
-  async function LoadData() {
+  async function LoadChat() {
     await Functions.FilesCleanup();
     let rawList: RawItem[];
     if (cacheOrBookmarks === 'cache') {
       const cache = new RaycastCache();//{ capacity: 100 * 1024 * 1024 });
-      const stringCache = cache.get('cachedData');
+      const stringCache = cache.get('cachedChats');
       rawList = stringCache ? JSON.parse(stringCache) : [];
     } else {
-      const stringBookmarks = await LocalStorage.getItem('bookmarks') as string;
-      const bookmarksData: Bookmark[] = stringBookmarks ? JSON.parse(stringBookmarks) : [];
-      rawList = bookmarksData.map((bookmark: Bookmark) => ({
-        ...bookmark.data,
+      const stringBookmarks = await LocalStorage.getItem('bookmarkedChats') as string;
+      const bookmarksChat: Bookmark[] = stringBookmarks ? JSON.parse(stringBookmarks) : [];
+      rawList = bookmarksChat.map((bookmark: Bookmark) => ({
+        ...bookmark.chat,
         summary: bookmark.title
       }))
     }
 
     const optimisedList: ListItem[] = rawList
-      .filter(item => item.messages.length > 0)
+      // .filter(item => item.messages.length > 0)
       .sort((a, b) => {
         const aLastTimestamp = Math.max(...a.messages.map(msg => msg.timestamp))
         const bLastTimestamp = Math.max(...b.messages.map(msg => msg.timestamp))
@@ -68,13 +68,13 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
       })
       .map(item => {
         return {
-          data: item,
+          chat: item,
           state: item.workflowState,
           key: item.timestamp,
           title: cacheOrBookmarks === 'cache' ?
             item.messages.at(0)?.content ?? '' :
             item.summary ?? 'No summary...',
-          msg_count: item.messages.length,
+          msg_count: 1,//item.messages.length,
           markdown: item.messages
             .slice(0, 4)
             .map(msg => msg.content)
@@ -135,15 +135,15 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                     title="View Conversation"
                     icon={Icon.AppWindow}
                     onAction={() => {
-                      push(<ChatHistory data={listItem.data} />)
+                      push(<ChatHistory chat={listItem.chat} />)
                     }}
                   />
 
                   <Action.CopyToClipboard
-                    title="Copy Data"
+                    title="Copy chat"
                     icon={Icon.CopyClipboard}
                     shortcut={{ modifiers: ["cmd"], key: "c" }}
-                    content={JSON.stringify(listItem.data)}
+                    content={JSON.stringify(listItem.chat)}
                   />
 
                   {cacheOrBookmarks === 'cache' && (
@@ -152,7 +152,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                       icon={Icon.Bookmark}
                       shortcut={{ modifiers: ["cmd"], key: "d" }}
                       onAction={async () => {
-                        Functions.BookmarkChat(listItem.data, true)
+                        Functions.BookmarkChat(listItem.chat, true)
                       }}
                     />
                   )}
@@ -162,23 +162,23 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                     icon={Icon.Trash}
                     shortcut={{ modifiers: ["cmd"], key: "deleteForward" }}
                     onAction={async () => {
-                      const deleteID = listItem.data.timestamp;
+                      const deleteID = listItem.chat.timestamp;
                       if (cacheOrBookmarks === 'cache') {
                         const cache = new RaycastCache();
-                        const cachedString: string | undefined = cache.get('cachedData');
-                        const cacheData: Data[] = cachedString ? JSON.parse(cachedString) : []
-                        const newCache = cacheData.filter(messages => messages.timestamp !== deleteID);
-                        cache.set('cachedData', JSON.stringify(newCache))
+                        const cachedString: string | undefined = cache.get('cachedChats');
+                        const cacheChat: ChatSession[] = cachedString ? JSON.parse(cachedString) : []
+                        const newCache = cacheChat.filter(messages => messages.timestamp !== deleteID);
+                        cache.set('cachedChats', JSON.stringify(newCache))
                         showToast({ title: 'Deleted', style: Toast.Style.Success })
                       } else if (cacheOrBookmarks === 'bookmarks') {
                         const stringBookmarks = await LocalStorage.getItem('bookmarks');
                         if (typeof stringBookmarks !== 'string') return;
                         const bookmarks: Bookmark[] = JSON.parse(stringBookmarks)
-                        const newBookmarks = bookmarks.filter(bookmark => bookmark.data.timestamp !== deleteID)
+                        const newBookmarks = bookmarks.filter(bookmark => bookmark.chat.timestamp !== deleteID)
                         LocalStorage.setItem('bookmarks', JSON.stringify(newBookmarks));
                         showToast({ title: 'Deleted', style: Toast.Style.Success })
                       }
-                      LoadData()
+                      LoadChat()
                     }}
                   />
                 </ActionPanel>

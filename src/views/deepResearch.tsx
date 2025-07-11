@@ -4,9 +4,9 @@ import assert from "assert";
 import * as Functions from "../utils/functions";
 import { APIHandler } from '../utils/api_handler';
 
-import { type Data } from "../utils/models";
+import { type ChatSession } from "../utils/models";
 
-export default function DeepResearch({ data: Data }: { data: Data }) {
+export default function DeepResearch({ chat: ChatSession }: { chat: ChatSession }) {
   async function UpdateResearch() {
   }
 

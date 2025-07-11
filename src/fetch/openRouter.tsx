@@ -1,20 +1,20 @@
-import { type Data } from "../utils/models";
+import { type ChatSession } from "../utils/models";
 import { type StreamPipeline } from "../views/answer";
 
 import { API_KEYS } from '../config/api_keys';
 import { showToast, Toast } from "@raycast/api";
 
-export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
+export async function OpenRouter(chat: ChatSession, streamPipeline: StreamPipeline) {
   const url = 'https://openrouter.ai/api/v1/chat/completions';
-  const messages = data.messages.map(({ id, timestamp, tokenCount, ...msg }) => msg);
+  const messages = chat.messages.map(({ id, timestamp, tokenCount, ...msg }) => msg);
   const options = {
     method: 'POST',
     headers: { Authorization: `Bearer ${API_KEYS.OPENROUTER}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      "model": data.model,
+      "model": chat.model,
       "messages": messages,
       "stream": true,
-      "temperature": data.temperature
+      "temperature": chat.temperature
     })
     // add pdf and image capabilities
     // https://openrouter.ai/docs/features/images-and-pdfs
@@ -50,8 +50,8 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
             showToast({ title: 'Streaming', style: Toast.Style.Animated })
             isStreaming = true
           }
-          const dataString = line.slice(6);
-          if (dataString === '[DONE]') {
+          const chatString = line.slice(6);
+          if (chatString === '[DONE]') {
             streamPipeline({
               apiResponse: '',
               apiStatus: 'done'
@@ -59,7 +59,7 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
             break;
           }
           try {
-            const parsed = JSON.parse(dataString);
+            const parsed = JSON.parse(chatString);
             const content = parsed.choices[0].delta.content;
             streamPipeline({
               apiResponse: content,
@@ -67,7 +67,6 @@ export async function OpenRouter(data: Data, streamPipeline: StreamPipeline) {
             });
           } catch (e) {
             showToast({ title: 'Invalid JSON', style: Toast.Style.Failure })
-            // console.log('Invalid JSON')
           }
         }
       }

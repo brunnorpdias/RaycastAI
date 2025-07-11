@@ -6,11 +6,11 @@ import fs from "fs";
 
 import { API_KEYS } from '../config/api_keys';
 
-import { type Data, storageDir } from "../utils/models";
+import { type ChatSession, Role, ReasoningLevel, storageDir, FileStatus } from "../utils/models";
 import { type StreamPipeline } from "../views/answer";
 
 type Content = Array<{
-  role: 'user' | 'model',
+  role: 'model' | 'user',
   parts?: Array<{
     text?: string,
     inlineData?: { data: string, mimeType: string },
@@ -23,19 +23,19 @@ type FileReference = { fileUri: string, mimeType: string };
 
 const deepmind = new GoogleGenAI({ apiKey: API_KEYS.DEEPMIND })
 
-export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
+export async function RunGoogle(chat: ChatSession, streamPipeline: StreamPipeline) {
   // port summarisation and title creation to gemini 2.0 flash
-  let messages = data.messages
+  let messages = chat.messages
     .map(({ id, tokenCount, role, content, ...msg }) => {
       return {
-        role: role === 'assistant' ? 'model' : 'user',
+        role: role === Role.Assistant ? 'model' : 'user',
         parts: [{ text: content }],
         ...msg,
       }
     }) as (Content[number] & { timestamp: number })[]
 
-  if (data.files.length > 0) {
-    for (const file of data.files) {
+  if (chat.files.length > 0) {
+    for (const file of chat.files) {
       const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
       const arrayBuffer = fs.readFileSync(filePath);
       assert(arrayBuffer !== undefined, 'File not found')
@@ -54,7 +54,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
       assert(message !== undefined, 'No messages match the timestamp of one of the files')
       assert(Array.isArray(message.parts), 'Message content attribute was not converted to an array')
 
-      const totalFilesSize: number = data.files
+      const totalFilesSize: number = chat.files
         .map(file => file.size)
         .filter(size => typeof size === 'number')
         .reduce((totalSize, size) => totalSize + size, 0)
@@ -67,7 +67,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
           }
         }
         message.parts.push(inlineData)
-        file.status = 'staged';
+        file.status = FileStatus.Staged;
       } else {
         if (file.status !== 'uploaded') {
           const fileBlob = new Blob([arrayBuffer], { type: mimeType });
@@ -86,29 +86,29 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
           } as FileReference
         };
         message.parts.push(fileData)
-        file.status = file.status === 'uploaded' ? 'uploaded' : 'staged';
+        file.status = file.status === FileStatus.Staged ? FileStatus.Uploaded : FileStatus.Staged;
       }
     }
   }
   const content: Content = messages.map(({ timestamp, ...msg }) => msg)
 
   const responseObject = {
-    model: data.model as any,
+    model: chat.model as any,
     contents: content,
     config: {
-      systemInstruction: data.instructions,
+      systemInstruction: chat.instructions,
       maxOutputTokens: 60000000,
       thinkingConfig: {
-        includeThoughts: data.reasoning === 'none' || !data.reasoning ? false : true,
-        thinkingBudget: data.reasoning === 'none' ?
-          0 : data.reasoning === 'low' ?
-            8192 : data.reasoning === 'medium' ?
-              16384 : data.reasoning === 'high' ?
+        includeThoughts: !chat.reasoning || chat.reasoning === ReasoningLevel.None ? false : true,
+        thinkingBudget: chat.reasoning === ReasoningLevel.None ?
+          0 : chat.reasoning === ReasoningLevel.Low ?
+            8192 : chat.reasoning === ReasoningLevel.Medium ?
+              16384 : chat.reasoning === ReasoningLevel.High ?
                 24576 : undefined
       },
-      tools: data.tools?.includes('web') ? [{ googleSearch: {} }] : undefined,
+      tools: chat.tools?.includes('web') ? [{ googleSearch: {} }] : undefined,
     },
-    temperature: data.temperature
+    temperature: chat.temperature
   }
 
   const response = await deepmind.models.generateContentStream(responseObject)// as GenerateContentParameters)
@@ -151,7 +151,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       });
-      data.files.map(att => att.status === 'staged' ? att.status = 'uploaded' : att.status)
+      chat.files.map(att => att.status === FileStatus.Staged ? att.status = FileStatus.Uploaded : att.status)
       break
     }
   }

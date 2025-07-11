@@ -1,11 +1,11 @@
 import ollama from 'ollama';
 
-import { Data } from '../utils/models';
+import { ChatSession } from '../utils/models';
 import { type StreamPipeline } from "../views/answer";
 
 // remove optionals later
-export async function Run(data: Data, streamPipeline: StreamPipeline) {
-  const messages = data?.messages.map(({ role, content }) => {
+export async function Run(chat: ChatSession, streamPipeline: StreamPipeline) {
+  const messages = chat?.messages.map(({ role, content }) => {
     return {
       role: role,
       content: content
@@ -13,7 +13,7 @@ export async function Run(data: Data, streamPipeline: StreamPipeline) {
   })
 
   const response = await ollama.chat({
-    model: data?.model ?? 'gemma3:12b',
+    model: chat?.model ?? 'gemma3:12b',
     messages: messages ?? [{ role: 'user', content: 'This is a test' }],
     stream: true,
     // set thinking budget for specific models

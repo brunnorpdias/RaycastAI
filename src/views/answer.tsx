@@ -7,7 +7,7 @@ import * as Functions from "../utils/functions";
 import { APIHandler } from '../utils/api_handler';
 import DeepResearch from "./deepResearch";
 
-import { type Data } from "../utils/models";
+import { type ChatSession, Role, ReasoningLevel } from "../utils/models";
 
 type APIStatus = 'idle' | 'received' | 'reset' | 'thinking' | 'streaming' | 'done' | 'error';
 
@@ -27,9 +27,9 @@ export type StreamPipeline = ({
 
 
 
-export default function Answer({ data: initialData, msgTimestamp }: {
-  // data renamed as initialData
-  data: Data;
+export default function Answer({ chat: initialChat, msgTimestamp }: {
+  // chat renamed as initialChat
+  chat: ChatSession;
   msgTimestamp?: number;
 }) {
 
@@ -39,36 +39,34 @@ export default function Answer({ data: initialData, msgTimestamp }: {
   const [apiStatus, setApiStatus] = useState<APIStatus>('idle');
   const [response, setResponse] = useState('');
   const [startTime, setStartTime] = useState(0);
-  const [data, setData] = useState<Data>(initialData);
+  const [chat, setChat] = useState<ChatSession>(initialChat);
   const [promptTokens, setPromptTokens] = useState<number>();
   const [responseTokens, setResponseTokens] = useState<number>();
   const [responseID, setResponseID] = useState<string | undefined>();
-  const dataRef = useRef(data);
+  const chatRef = useRef(chat);
   useEffect(() => {
-    dataRef.current = data;
-  }, [data]);
+    chatRef.current = chat;
+  }, [chat]);
 
   useEffect(() => {
     if (msgTimestamp) {
-      OpenHistoricalMessage(data, setResponse, setData, msgTimestamp);
+      OpenHistoricalMessage(chat, setResponse, setChat, msgTimestamp);
     } else if (!hasRun.current) {
-      console.log(`state 1a: ${dataRef.current.workflowState}`)
-      const nextData: Data = {
-        ...dataRef.current,
-        workflowState: dataRef.current.workflowState && ['chat_queued', 'completed'].includes(dataRef.current.workflowState) ?
+      const nextChat: ChatSession = {
+        ...chatRef.current,
+        workflowState: chatRef.current.workflowState && ['chat_queued', 'completed'].includes(chatRef.current.workflowState) ?
           'chat_processing' :
-          dataRef.current.workflowState === 'dr_queued' ?
+          chatRef.current.workflowState === 'dr_queued' ?
             'dr_clarifying' :
-            dataRef.current.workflowState === 'dr_awaiting' ?
+            chatRef.current.workflowState === 'dr_awaiting' ?
               'dr_improving_prompt' : undefined
       }
-      setData(nextData)
-      console.log(`state 1b: ${nextData.workflowState}`)
+      setChat(nextChat)
       hasRun.current = true;
       setStartTime(Date.now())
-      APIHandler(nextData, streamPipeline)
+      APIHandler(nextChat, streamPipeline)
     }
-  }, [data])
+  }, [chat])
 
   const streamPipeline: StreamPipeline = ({ apiResponse, apiStatus, responseID, promptTokens, responseTokens }) => {
     if (apiStatus === 'received') {
@@ -80,19 +78,17 @@ export default function Answer({ data: initialData, msgTimestamp }: {
     } else if (apiStatus === 'streaming') {
       setResponse((prevResponse: string) => prevResponse + apiResponse);
     } else if (apiStatus === 'done') {
-      console.log(`state 2a: ${dataRef.current.workflowState}`)
-      const newData: Data = {
-        ...dataRef.current,
-        workflowState: dataRef.current.workflowState === 'chat_processing' ?
+      const newChat: ChatSession = {
+        ...chatRef.current,
+        workflowState: chatRef.current.workflowState === 'chat_processing' ?
           'completed' :
-          dataRef.current.workflowState === 'dr_clarifying' ?
+          chatRef.current.workflowState === 'dr_clarifying' ?
             'dr_awaiting' :
-            dataRef.current.workflowState === 'dr_improving_prompt' ?
+            chatRef.current.workflowState === 'dr_improving_prompt' ?
               'dr_prompt_complete' : undefined
       }
-      setData(newData);
-      console.log(`state 2b: ${newData.workflowState}`)
-      if (newData.workflowState !== 'dr_prompt_complete') {
+      setChat(newChat);
+      if (newChat.workflowState !== 'dr_prompt_complete') {
         setResponse((prevResponse: string) => prevResponse + apiResponse);
       }
       setResponseID(responseID);
@@ -108,7 +104,7 @@ export default function Answer({ data: initialData, msgTimestamp }: {
   useEffect(() => {
     if (apiStatus === 'done') {
       const duration: number = Math.round((Date.now() - startTime) / 100) / 10;
-      SaveData();
+      SaveChat();
 
       if (responseTokens) {
         const tokensPerSecond: number = Math.round(responseTokens / duration)
@@ -119,18 +115,18 @@ export default function Answer({ data: initialData, msgTimestamp }: {
         showToast({ title: 'Done', message: `Streaming took ${duration}s to complete` });  // style add?
       }
 
-      if (dataRef.current.workflowState === 'dr_prompt_complete') {
+      if (chatRef.current.workflowState === 'dr_prompt_complete') {
         // send request before?? use background state and close connection? how to get the response id?
-        push(<DeepResearch data={dataRef.current} />)
+        push(<DeepResearch chat={chatRef.current} />)
       }
     }
   }, [apiStatus])
 
-  async function SaveData() {
-    const userMsgs = dataRef.current.messages.filter(msg => msg.role === 'user');
+  async function SaveChat() {
+    const userMsgs = chatRef.current.messages.filter(msg => msg.role === 'user');
     const userMsg = userMsgs.at(-1);
 
-    const previousTokenCount = dataRef.current.messages
+    const previousTokenCount = chatRef.current.messages
       .map(msg => msg.tokenCount)
       .filter(tokens => typeof tokens === 'number')
       .reduce((sum, n) => sum + n, 0);
@@ -140,25 +136,25 @@ export default function Answer({ data: initialData, msgTimestamp }: {
       userMsg.tokenCount = promptTokens - (previousTokenCount ?? 0);
     }
 
-    let responseMsg: Data["messages"][0] = {
+    let responseMsg: ChatSession["messages"][0] = {
       id: responseID ?? undefined,
-      role: 'assistant',
+      role: Role.Assistant,
       content: response,
       timestamp: Date.now(),
       tokenCount: responseTokens,
     }
 
-    const newData: Data = {
-      ...dataRef.current,
-      messages: [...dataRef.current.messages, responseMsg],
+    const newChat: ChatSession = {
+      ...chatRef.current,
+      messages: [...chatRef.current.messages, responseMsg],
     }
 
-    assert(newData !== undefined, 'Data is not defined')
-    setData(newData);
+    assert(newChat !== undefined, 'Chat is not defined')
+    setChat(newChat);
 
-    if (!dataRef.current.tools?.includes('deepResearch')) {
-      await Functions.CacheChat(newData);
-      await Functions.BookmarkChat(newData, false);
+    if (!chatRef.current.tools?.includes('deepResearch')) {
+      await Functions.CacheChat(newChat);
+      await Functions.BookmarkChat(newChat, false);
     }
   }
 
@@ -175,31 +171,31 @@ export default function Answer({ data: initialData, msgTimestamp }: {
             content={response}
           />
 
-          {/* {data.model !== 'gpt-4o-transcribe' && ['completed', 'dr_awaiting', 'dr_prompt_complete', undefined].includes(data.workflowState) && ( */}
-          {data.model !== 'gpt-4o-transcribe' && ['completed', 'dr_awaiting', undefined].includes(data.workflowState) && (
+          {/* {chat.model !== 'gpt-4o-transcribe' && ['completed', 'dr_awaiting', 'dr_prompt_complete', undefined].includes(chat.workflowState) && ( */}
+          {chat.model !== 'gpt-4o-transcribe' && ['completed', 'dr_awaiting', undefined].includes(chat.workflowState) && (
             <Action
-              title={data.workflowState === 'completed' ?
+              title={chat.workflowState === 'completed' ?
                 'New entry' :
-                data.workflowState === 'dr_awaiting' ?
+                chat.workflowState === 'dr_awaiting' ?
                   'Improve prompt' :
-                  // data.workflowState === 'dr_prompt_complete' ?
+                  // chat.workflowState === 'dr_prompt_complete' ?
                   //   'Start research' :
                   'New entry'  // case for older chats without a state parameter
               }
               icon={Icon.Plus}
               onAction={() => {
-                // if (['completed', undefined].includes(data.workflowState)) {
-                if (['completed', 'dr_awaiting', undefined].includes(data.workflowState)) {
-                  Functions.CreateNewEntry(data, push, msgTimestamp)
-                  // } else if (data.workflowState === 'dr_awaiting') {
-                  // } else if (data.workflowState === 'dr_prompt_complete') {
-                  //   push(<DeepResearch data={data} />)
+                // if (['completed', undefined].includes(chat.workflowState)) {
+                if (['completed', 'dr_awaiting', undefined].includes(chat.workflowState)) {
+                  Functions.CreateNewEntry(chat, push, msgTimestamp)
+                  // } else if (chat.workflowState === 'dr_awaiting') {
+                  // } else if (chat.workflowState === 'dr_prompt_complete') {
+                  //   push(<DeepResearch chat={chat} />)
                 }
               }}
             />
           )}
 
-          {data.model !== 'gpt-4o-transcribe' && (
+          {chat.model !== 'gpt-4o-transcribe' && (
             // change this to import transcription / non text models from types.tsx
             // add option to go to history.tsx directly from the chat (cmd + y) ?
             <Action
@@ -207,12 +203,12 @@ export default function Answer({ data: initialData, msgTimestamp }: {
               icon={Icon.Bookmark}
               shortcut={{ modifiers: ["cmd"], key: "d" }}
               onAction={async () => {
-                Functions.BookmarkChat(data, true)
+                Functions.BookmarkChat(chat, true)
               }}
             />
           )}
 
-          {data.model === 'gpt-4o-transcribe' && (
+          {chat.model === 'gpt-4o-transcribe' && (
             <Action
               title="Improve Transcript"
               icon={Icon.Paragraph}
@@ -238,9 +234,9 @@ export default function Answer({ data: initialData, msgTimestamp }: {
 
 
 //  Helper Functions  //
-async function OpenHistoricalMessage(data: Data, setResponse: Function, setData: Function, msgTimestamp: number) {
+async function OpenHistoricalMessage(chat: ChatSession, setResponse: Function, setChat: Function, msgTimestamp: number) {
   // Changed from id to timestamp, later added id separately, on the future remove the if condition, unnecessary for new users
-  let selected_message = data.messages.findLast(msg =>
+  let selected_message = chat.messages.findLast(msg =>
     msg.timestamp ?
       msg.timestamp === msgTimestamp :
       Number(msg.id) === msgTimestamp
@@ -248,7 +244,7 @@ async function OpenHistoricalMessage(data: Data, setResponse: Function, setData:
   assert(selected_message, 'Error finding selected message')
 
   setResponse(selected_message.content)
-  setData(data)
+  setChat(chat)
 }
 
 
@@ -260,15 +256,15 @@ function ImproveTranscript(response: string, push: Function) {
                           conversation/monologue. Maintain the original meaning and the tone, but with 
                           a clear flow of ideas.\n\n**Transcript**\n${response}`
 
-  const transcriptData: Data = {
+  const transcriptData: ChatSession = {
     timestamp: Date.now(),
-    messages: [{ role: 'user', content: prompt, timestamp: Date.now() }],
+    messages: [{ role: Role.User, content: prompt, timestamp: Date.now() }],
     model: 'gpt-4.1-mini',
     api: 'openai',
-    reasoning: 'none',
+    reasoning: ReasoningLevel.None,
     instructions: '',
     files: [],
   }
 
-  push(<Answer data={transcriptData} />)
+  push(<Answer chat={transcriptData} />)
 }

@@ -1,6 +1,7 @@
 import path from 'path';
 import { homedir } from 'os';
 
+
 export const APItoModels = {
   'openai': [
     { name: 'GPT 4.1 mini', code: 'gpt-4.1-mini' },
@@ -40,6 +41,82 @@ export const APItoModels = {
   ]
 };
 
+
+export enum Role {
+  User = 'user',
+  Assistant = 'assistant',
+}
+
+export enum ReasoningLevel {
+  None = 'none',
+  Low = 'low',
+  Medium = 'medium',
+  High = 'high',
+  Auto = 'auto',
+}
+
+export enum FileStatus {
+  Idle = 'idle',
+  Staged = 'staged',
+  Uploaded = 'uploaded',
+}
+
+export type Files = [] | Array<{
+  id?: string,
+  hash: string,
+  name: string,
+  extension: string,
+  timestamp: number,
+  status: FileStatus,
+  size?: number,
+}>
+
+export type Messages = Array<{
+  id?: string,  // response id on openai
+  timestamp: number,
+  role: Role,
+  content: string,
+  tokenCount?: number,
+}>
+
+export type ChatSession = {
+  workflowState?: WorkflowState;
+  timestamp: number;
+  messages: Messages;
+  instructions: string,
+  model: Model;
+  api: API;
+  tools?: Array<'web' | 'deepResearch'>;
+  reasoning: ReasoningLevel;  // add option for auto (just some models support it)
+  temperature?: number;
+  files: Files;
+};
+
+// export type FileData = {
+//   hash: string,
+//   rawData: number[]
+// };
+
+
+export type WorkflowState =
+  // chat workflow
+  | 'chat_queued'
+  | 'chat_processing' // chat is being processed
+
+  // dr workflow
+  | 'dr_queued'
+  | 'dr_clarifying' // model is generating clarification questions
+  | 'dr_awaiting' // system is waiting for the user's answers
+  | 'dr_improving_prompt' // model turns answers into improved prompt
+  | 'dr_prompt_complete' // the application can move on to more dr specific tasks and ui
+  | 'dr_researching' // long-running DR generation
+
+  // terminal states
+  | 'completed' // completed successfully
+  | 'cancelled' // user aborted; no way to do this yet
+  | 'failed';
+
+
 export const reasoningModels = [
   'o4-mini', 'o3', 'o3-pro',
   'claude-sonnet-4-20250514', 'claude-opus-4-20250514',
@@ -64,54 +141,3 @@ export type API = keyof typeof APItoModels;
 export type Model = typeof APItoModels[API][number]['code'];
 
 export const deepResearchTimeout = 60 * 60000;
-
-export type WorkflowState =
-  // chat workflow
-  | 'chat_queued'
-  | 'chat_processing' // chat is being processed
-
-  // dr workflow
-  | 'dr_queued'
-  | 'dr_clarifying' // model is generating clarification questions
-  | 'dr_awaiting' // system is waiting for the user's answers
-  | 'dr_improving_prompt' // model turns answers into improved prompt
-  | 'dr_prompt_complete' // the application can move on to more dr specific tasks and ui
-  | 'dr_researching' // long-running DR generation
-
-  // terminal states
-  | 'completed' // completed successfully
-  | 'cancelled' // user aborted; no way to do this yet
-  | 'failed';
-
-
-export type Data = {
-  workflowState?: WorkflowState;
-  timestamp: number;
-  messages: Array<{
-    id?: string,  // response id on openai
-    timestamp: number,
-    role: 'user' | 'assistant',
-    content: string,
-    tokenCount?: number,
-  }>;
-  instructions: string,
-  model: Model;
-  api: API;
-  tools?: ('web' | 'deepResearch')[];
-  reasoning: 'none' | 'low' | 'medium' | 'high';  // add option for auto (just some models support it)
-  temperature?: number;
-  files: [] | Array<{
-    id?: string,
-    hash: string,
-    name: string,
-    extension: string,
-    timestamp: number,
-    status: 'idle' | 'staged' | 'uploaded',
-    size?: number,
-  }>;
-};
-
-export type FileData = {
-  hash: string,
-  rawData: number[]
-};

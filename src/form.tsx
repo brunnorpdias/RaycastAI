@@ -1,13 +1,18 @@
 import { Form, ActionPanel, Action, useNavigation } from '@raycast/api';
+
+import { Cache as RaycastCache, LocalStorage } from '@raycast/api'
+
+
 import { useState } from 'react';
 import fs from 'fs';
 import path from 'path';
 
-import { type Data, type API, type Model, APItoModels } from './utils/models'
+import { type ChatSession, type API, type Model, Role, ReasoningLevel, APItoModels } from './utils/models'
 
 import * as ModelInfo from './utils/models';
 import Answer from "./views/answer";
 import * as Functions from './utils/functions';
+import assert from 'assert';
 
 type Values = {
   prompt: string;
@@ -15,7 +20,7 @@ type Values = {
   model: Model;
   persona: 'default' | 'coach' | 'collaborator' | 'tutor',
   attatchmentPaths?: [string];
-  reasoning: 'none' | 'low' | 'medium' | 'high';
+  reasoning: ReasoningLevel;
   web: boolean,
   deepResearch: boolean;
   temperature: string;
@@ -71,19 +76,19 @@ export default function ChatForm() {
     const tools = [
       values.web ? 'web' : null,
       values.deepResearch ? 'deepResearch' : null
-    ].filter(Boolean) as Data["tools"]
+    ].filter(Boolean) as ChatSession["tools"]
 
-    let fileInfos: Data["files"] = [];
+    let fileInfos: ChatSession["files"] = [];
     if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
       fileInfos = await Functions.ProcessFiles(values.attatchmentPaths, timestamp)
     }
 
-    let data: Data = {
+    let chat: ChatSession = {
       workflowState: values.deepResearch ? 'dr_queued' : 'chat_queued',
       timestamp: timestamp,
       model: values.deepResearch ? `${values.model}-deep-research` : values.model,
       api: values.api,
-      messages: [{ role: 'user', content: values.prompt, timestamp: timestamp }],
+      messages: [{ role: Role.User, content: values.prompt, timestamp: timestamp }],
       files: fileInfos,
       instructions: instructions,
       reasoning: values.reasoning,
@@ -91,11 +96,11 @@ export default function ChatForm() {
       temperature: ModelInfo.reasoningModels.includes(values.model) ? undefined : temp
     }
 
-    if (!data.tools?.includes('deepResearch')) {
-      await Functions.CacheChat(data)
+    if (!chat.tools?.includes('deepResearch')) {
+      await Functions.CacheChat(chat)
     }
 
-    push(<Answer data={data} />);  // for DR, the api call will improve the prompt before starting the research
+    push(<Answer chat={chat} />);  // for DR, the api call will improve the prompt before starting the research
   }
 
   return (
@@ -134,11 +139,12 @@ export default function ChatForm() {
       </Form.Dropdown>
 
       {ModelInfo.reasoningModels.includes(selectedModel) && (
-        <Form.Dropdown id='reasoning' title='Reasoning Effort' defaultValue='low' >
-          <Form.Dropdown.Item value='none' title='None' />
-          <Form.Dropdown.Item value='low' title='Low' />
-          <Form.Dropdown.Item value='medium' title='Medium' />
-          <Form.Dropdown.Item value='high' title='High' />
+        <Form.Dropdown id='reasoning' title='Reasoning Effort' defaultValue={ReasoningLevel.Auto} >
+          <Form.Dropdown.Item value={ReasoningLevel.None} title='None' />
+          <Form.Dropdown.Item value={ReasoningLevel.Auto} title='Auto' />
+          <Form.Dropdown.Item value={ReasoningLevel.Low} title='Low' />
+          <Form.Dropdown.Item value={ReasoningLevel.Medium} title='Medium' />
+          <Form.Dropdown.Item value={ReasoningLevel.High} title='High' />
         </Form.Dropdown>
       )}
 

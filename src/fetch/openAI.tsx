@@ -6,7 +6,7 @@ import path from "path";
 import os from 'os';
 
 import { API_KEYS } from '../config/api_keys';
-import * as ModelInfo from '../utils/models';
+import { ChatSession, Role, ReasoningLevel, storageDir, FileStatus } from '../utils/models';
 import { type StreamPipeline } from "../views/answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import assert from "assert";
@@ -29,16 +29,16 @@ type Content = string | Array<{
 
 const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
-export async function Responses(data: ModelInfo.Data, streamPipeline: StreamPipeline) {
-  const input: Input = await GenerateInput(data)
-  const inputWithFiles: Input = await AddFiles(data, input)
-  const responsesObject = await ResponsesObject(data, inputWithFiles) as ResponseCreateParamsStreaming;
-  GenerateStreaming(responsesObject, streamPipeline, data)
+export async function Responses(chat: ChatSession, streamPipeline: StreamPipeline) {
+  const input: Input = await GenerateInput(chat)
+  const inputWithFiles: Input = await AddFiles(chat, input)
+  const responsesObject = await ResponsesObject(chat, inputWithFiles) as ResponseCreateParamsStreaming;
+  GenerateStreaming(responsesObject, streamPipeline, chat)
 }
 
 
-export async function TitleConversation(data: ModelInfo.Data) {
-  let input: Input = await GenerateInput(data)
+export async function TitleConversation(chat: ChatSession) {
+  let input: Input = await GenerateInput(chat)
   input = input.map(({ timestamp, ...rest }) => rest)  // remove timestamps from the messages (used to match files on responses)
   assert(Array.isArray(input), 'Input has an incorrect format')
   input.push({ role: 'user', content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.' })
@@ -54,13 +54,13 @@ export async function TitleConversation(data: ModelInfo.Data) {
 }
 
 
-export async function STT(data: ModelInfo.Data, streamPipeline: StreamPipeline) {
-  const lastMsg = data.messages.at(-1)
+export async function STT(chat: ChatSession, streamPipeline: StreamPipeline) {
+  const lastMsg = chat.messages.at(-1)
   if (!lastMsg) return
   const prompt: string = lastMsg.content ?? '';
-  const file = data.files.at(0);
+  const file = chat.files.at(0);
   assert(file !== undefined, 'File was not found')
-  const filePath = path.join(ModelInfo.storageDir, `${file.hash}.${file.extension}`);
+  const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
   const stream = await openai.audio.transcriptions.create({
     file: fs.createReadStream(filePath),
     model: "gpt-4o-transcribe",
@@ -88,7 +88,6 @@ export async function STT(data: ModelInfo.Data, streamPipeline: StreamPipeline) 
       })
     } else {
       showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure })
-      // console.log('Not planned')
     }
   }
 }
@@ -118,12 +117,12 @@ export async function TTS(text: string) {
 
 
 //  Helper Functions  //
-async function GenerateInput(data: ModelInfo.Data) {
-  const timestamps: number[] = data.files.map(file => file.timestamp);
-  if (data.files.length <= 0) return data.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
+async function GenerateInput(chat: ChatSession) {
+  const timestamps: number[] = chat.files.map(file => file.timestamp);
+  if (chat.files.length <= 0) return chat.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
 
-  let input: Input = data.messages.map(({ role, content, timestamp }) => {
-    if (role === 'user' && timestamps.includes(timestamp)) {
+  let input: Input = chat.messages.map(({ role, content, timestamp }) => {
+    if (role === Role.User && timestamps.includes(timestamp)) {
       return {
         role: role,
         content: [{ type: 'input_text', text: content }],
@@ -141,11 +140,11 @@ async function GenerateInput(data: ModelInfo.Data) {
 }
 
 
-async function AddFiles(data: ModelInfo.Data, input: Input) {
-  if (data.files.length < 1) return input
+async function AddFiles(chat: ChatSession, input: Input) {
+  if (chat.files.length < 1) return input
   let inputWithFiles = [...input]
-  for (const file of data.files) {
-    const filePath = path.join(ModelInfo.storageDir, `${file.hash}.${file.extension}`);
+  for (const file of chat.files) {
+    const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
     const arrayBuffer = fs.readFileSync(filePath);
     const fileName = file.name;
     const fileExtension = file.extension;
@@ -165,7 +164,7 @@ async function AddFiles(data: ModelInfo.Data, input: Input) {
       file_data: fileExtension === 'pdf' ? `data:application/pdf;base64,${base64}` : undefined,
       image_url: ['jpg', 'png', 'webp', 'gif'].includes(fileExtension) ? `data:image/${fileExtension};base64,${base64}` : undefined,
     })
-    file.status = 'staged';
+    file.status = FileStatus.Staged;
   }
 
   inputWithFiles = inputWithFiles.map(({ timestamp, ...rest }) => rest)
@@ -173,30 +172,31 @@ async function AddFiles(data: ModelInfo.Data, input: Input) {
 }
 
 
-async function ResponsesObject(data: ModelInfo.Data, input: Input) {
+async function ResponsesObject(chat: ChatSession, input: Input) {
   const max_output_tokens = (
-    data.model === 'o3' || data.model === 'o3-pro' || data.model === 'o4-mini' ?
+    chat.model === 'o3' || chat.model === 'o3-pro' || chat.model === 'o4-mini' ?
       100000 :
       32000
   )
   const token_divider = (
-    data.reasoning === 'none' ? 8 :
-      data.reasoning === 'low' ? 4 :
-        data.reasoning === 'medium' ? 2 :
-          1
+    chat.reasoning === ReasoningLevel.None ? 8 :
+      chat.reasoning === ReasoningLevel.Low ? 4 :
+        chat.reasoning === ReasoningLevel.Medium ? 2 :
+          chat.reasoning === ReasoningLevel.High ? 1 :
+            undefined
   )
 
   let responsesObject = {
     input: input,
-    model: data.model,
-    instructions: data.instructions.length > 0 ? data.instructions : undefined,
-    reasoning: data.reasoning === 'none' || data.reasoning === undefined ?
+    model: chat.model,
+    instructions: chat.instructions.length > 0 ? chat.instructions : undefined,
+    reasoning: chat.reasoning === 'none' || chat.reasoning === undefined ?
       undefined :
       {
-        effort: data.reasoning,
+        effort: chat.reasoning,
         summary: 'detailed'
       },
-    tools: data.tools?.includes('web') ?
+    tools: chat.tools?.includes('web') ?
       [{
         type: 'web_search',
         user_location: {
@@ -207,16 +207,16 @@ async function ResponsesObject(data: ModelInfo.Data, input: Input) {
         }
       }] :
       undefined,
-    max_output_tokens: max_output_tokens / token_divider,
+    max_output_tokens: token_divider ? max_output_tokens / token_divider : undefined,
     stream: true,
-    temperature: data.temperature
+    temperature: chat.temperature
   }
 
   return responsesObject
 }
 
 
-async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: StreamPipeline, data: ModelInfo.Data) {
+async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: StreamPipeline, chat: ChatSession) {
   let responseID = undefined;
   const stream = await openai.responses.create(responsesObject);
   for await (const event of stream) {
@@ -227,7 +227,7 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
     } else if (event.type === 'response.output_item.added' && event.item.type === 'reasoning') {
       showToast({ title: 'Thinking...', style: Toast.Style.Animated })
     } else if (event.type === 'response.reasoning_summary_text.delta') {
-      streamPipeline({ apiResponse: event.delta, apiStatus: 'thinking' })
+      streamPipeline({ apiResponse: `${event.delta} \n`, apiStatus: 'thinking' })
     } else if (event.type === 'response.content_part.added') {
       streamPipeline({ apiStatus: 'reset' })
       showToast({ title: 'Streaming', style: Toast.Style.Animated })
@@ -243,14 +243,14 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       })
-      data.files.map(att => att.status === 'staged' ? att.status = 'uploaded' : att)
+      chat.files.map(att => att.status === FileStatus.Staged ? att.status = FileStatus.Uploaded : att.status)
       break;
     }
   }
 }
 
 
-export async function DeepResearchImprovements(data: ModelInfo.Data, streamPipeline: StreamPipeline) {
+export async function DeepResearchImprovements(chat: ChatSession, streamPipeline: StreamPipeline) {
   const clarifying_instruction = `
   You will be given a research task by a user. Your job is NOT to complete the task yet, but instead to ask clarifying questions that would help you or another researcher produce a more specific, efficient, and relevant answer.
 
@@ -308,12 +308,12 @@ export async function DeepResearchImprovements(data: ModelInfo.Data, streamPipel
   - If the query is in a specific language, prioritize sources published in that language.
   `
 
-  let input = data.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
-  const stream: boolean = data.workflowState === 'dr_clarifying' ? true : false;
+  let input = chat.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
+  const stream: boolean = chat.workflowState === 'dr_clarifying' ? true : false;
 
   const response = await openai.responses.create({
     model: 'gpt-4.1',
-    instructions: data.workflowState === 'dr_clarifying' ? clarifying_instruction : improvement_instruction,
+    instructions: chat.workflowState === 'dr_clarifying' ? clarifying_instruction : improvement_instruction,
     input: input,
     stream: false
   })
@@ -322,7 +322,7 @@ export async function DeepResearchImprovements(data: ModelInfo.Data, streamPipel
   streamPipeline({ apiResponse: response.output_text, apiStatus: 'done' })
 }
 
-// export async function DeepResearchImprovePrompt(data: ModelInfo.Data) {
+// export async function DeepResearchImprovePrompt(chat: ModelInfo.Data) {
 
 // const openai = new OpenAI({
 //   apiKey: API_KEYS.OPENAI,

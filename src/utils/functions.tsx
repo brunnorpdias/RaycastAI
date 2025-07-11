@@ -7,14 +7,14 @@ import path from 'path';
 import * as OpenAPI from "../fetch/openAI";
 import NewEntry from '../views/new_entry';
 
-import { type Data, storageDir } from "./models";
-type Bookmarks = Array<{ title: string, data: Data }>;
+import { type ChatSession, FileStatus, storageDir } from "./models";
+type Bookmarks = Array<{ title: string, data: ChatSession }>;
 
 
-export async function BookmarkChat(data: Data, isManuallyBookmarked: boolean) {
-  const bookmarksString = await LocalStorage.getItem('bookmarks');
+export async function BookmarkChat(data: ChatSession, isManuallyBookmarked: boolean) {
+  const bookmarksString = await LocalStorage.getItem('bookmarkedChats');
   // create provision to create bookmarks for new users
-  assert(typeof bookmarksString === 'string', 'Bookmarks not found')
+  assert(bookmarksString && typeof bookmarksString === 'string', 'Bookmarks not found')
   const bookmarks: Bookmarks = JSON.parse(bookmarksString);
   assert(bookmarks !== undefined, 'Bookmarks is corrupted')
   const bookmarkIndex: number = bookmarks.findIndex(bookmark => bookmark.data.timestamp === data.timestamp);
@@ -31,44 +31,44 @@ export async function BookmarkChat(data: Data, isManuallyBookmarked: boolean) {
     showToast({ title: 'Bookmarked', style: Toast.Style.Success })
   }
   const newBookmarksString: string = JSON.stringify(bookmarks)
-  LocalStorage.setItem('bookmarks', newBookmarksString);
+  LocalStorage.setItem('bookmarkedChats', newBookmarksString);
 }
 
 
-export async function CacheChat(newData: Data) {
+export async function CacheChat(newChat: ChatSession) {
   const cache = new RaycastCache();
-  const cacheString = cache.get('cachedData');
-  const cachedData: Data[] = cacheString ? JSON.parse(cacheString) : [];
-  if (cachedData.length > 0) {
-    const filteredCache: Data[] = cachedData
-      .filter(cache => cache.timestamp !== newData.timestamp) // remove data if it's already cached
-    const newList = [...filteredCache, newData];
-    const newCachedData: Data[] = newList
+  const cacheString = cache.get('cachedChat');
+  const cachedChat: ChatSession[] = cacheString ? JSON.parse(cacheString) : [];
+  if (cachedChat.length > 0) {
+    const filteredCache: ChatSession[] = cachedChat
+      .filter(cache => cache.timestamp !== newChat.timestamp) // remove data if it's already cached
+    const newList = [...filteredCache, newChat];
+    const newCachedChat: ChatSession[] = newList
       .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
       .slice(0, 96)
-    cache.set('cachedData', JSON.stringify(newCachedData));
+    cache.set('cachedChat', JSON.stringify(newCachedChat));
   } else {
-    const list = [newData];
-    cache.set('cachedData', JSON.stringify(list));
+    const list = [newChat];
+    cache.set('cachedChat', JSON.stringify(list));
   }
 }
 
 
-export async function CacheDeepResearch(newData: Data) {
+export async function CacheDeepResearch(newChat: ChatSession) {
   // cache or LocalStorage?
   const cache = new RaycastCache();
   const cacheString = cache.get('cacheDR');
-  const cachedData: Data[] = cacheString ? JSON.parse(cacheString) : [];
-  if (cachedData.length > 0) {
-    const filteredCache: Data[] = cachedData
-      .filter(cache => cache.timestamp !== newData.timestamp) // remove data if it's already cached
-    const newList = [...filteredCache, newData];
-    const newCachedData: Data[] = newList
+  const cachedChat: ChatSession[] = cacheString ? JSON.parse(cacheString) : [];
+  if (cachedChat.length > 0) {
+    const filteredCache: ChatSession[] = cachedChat
+      .filter(cache => cache.timestamp !== newChat.timestamp) // remove data if it's already cached
+    const newList = [...filteredCache, newChat];
+    const newCachedChat: ChatSession[] = newList
       .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
       .slice(0, 32)
-    cache.set('cacheDR', JSON.stringify(newCachedData));
+    cache.set('cacheDR', JSON.stringify(newCachedChat));
   } else {
-    const list = [newData];
+    const list = [newChat];
     cache.set('cacheDR', JSON.stringify(list));
   }
 }
@@ -83,11 +83,11 @@ export async function ProcessFiles(attatchmentPaths: [string], messageTimestamp:
     const arrayBuffer = fs.readFileSync(attPath);
     const sizeInBytes: number = arrayBuffer.length;
     const fileHash = crypto.createHash('sha256').update(arrayBuffer).digest('hex');
-    const fileInfo: Data["files"][number] = {
+    const fileInfo: ChatSession["files"][number] = {
       hash: fileHash,
       name: name,
       extension: ext,
-      status: 'idle',
+      status: FileStatus.Idle,
       timestamp: messageTimestamp,
       size: sizeInBytes,
     }
@@ -105,12 +105,12 @@ export async function ProcessFiles(attatchmentPaths: [string], messageTimestamp:
 
 export async function FilesCleanup() {
   const cache = new RaycastCache();
-  const cacheString = cache.get('cachedData');
-  const cachedData: Data[] = cacheString ? JSON.parse(cacheString) : [];
-  const bookmarksString = await LocalStorage.getItem('bookmarks');
+  const cacheString = cache.get('cachedChat');
+  const cachedChat: ChatSession[] = cacheString ? JSON.parse(cacheString) : [];
+  const bookmarksString = await LocalStorage.getItem('bookmarkedChats');
   assert(typeof bookmarksString === 'string', 'Bookmarks not found')
   const bookmarks: Bookmarks = JSON.parse(bookmarksString);
-  const cachedFileNames: string[] = cachedData.flatMap(data => data.files.map(file => `${file.hash}.${file.extension}`));
+  const cachedFileNames: string[] = cachedChat.flatMap(data => data.files.map(file => `${file.hash}.${file.extension}`));
   const bookmarkFileNames: string[] = bookmarks.flatMap(bookmark => bookmark.data.files.map(file => `${file.hash}.${file.extension}`));
   const savedFiles: string[] = cachedFileNames.concat(bookmarkFileNames);
   const existingFiles = fs.readdirSync(storageDir);
@@ -122,13 +122,13 @@ export async function FilesCleanup() {
 }
 
 
-export function CreateNewEntry(data: Data, push: Function, msgTimestamp?: number) {
+export function CreateNewEntry(data: ChatSession, push: Function, msgTimestamp?: number) {
   const lastTimestamp = data.messages.at(-1)?.timestamp
   if (msgTimestamp && lastTimestamp && msgTimestamp !== lastTimestamp) {
     const messageIndex: number = data.messages
       .findLastIndex(msg => msg.timestamp === msgTimestamp)
     assert(messageIndex, 'Message timestamp didn\`t match');
-    const truncData: Data = { ...data, messages: data.messages.slice(0, messageIndex + 1) };
+    const truncChat: ChatSession = { ...data, messages: data.messages.slice(0, messageIndex + 1) };
     // Confirm overwrite of conversation
     showToast({
       title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
@@ -136,11 +136,11 @@ export function CreateNewEntry(data: Data, push: Function, msgTimestamp?: number
         onAction: () => {
           // delete all previous responses on the api in case it's a non-private message (saved on server)
           // https://platform.openai.com/docs/api-reference/responses/delete
-          push(<NewEntry data={truncData} />)
+          push(<NewEntry chat={truncChat} />)
         }
       }
     })
   } else {
-    push(<NewEntry data={data} />)
+    push(<NewEntry chat={data} />)
   }
 }

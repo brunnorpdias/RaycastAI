@@ -7,7 +7,7 @@ import { API_KEYS } from '../config/api_keys';
 
 import { type MessageCreateParamsBase } from '@anthropic-ai/sdk/resources/messages';
 import { type StreamPipeline } from "../views/answer";
-import { type Data, storageDir } from "../utils/models";
+import { type ChatSession, FileStatus, storageDir } from "../utils/models";
 import assert from 'assert';
 
 type AnthropicRequest = {
@@ -48,16 +48,15 @@ type Content = string | Array<{
 
 const client = new Anthropic({ apiKey: API_KEYS.ANTHROPIC });
 
-export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
-  // console.log('start', data.files)
+export async function AnthropicAPI(chat: ChatSession, streamPipeline: StreamPipeline) {
   let max_tokens: number;
   let thinking_budget: number;
-  const messages = data.messages.map(({ id, tokenCount, ...rest }) => rest);
-  const timestamps = data.files.map(file => file.timestamp);
+  const messages = chat.messages.map(({ id, tokenCount, ...rest }) => rest);
+  const timestamps = chat.files.map(file => file.timestamp);
   let inputMessages: (Messages[number] & { timestamp?: number })[];
 
   // 5mb image limit; 32mb pdf and 100 pages
-  if (data.model === 'claude-3-7-sonnet-latest' && data.files?.length > 0) {
+  if (chat.model === 'claude-3-7-sonnet-latest' && chat.files?.length > 0) {
     inputMessages = messages.map(msg => {
       if (timestamps.includes(msg.timestamp)) {
         return {
@@ -74,7 +73,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
       }
     })
 
-    for (const file of data.files) {
+    for (const file of chat.files) {
       const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
       const arrayBuffer = fs.readFileSync(filePath);
       assert(arrayBuffer !== undefined, 'File not found')
@@ -82,7 +81,6 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
       let inputMessage = inputMessages.find(msg => msg.timestamp === file.timestamp);
       assert(['pdf'].includes(file.extension), `File type ${file.extension} not supported`);
       assert(Array.isArray(inputMessage?.content), 'Content was not converted to an array')
-      // console.log('string', base64)
       inputMessage?.content.push({
         type: 'document',
         source: {
@@ -91,14 +89,14 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
           data: base64,
         }
       })
-      file.status = 'staged';
+      file.status = FileStatus.Staged;
     }
   } else {
     inputMessages = messages;
   }
   inputMessages = inputMessages.map(({ timestamp, ...msg }) => msg)  // remove timestamp attribute
 
-  switch (data.reasoning) {
+  switch (chat.reasoning) {
     case 'low':
       thinking_budget = 8000
       max_tokens = 16000
@@ -118,29 +116,29 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
   }
 
   let request: AnthropicRequest = {
-    model: data.model,
-    system: data.instructions,
+    model: chat.model,
+    system: chat.instructions,
     messages: inputMessages,
     max_tokens: max_tokens,
-    tools: data.tools?.includes('web') ?
+    tools: chat.tools?.includes('web') ?
       [{
         type: "web_search_20250305",
         name: 'web_search',
         max_uses: 5  // change this later to allow more research on certain topics (generally aligned with thinking?)
       }] :
       undefined,
-    temperature: data.temperature ?? 0.6,
+    temperature: chat.temperature ?? 0.6,
     stream: true,
     // tools: web search
     // https://docs.anthropic.com/en/docs/build-with-claude/tool-use/web-search-tool
   }
 
-  if (data.model === 'claude-3-7-sonnet-latest' && data.reasoning && ['low', 'medium', 'high'].includes(data.reasoning)) {
+  if (chat.model === 'claude-3-7-sonnet-latest' && chat.reasoning && ['low', 'medium', 'high'].includes(chat.reasoning)) {
     request.thinking = {
       type: "enabled",
       budget_tokens: thinking_budget,
     }
-  } else if (data.model === 'claude-3-5-haiku-latest') {
+  } else if (chat.model === 'claude-3-5-haiku-latest') {
     request.max_tokens = 8100 // limit is 8182
   }
 
@@ -192,9 +190,9 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       })
-      data.files.map(file =>
-        file.status === 'staged' ?
-          file.status = 'uploaded' :
+      chat.files.map(file =>
+        file.status === FileStatus.Staged ?
+          file.status = FileStatus.Uploaded :
           file
       )
       break;

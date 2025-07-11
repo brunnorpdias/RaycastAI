@@ -2,22 +2,22 @@ import { List as RaycastList, ActionPanel, Action, Icon, useNavigation } from "@
 import NewEntry from "./new_entry";
 import Answer from "./answer";
 import { useEffect, useState } from "react";
-import { type Data } from "../utils/models";
+import { type ChatSession, Role } from "../utils/models";
 
-export default function ChatHistory({ data }: { data: Data }) {
+export default function ChatHistory({ chat }: { chat: ChatSession }) {
   const { push } = useNavigation();
-  const [parsedData, setParsedData] = useState<Data>();
+  const [parsedChat, setParsedChat] = useState<ChatSession>();
 
   useEffect(() => {
-    if (data) {
-      setParsedData(data)
+    if (chat) {
+      setParsedChat(chat)
     }
-  }, [data])
+  }, [chat])
 
-  if (parsedData) {
+  if (parsedChat) {
     return (
       <RaycastList isShowingDetail>
-        {data.messages
+        {chat.messages
           .map((message, index) => (
             <RaycastList.Item
               key={`#${index}`}
@@ -31,16 +31,16 @@ export default function ChatHistory({ data }: { data: Data }) {
               actions={
                 <ActionPanel>
                   <Action
-                    title={message.role === 'user' ? 'Edit' : 'Open Message'}
+                    title={message.role === Role.User ? 'Edit' : 'Open Message'}
                     icon={Icon.Text}
                     onAction={() => {
-                      if (message.role === 'user') {
-                        push(<NewEntry data={data} promptTimestamp={message.timestamp} />)
+                      if (message.role === Role.User) {
+                        push(<NewEntry chat={chat} promptTimestamp={message.timestamp} />)
                       } else {
-                        push(<Answer data={data} msgTimestamp={message.timestamp} />)
+                        push(<Answer chat={chat} msgTimestamp={message.timestamp} />)
                         // if (message.timestamp) {
                         // } else {
-                        //   push(<Answer data={data} msgTimestamp={Number(message.id)} />)
+                        //   push(<Answer chat={chat} msgTimestamp={Number(message.id)} />)
                         // }
                       }
                     }}
@@ -50,7 +50,7 @@ export default function ChatHistory({ data }: { data: Data }) {
                     title="New Entry"
                     icon={Icon.Plus}
                     onAction={() => {
-                      push(<NewEntry data={data} />)
+                      push(<NewEntry chat={chat} />)
                     }}
                   />
 

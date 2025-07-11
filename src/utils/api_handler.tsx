@@ -4,34 +4,34 @@ import * as DeepmindAPI from '../fetch/deepmind';
 import { OpenRouter } from '../fetch/openRouter';
 import * as Ollama from '../fetch/ollama';
 
-import { type Data } from "./models";
+import { type ChatSession } from "./models";
 import { type StreamPipeline } from "../views/answer";
 import { sttModels } from './models';
 
 
-export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
-  switch (data.api) {
+export async function APIHandler(chat: ChatSession, streamPipeline: StreamPipeline) {
+  switch (chat.api) {
     case 'openai':
-      if (sttModels.includes(data.model)) {
-        await OpenAPI.STT(data, streamPipeline);
-      } else if (data.workflowState === 'chat_processing') {
-        await OpenAPI.Responses(data, streamPipeline);
-        // } else if (data.workflowState === 'dr_clarifying') {
-      } else if (data.workflowState && ['dr_clarifying', 'dr_improving_prompt'].includes(data.workflowState)) {
-        await OpenAPI.DeepResearchImprovements(data, streamPipeline)
+      if (sttModels.includes(chat.model)) {
+        await OpenAPI.STT(chat, streamPipeline);
+      } else if (chat.workflowState === 'chat_processing') {
+        await OpenAPI.Responses(chat, streamPipeline);
+        // } else if (chat.workflowState === 'dr_clarifying') {
+      } else if (chat.workflowState && ['dr_clarifying', 'dr_improving_prompt'].includes(chat.workflowState)) {
+        await OpenAPI.DeepResearchImprovements(chat, streamPipeline)
       }
       break
     case 'anthropic':
-      await AnthropicAPI(data, streamPipeline);
+      await AnthropicAPI(chat, streamPipeline);
       break
     case 'deepmind':
-      await DeepmindAPI.RunGoogle(data, streamPipeline);
+      await DeepmindAPI.RunGoogle(chat, streamPipeline);
       break
     case 'openrouter':
-      await OpenRouter(data, streamPipeline);
+      await OpenRouter(chat, streamPipeline);
       break
     case 'ollama':
-      await Ollama.Run(data, streamPipeline);
+      await Ollama.Run(chat, streamPipeline);
       break
   }
 }

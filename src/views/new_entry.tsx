@@ -3,7 +3,7 @@ import * as Functions from '../utils/functions';
 import Answer from './answer';
 import assert from 'assert';
 import { useEffect, useState } from "react";
-import { type Data } from '../utils/models'
+import { type ChatSession, Role } from '../utils/models'
 import { attachmentModels } from '../utils/models';
 
 type Values = {
@@ -12,14 +12,14 @@ type Values = {
 }
 
 
-export default function NewEntry({ data, promptTimestamp }: { data: Data, promptTimestamp?: number }) {
+export default function NewEntry({ chat, promptTimestamp }: { chat: ChatSession, promptTimestamp?: number }) {
   const { push } = useNavigation();
   const [initialPrompt, setInitialPrompt] = useState<string | null>(null);
-  // const [inputMessage, setInputMessage] = useState<Data["messages"][number]>();
+  // const [inputMessage, setInputMessage] = useState<ChatSession["messages"][number]>();
 
   useEffect(() => {
     if (promptTimestamp) {
-      const message = data.messages.findLast(msg => msg.timestamp === promptTimestamp);
+      const message = chat.messages.findLast(msg => msg.timestamp === promptTimestamp);
       if (message) {
         setInitialPrompt(message.content)
         // setInputMessage(message);
@@ -32,26 +32,26 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
 
   async function handleSubmit(values: Values) {
     const timestamp: number = Date.now();
-    const newMessage: Data["messages"][number] = {
-      role: 'user',
+    const newMessage: ChatSession["messages"][number] = {
+      role: Role.User,
       content: values.prompt,
       timestamp: timestamp
     };
 
     if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
-      const newFileInfos: Data["files"] = await Functions.ProcessFiles(values.attatchmentPaths, timestamp)
-      data.files = [...data.files, ...newFileInfos]
+      const newFileInfos: ChatSession["files"] = await Functions.ProcessFiles(values.attatchmentPaths, timestamp)
+      chat.files = [...chat.files, ...newFileInfos]
     }
 
 
     if (promptTimestamp) {
-      const messages: Data["messages"] = data.messages;
+      const messages: ChatSession["messages"] = chat.messages;
       const messageIndex: number = messages
         .findLastIndex(msg => msg.timestamp === promptTimestamp)
       assert(messageIndex !== undefined && messageIndex !== -1, 'Message timestamp didn\'t match')
-      const truncMessages: Data["messages"] = messages.slice(0, messageIndex)
-      const truncData: Data = {
-        ...data,
+      const truncMessages: ChatSession["messages"] = messages.slice(0, messageIndex)
+      const truncChat: ChatSession = {
+        ...chat,
         messages: [...truncMessages, newMessage],
       }
 
@@ -60,23 +60,23 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
           title: "Yes",
           onAction: async () => {
-            await Functions.CacheChat(truncData);
-            push(<Answer data={truncData} />)
+            await Functions.CacheChat(truncChat);
+            push(<Answer chat={truncChat} />)
           }
         }
       })
     } else {
-      const newData: Data = {
-        ...data,
-        messages: [...data.messages, newMessage]
+      const newChat: ChatSession = {
+        ...chat,
+        messages: [...chat.messages, newMessage]
       }
 
-      if (!data.tools?.includes('deepResearch')) {
-        await Functions.CacheChat(newData);
-        await Functions.BookmarkChat(newData, false);
+      if (!chat.tools?.includes('deepResearch')) {
+        await Functions.CacheChat(newChat);
+        await Functions.BookmarkChat(newChat, false);
       }
 
-      push(<Answer data={newData} />)
+      push(<Answer chat={newChat} />)
     }
   }
 
@@ -91,7 +91,7 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
       >
         <Form.TextArea id="prompt" defaultValue={initialPrompt ?? 'nothing'} title="Prompt" placeholder="Describe your request here" enableMarkdown={true} />
 
-        {attachmentModels.includes(data.model) && (
+        {attachmentModels.includes(chat.model) && (
           <Form.FilePicker id="attatchmentPaths" />
         )}
 
