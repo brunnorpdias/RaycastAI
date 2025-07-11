@@ -106,7 +106,7 @@ export async function RunGoogle(data: Data, streamPipeline: StreamPipeline) {
               16384 : data.reasoning === 'high' ?
                 24576 : undefined
       },
-      tools: data.tools === 'web' ? [{ googleSearch: {} }] : undefined,
+      tools: data.tools?.includes('web') ? [{ googleSearch: {} }] : undefined,
     },
     temperature: data.temperature
   }

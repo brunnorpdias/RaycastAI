@@ -11,7 +11,7 @@ import { type Data, storageDir } from "./models";
 type Bookmarks = Array<{ title: string, data: Data }>;
 
 
-export async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
+export async function BookmarkChat(data: Data, isManuallyBookmarked: boolean) {
   const bookmarksString = await LocalStorage.getItem('bookmarks');
   // create provision to create bookmarks for new users
   assert(typeof bookmarksString === 'string', 'Bookmarks not found')
@@ -35,7 +35,7 @@ export async function Bookmark(data: Data, isManuallyBookmarked: boolean) {
 }
 
 
-export async function Cache(newData: Data) {
+export async function CacheChat(newData: Data) {
   const cache = new RaycastCache();
   const cacheString = cache.get('cachedData');
   const cachedData: Data[] = cacheString ? JSON.parse(cacheString) : [];
@@ -45,7 +45,7 @@ export async function Cache(newData: Data) {
     const newList = [...filteredCache, newData];
     const newCachedData: Data[] = newList
       .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
-      .slice(0, 128)
+      .slice(0, 96)
     cache.set('cachedData', JSON.stringify(newCachedData));
   } else {
     const list = [newData];
@@ -54,29 +54,52 @@ export async function Cache(newData: Data) {
 }
 
 
-export async function ProcessFiles(data: Data, attatchmentPaths: [string], messageTimestamp: number) {
+export async function CacheDeepResearch(newData: Data) {
+  // cache or LocalStorage?
+  const cache = new RaycastCache();
+  const cacheString = cache.get('cacheDR');
+  const cachedData: Data[] = cacheString ? JSON.parse(cacheString) : [];
+  if (cachedData.length > 0) {
+    const filteredCache: Data[] = cachedData
+      .filter(cache => cache.timestamp !== newData.timestamp) // remove data if it's already cached
+    const newList = [...filteredCache, newData];
+    const newCachedData: Data[] = newList
+      .sort((a, b) => (b.messages.at(-1)?.timestamp || 0) - (a.messages.at(-1)?.timestamp || 0))
+      .slice(0, 32)
+    cache.set('cacheDR', JSON.stringify(newCachedData));
+  } else {
+    const list = [newData];
+    cache.set('cacheDR', JSON.stringify(list));
+  }
+}
+
+
+export async function ProcessFiles(attatchmentPaths: [string], messageTimestamp: number) {
+  const fileInfos = []
+
   for (const attPath of attatchmentPaths) {
     const ext = path.extname(attPath).replaceAll('.', '')
     const name = path.basename(attPath, `.${ext}`)
     const arrayBuffer = fs.readFileSync(attPath);
     const sizeInBytes: number = arrayBuffer.length;
     const fileHash = crypto.createHash('sha256').update(arrayBuffer).digest('hex');
-    data.files.push({
+    const fileInfo: Data["files"][number] = {
       hash: fileHash,
       name: name,
       extension: ext,
       status: 'idle',
       timestamp: messageTimestamp,
       size: sizeInBytes,
-    });
+    }
+    fileInfos.push(fileInfo)
 
-    // limitation of the file path, could be more universal but i wanted to keep on the project dir
-    fs.mkdirSync(storageDir, { recursive: true });
     const writePath = path.join(storageDir, `${fileHash}.${ext}`);
     if (!fs.existsSync(writePath)) {
       fs.writeFileSync(writePath, arrayBuffer);
     }
   }
+
+  return fileInfos
 }
 
 
@@ -99,7 +122,7 @@ export async function FilesCleanup() {
 }
 
 
-export function CreateNewEntry(data: Data, newData: Data, push: Function, msgTimestamp?: number) {
+export function CreateNewEntry(data: Data, push: Function, msgTimestamp?: number) {
   const lastTimestamp = data.messages.at(-1)?.timestamp
   if (msgTimestamp && lastTimestamp && msgTimestamp !== lastTimestamp) {
     const messageIndex: number = data.messages
@@ -118,6 +141,6 @@ export function CreateNewEntry(data: Data, newData: Data, push: Function, msgTim
       }
     })
   } else {
-    push(<NewEntry data={newData} />)
+    push(<NewEntry data={data} />)
   }
 }

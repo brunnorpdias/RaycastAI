@@ -6,7 +6,7 @@ import path from "path";
 import os from 'os';
 
 import { API_KEYS } from '../config/api_keys';
-import { type Data, storageDir } from "../utils/models";
+import * as ModelInfo from '../utils/models';
 import { type StreamPipeline } from "../views/answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import assert from "assert";
@@ -29,7 +29,7 @@ type Content = string | Array<{
 
 const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
-export async function Responses(data: Data, streamPipeline: StreamPipeline) {
+export async function Responses(data: ModelInfo.Data, streamPipeline: StreamPipeline) {
   const input: Input = await GenerateInput(data)
   const inputWithFiles: Input = await AddFiles(data, input)
   const responsesObject = await ResponsesObject(data, inputWithFiles) as ResponseCreateParamsStreaming;
@@ -37,7 +37,7 @@ export async function Responses(data: Data, streamPipeline: StreamPipeline) {
 }
 
 
-export async function TitleConversation(data: Data) {
+export async function TitleConversation(data: ModelInfo.Data) {
   let input: Input = await GenerateInput(data)
   input = input.map(({ timestamp, ...rest }) => rest)  // remove timestamps from the messages (used to match files on responses)
   assert(Array.isArray(input), 'Input has an incorrect format')
@@ -54,13 +54,13 @@ export async function TitleConversation(data: Data) {
 }
 
 
-export async function STT(data: Data, streamPipeline: StreamPipeline) {
+export async function STT(data: ModelInfo.Data, streamPipeline: StreamPipeline) {
   const lastMsg = data.messages.at(-1)
   if (!lastMsg) return
   const prompt: string = lastMsg.content ?? '';
   const file = data.files.at(0);
   assert(file !== undefined, 'File was not found')
-  const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
+  const filePath = path.join(ModelInfo.storageDir, `${file.hash}.${file.extension}`);
   const stream = await openai.audio.transcriptions.create({
     file: fs.createReadStream(filePath),
     model: "gpt-4o-transcribe",
@@ -118,7 +118,7 @@ export async function TTS(text: string) {
 
 
 //  Helper Functions  //
-async function GenerateInput(data: Data) {
+async function GenerateInput(data: ModelInfo.Data) {
   const timestamps: number[] = data.files.map(file => file.timestamp);
   if (data.files.length <= 0) return data.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
 
@@ -141,11 +141,11 @@ async function GenerateInput(data: Data) {
 }
 
 
-async function AddFiles(data: Data, input: Input) {
+async function AddFiles(data: ModelInfo.Data, input: Input) {
   if (data.files.length < 1) return input
   let inputWithFiles = [...input]
   for (const file of data.files) {
-    const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
+    const filePath = path.join(ModelInfo.storageDir, `${file.hash}.${file.extension}`);
     const arrayBuffer = fs.readFileSync(filePath);
     const fileName = file.name;
     const fileExtension = file.extension;
@@ -173,7 +173,7 @@ async function AddFiles(data: Data, input: Input) {
 }
 
 
-async function ResponsesObject(data: Data, input: Input) {
+async function ResponsesObject(data: ModelInfo.Data, input: Input) {
   const max_output_tokens = (
     data.model === 'o3' || data.model === 'o3-pro' || data.model === 'o4-mini' ?
       100000 :
@@ -196,7 +196,7 @@ async function ResponsesObject(data: Data, input: Input) {
         effort: data.reasoning,
         summary: 'detailed'
       },
-    tools: data.tools === 'web' ?
+    tools: data.tools?.includes('web') ?
       [{
         type: 'web_search',
         user_location: {
@@ -216,17 +216,16 @@ async function ResponsesObject(data: Data, input: Input) {
 }
 
 
-async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: StreamPipeline, data: Data) {
+async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: StreamPipeline, data: ModelInfo.Data) {
   let responseID = undefined;
   const stream = await openai.responses.create(responsesObject);
   for await (const event of stream) {
     if (event.type === 'response.created') {
       showToast({ title: 'Request Received', style: Toast.Style.Success })
       responseID = event.response.id;
-      streamPipeline({ apiStatus: 'processing' })
+      streamPipeline({ apiStatus: 'received' })
     } else if (event.type === 'response.output_item.added' && event.item.type === 'reasoning') {
       showToast({ title: 'Thinking...', style: Toast.Style.Animated })
-      // streamPipeline({ apiResponse: '# Thinking\n', apiStatus: 'thinking' })
     } else if (event.type === 'response.reasoning_summary_text.delta') {
       streamPipeline({ apiResponse: event.delta, apiStatus: 'thinking' })
     } else if (event.type === 'response.content_part.added') {
@@ -249,3 +248,84 @@ async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming,
     }
   }
 }
+
+
+export async function DeepResearchImprovements(data: ModelInfo.Data, streamPipeline: StreamPipeline) {
+  const clarifying_instruction = `
+  You will be given a research task by a user. Your job is NOT to complete the task yet, but instead to ask clarifying questions that would help you or another researcher produce a more specific, efficient, and relevant answer.
+
+  GUIDELINES:
+  1. **Maximize Relevance**
+  - Ask questions that are *directly necessary* to scope the research output.
+  - Consider what information would change the structure, depth, or direction of the answer.
+  2. **Surface Missing but Critical Dimensions**
+  - Identify essential attributes that were not specified in the user’s request (e.g., preferences, time frame, budget, audience).
+  - Ask about each one *explicitly*, even if it feels obvious or typical.
+  3. **Do Not Invent Preferences**
+  - If the user did not mention a preference, *do not assume it*. Ask about it clearly and neutrally.
+  4. **Use the First Person**
+  - Phrase your questions from the perspective of the assistant or researcher talking to the user (e.g., “Could you clarify...” or “Do you have a preference for...”)
+  5. **Use a Bulleted List if Multiple Questions**
+  - If there are multiple open questions, list them clearly in bullet format for readability.
+  6. **Avoid Overasking**
+  - Prioritize the 3–6 questions that would most reduce ambiguity or scope creep. You don’t need to ask *everything*, just the most pivotal unknowns.
+  7. **Include Examples Where Helpful**
+  - If asking about preferences (e.g., travel style, report format), briefly list examples to help the user answer.
+  8. **Format for Conversational Use**
+  - The output should sound helpful and conversational—not like a form. Aim for a natural tone while still being precise.
+  `
+
+  const improvement_instruction = `
+  You will be given a research task by a user. Your job is to produce a set of instructions for a researcher that will complete the task. Do NOT complete the task yourself, just provide instructions on how to complete it.
+
+  GUIDELINES:
+  1. **Maximize Specificity and Detail**
+  - Include all known user preferences and explicitly list key attributes or dimensions to consider.
+  - It is of utmost importance that all details from the user are included in the instructions.
+  2. **Fill in Unstated But Necessary Dimensions as Open-Ended**
+  - If certain attributes are essential for a meaningful output but the user has not provided them, explicitly state that they are open-ended or default to no specific constraint.
+  3. **Avoid Unwarranted Assumptions**
+  - If the user has not provided a particular detail, do not invent one.
+  - Instead, state the lack of specification and guide the researcher to treat it as flexible or accept all possible options.
+  4. **Use the First Person**
+  - Phrase the request from the perspective of the user.
+  5. **Tables**
+  - If you determine that including a table will help illustrate, organize, or enhance the information in the research output, you must explicitly request that the researcher provide them.
+  Examples:
+  - Product Comparison (Consumer): When comparing different smartphone models, request a table listing each model's features, price, and consumer ratings side-by-side.
+  - Project Tracking (Work): When outlining project deliverables, create a table showing tasks, deadlines, responsible team members, and status updates.
+  - Budget Planning (Consumer): When creating a personal or household budget, request a table detailing income sources, monthly expenses, and savings goals.
+  Competitor Analysis (Work): When evaluating competitor products, request a table with key metrics, such as market share, pricing, and main differentiators.
+  6. **Headers and Formatting**
+  - You should include the expected output format in the prompt.
+  - If the user is asking for content that would be best returned in a structured format (e.g. a report, plan, etc.), ask the researcher to format as a report with the appropriate headers and formatting that ensures clarity and structure.
+  7. **Language**
+  - If the user input is in a language other than English, tell the researcher to respond in this language, unless the user query explicitly asks for the response in a different language.
+  8. **Sources**
+  - If specific sources should be prioritized, specify them in the prompt.
+  - For product and travel research, prefer linking directly to official or primary websites (e.g., official brand sites, manufacturer pages, or reputable e-commerce platforms like Amazon for user reviews) rather than aggregator sites or SEO-heavy blogs.
+  - For academic or scientific queries, prefer linking directly to the original paper or official journal publication rather than survey papers or secondary summaries.
+  - If the query is in a specific language, prioritize sources published in that language.
+  `
+
+  let input = data.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
+  const stream: boolean = data.workflowState === 'dr_clarifying' ? true : false;
+
+  const response = await openai.responses.create({
+    model: 'gpt-4.1',
+    instructions: data.workflowState === 'dr_clarifying' ? clarifying_instruction : improvement_instruction,
+    input: input,
+    stream: false
+  })
+
+  assert(response, 'No response from the api')
+  streamPipeline({ apiResponse: response.output_text, apiStatus: 'done' })
+}
+
+// export async function DeepResearchImprovePrompt(data: ModelInfo.Data) {
+
+// const openai = new OpenAI({
+//   apiKey: API_KEYS.OPENAI,
+//   timeout: ModelInfo.deepResearchTimeout
+// });
+

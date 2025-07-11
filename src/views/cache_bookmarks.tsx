@@ -10,12 +10,15 @@ type Bookmark = { title: string, data: Data };
 type RawItem = Data & { summary?: string };
 type ListItem = {
   data: Data,
+  state: Data["workflowState"],
   key: number,
+  msg_count: number,
   title: string,
   markdown: string,
   provider: { name: string, iconDir: string },
   model: string,
-  date: string,
+  created: string,
+  modified: string,
   summary?: string,
   attachmentNames?: string[],
   tokenCount?: number
@@ -66,17 +69,20 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
       .map(item => {
         return {
           data: item,
+          state: item.workflowState,
           key: item.timestamp,
           title: cacheOrBookmarks === 'cache' ?
             item.messages.at(0)?.content ?? '' :
             item.summary ?? 'No summary...',
+          msg_count: item.messages.length,
           markdown: item.messages
             .slice(0, 4)
             .map(msg => msg.content)
             .join(`\n\r---\n\r---\n\r`),
           provider: { name: apiToIcon[item.api].name, iconDir: apiToIcon[item.api].icon },
           model: item.model,
-          date: DateFormat(item.timestamp, 'HH:mm:ss dd/MM/yy'),
+          created: DateFormat(item.timestamp, 'HH:mm:ss dd/MM/yy'),
+          modified: DateFormat(item.messages.at(-1)?.timestamp ?? 0, 'HH:mm:ss dd/MM/yy'),
           summary: item.summary,
           attachmentNames: item.files?.map(file => file.name),// ?? [],
           tokenCount: item.messages
@@ -103,7 +109,6 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                     <RaycastList.Item.Detail.Metadata>
                       <RaycastList.Item.Detail.Metadata.Label title="Provider" text={listItem.provider.name} icon={listItem.provider.iconDir} />
                       <RaycastList.Item.Detail.Metadata.Label title="Model" text={listItem.model} />
-                      <RaycastList.Item.Detail.Metadata.Label title="Date" text={listItem.date} />
                       {cacheOrBookmarks === 'bookmarks' && listItem.summary && (
                         <RaycastList.Item.Detail.Metadata.Label title="Summary" text={listItem.summary} />
                       )}
@@ -111,7 +116,12 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                         <RaycastList.Item.Detail.Metadata.Label title="Attachments" text={listItem.attachmentNames.join(', ')} />
                       )}
                       {(listItem.tokenCount ?? 0) > 0 && (
-                        <RaycastList.Item.Detail.Metadata.Label title="Token Count" text={`${listItem.tokenCount?.toLocaleString()} tokens`} />
+                        <RaycastList.Item.Detail.Metadata.Label title="Token / Message Count" text={`${listItem.tokenCount?.toLocaleString()} tokens / ${listItem.msg_count} messages`} />
+                      )}
+                      <RaycastList.Item.Detail.Metadata.Label title="Modified" text={listItem.modified} />
+                      {/* <RaycastList.Item.Detail.Metadata.Label title="Created" text={listItem.created} /> */}
+                      {listItem.state && (
+                        <RaycastList.Item.Detail.Metadata.Label title="State" text={listItem.state} />
                       )}
                     </RaycastList.Item.Detail.Metadata>
                   }
@@ -142,7 +152,7 @@ export default function SavedChats({ cacheOrBookmarks }: { cacheOrBookmarks: 'ca
                       icon={Icon.Bookmark}
                       shortcut={{ modifiers: ["cmd"], key: "d" }}
                       onAction={async () => {
-                        Functions.Bookmark(listItem.data, true)
+                        Functions.BookmarkChat(listItem.data, true)
                       }}
                     />
                   )}

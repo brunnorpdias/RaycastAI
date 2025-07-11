@@ -39,7 +39,8 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
     };
 
     if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
-      await Functions.ProcessFiles(data, values.attatchmentPaths, timestamp)
+      const newFileInfos: Data["files"] = await Functions.ProcessFiles(values.attatchmentPaths, timestamp)
+      data.files = [...data.files, ...newFileInfos]
     }
 
 
@@ -59,7 +60,7 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         title: 'Overwrite conversation?', style: Toast.Style.Failure, primaryAction: {
           title: "Yes",
           onAction: async () => {
-            await Functions.Cache(truncData);
+            await Functions.CacheChat(truncData);
             push(<Answer data={truncData} />)
           }
         }
@@ -69,7 +70,12 @@ export default function NewEntry({ data, promptTimestamp }: { data: Data, prompt
         ...data,
         messages: [...data.messages, newMessage]
       }
-      await Functions.Cache(newData);
+
+      if (!data.tools?.includes('deepResearch')) {
+        await Functions.CacheChat(newData);
+        await Functions.BookmarkChat(newData, false);
+      }
+
       push(<Answer data={newData} />)
     }
   }

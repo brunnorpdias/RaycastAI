@@ -14,8 +14,11 @@ export async function APIHandler(data: Data, streamPipeline: StreamPipeline) {
     case 'openai':
       if (sttModels.includes(data.model)) {
         await OpenAPI.STT(data, streamPipeline);
-      } else {
+      } else if (data.workflowState === 'chat_processing') {
         await OpenAPI.Responses(data, streamPipeline);
+        // } else if (data.workflowState === 'dr_clarifying') {
+      } else if (data.workflowState && ['dr_clarifying', 'dr_improving_prompt'].includes(data.workflowState)) {
+        await OpenAPI.DeepResearchImprovements(data, streamPipeline)
       }
       break
     case 'anthropic':

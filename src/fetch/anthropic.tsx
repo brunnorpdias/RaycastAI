@@ -122,7 +122,7 @@ export async function AnthropicAPI(data: Data, streamPipeline: StreamPipeline) {
     system: data.instructions,
     messages: inputMessages,
     max_tokens: max_tokens,
-    tools: data.tools === 'web' ?
+    tools: data.tools?.includes('web') ?
       [{
         type: "web_search_20250305",
         name: 'web_search',

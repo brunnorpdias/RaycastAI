@@ -3,11 +3,11 @@ import { homedir } from 'os';
 
 export const APItoModels = {
   'openai': [
-    { name: 'GPT 4.1', code: 'gpt-4.1' },
-    { name: 'o3', code: 'o3' },
     { name: 'GPT 4.1 mini', code: 'gpt-4.1-mini' },
-    { name: 'o3 Pro', code: 'o3-pro' },
+    { name: 'GPT 4.1', code: 'gpt-4.1' },
     { name: 'o4 mini', code: 'o4-mini' },
+    { name: 'o3', code: 'o3' },
+    { name: 'o3 Pro', code: 'o3-pro' },
     { name: 'GPT 4o STT', code: 'gpt-4o-transcribe' },
     // { name: 'GPT 4o TTS', code: 'gpt-4o-mini-tts' },
   ],
@@ -21,7 +21,8 @@ export const APItoModels = {
     { name: 'Claude 4 Opus', code: 'claude-opus-4-20250514' },
   ],
   'openrouter': [
-    { name: 'Grok 3', code: 'x-ai/grok-3-beta' },
+    { name: 'Grok 4', code: 'x-ai/grok-4' },
+    { name: 'Grok 3', code: 'x-ai/grok-3' },
     { name: 'Perplexity Sonar Pro', code: 'perplexity/sonar-reasoning-pro' },
     { name: 'DeepSeek Prover V2', code: 'deepseek/deepseek-prover-v2' },
     { name: 'Sonar Deep Research', code: 'perplexity/sonar-deep-research' },
@@ -62,7 +63,29 @@ export type API = keyof typeof APItoModels;
 
 export type Model = typeof APItoModels[API][number]['code'];
 
+export const deepResearchTimeout = 60 * 60000;
+
+export type WorkflowState =
+  // chat workflow
+  | 'chat_queued'
+  | 'chat_processing' // chat is being processed
+
+  // dr workflow
+  | 'dr_queued'
+  | 'dr_clarifying' // model is generating clarification questions
+  | 'dr_awaiting' // system is waiting for the user's answers
+  | 'dr_improving_prompt' // model turns answers into improved prompt
+  | 'dr_prompt_complete' // the application can move on to more dr specific tasks and ui
+  | 'dr_researching' // long-running DR generation
+
+  // terminal states
+  | 'completed' // completed successfully
+  | 'cancelled' // user aborted; no way to do this yet
+  | 'failed';
+
+
 export type Data = {
+  workflowState?: WorkflowState;
   timestamp: number;
   messages: Array<{
     id?: string,  // response id on openai
@@ -74,11 +97,10 @@ export type Data = {
   instructions: string,
   model: Model;
   api: API;
-  tools?: string;
-  reasoning: 'none' | 'low' | 'medium' | 'high';
+  tools?: ('web' | 'deepResearch')[];
+  reasoning: 'none' | 'low' | 'medium' | 'high';  // add option for auto (just some models support it)
   temperature?: number;
-  deepResearch?: boolean;
-  files: Array<{
+  files: [] | Array<{
     id?: string,
     hash: string,
     name: string,

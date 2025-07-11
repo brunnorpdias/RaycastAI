@@ -13,16 +13,15 @@ type Values = {
   prompt: string;
   api: API;
   model: Model;
-  private: boolean,
-  web: boolean,
   persona: 'default' | 'coach' | 'collaborator' | 'tutor',
-  modifiers: ('concise' | 'creative' | 'socratic')[],
-  temperature: string;
-  stream: boolean;
   attatchmentPaths?: [string];
   reasoning: 'none' | 'low' | 'medium' | 'high';
+  web: boolean,
   deepResearch: boolean;
+  temperature: string;
+  private: boolean,
 };
+
 
 export default function ChatForm() {
   const api: API = Object.keys(APItoModels).at(0) as API;
@@ -69,25 +68,34 @@ export default function ChatForm() {
     //
     // temp = Math.min(Math.max(temp, 0), 1);
 
+    const tools = [
+      values.web ? 'web' : null,
+      values.deepResearch ? 'deepResearch' : null
+    ].filter(Boolean) as Data["tools"]
+
+    let fileInfos: Data["files"] = [];
+    if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
+      fileInfos = await Functions.ProcessFiles(values.attatchmentPaths, timestamp)
+    }
+
     let data: Data = {
+      workflowState: values.deepResearch ? 'dr_queued' : 'chat_queued',
       timestamp: timestamp,
-      model: values.model,
+      model: values.deepResearch ? `${values.model}-deep-research` : values.model,
       api: values.api,
       messages: [{ role: 'user', content: values.prompt, timestamp: timestamp }],
-      files: [],
+      files: fileInfos,
       instructions: instructions,
       reasoning: values.reasoning,
-      tools: values.web && !values.deepResearch ? 'web' : undefined,
-      deepResearch: values.deepResearch ?? undefined,
+      tools: tools,
       temperature: ModelInfo.reasoningModels.includes(values.model) ? undefined : temp
     }
 
-    if (values.attatchmentPaths && values.attatchmentPaths?.length > 0) {
-      await Functions.ProcessFiles(data, values.attatchmentPaths, timestamp)
+    if (!data.tools?.includes('deepResearch')) {
+      await Functions.CacheChat(data)
     }
 
-    await Functions.Cache(data)
-    push(<Answer data={data} />);
+    push(<Answer data={data} />);  // for DR, the api call will improve the prompt before starting the research
   }
 
   return (
@@ -151,9 +159,11 @@ export default function ChatForm() {
         <Form.Checkbox id="web" label="Search the Web" defaultValue={false} />
       )}
 
-      {ModelInfo.deepResearchModels.includes(selectedModel) && (
-        <Form.Checkbox id="deepresearch" label="Deep Research" defaultValue={false} />
-      )}
+      {/* not active yet, still need to create the research api call and ui */}
+
+      {/* {ModelInfo.deepResearchModels.includes(selectedModel) && ( */}
+      {/*   <Form.Checkbox id="deepResearch" label="Deep Research" defaultValue={false} /> */}
+      {/* )} */}
 
       <Form.Checkbox id="private" label="Data Privacy" defaultValue={true} />
 
