@@ -1,37 +1,33 @@
-import * as OpenAPI from '../fetch/openAI';
-import { AnthropicAPI } from '../fetch/anthropic';
-import * as DeepmindAPI from '../fetch/deepmind';
-import { OpenRouter } from '../fetch/openRouter';
-import * as Ollama from '../fetch/ollama';
+import * as OpenAPI from "../fetch/openAI";
+import { AnthropicAPI } from "../fetch/anthropic";
+import * as DeepmindAPI from "../fetch/deepmind";
+import { OpenRouter } from "../fetch/openRouter";
+import * as Ollama from "../fetch/ollama";
 
 import { type ChatSession } from "./models";
 import { type StreamPipeline } from "../views/answer";
-import { sttModels } from './models';
-
+import { sttModels } from "./models";
 
 export async function APIHandler(chat: ChatSession, streamPipeline: StreamPipeline) {
   switch (chat.api) {
-    case 'openai':
+    case "openai":
       if (sttModels.includes(chat.model)) {
         await OpenAPI.STT(chat, streamPipeline);
-      } else if (chat.workflowState === 'chat_processing') {
+      } else if (chat.workflowStage === "chat_processing") {
         await OpenAPI.Responses(chat, streamPipeline);
-        // } else if (chat.workflowState === 'dr_clarifying') {
-      } else if (chat.workflowState && ['dr_clarifying', 'dr_improving_prompt'].includes(chat.workflowState)) {
-        await OpenAPI.DeepResearchImprovements(chat, streamPipeline)
       }
-      break
-    case 'anthropic':
+      break;
+    case "anthropic":
       await AnthropicAPI(chat, streamPipeline);
-      break
-    case 'deepmind':
+      break;
+    case "deepmind":
       await DeepmindAPI.RunGoogle(chat, streamPipeline);
-      break
-    case 'openrouter':
+      break;
+    case "openrouter":
       await OpenRouter(chat, streamPipeline);
-      break
-    case 'ollama':
+      break;
+    case "ollama":
       await Ollama.Run(chat, streamPipeline);
-      break
+      break;
   }
 }

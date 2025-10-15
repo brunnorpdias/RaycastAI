@@ -1,331 +1,352 @@
 import { showToast, Toast } from "@raycast/api";
 
 import OpenAI from "openai";
-import fs from 'fs';
+import fs from "fs";
 import path from "path";
-import os from 'os';
+import os from "os";
 
-import { API_KEYS } from '../config/api_keys';
-import { ChatSession, Role, ReasoningLevel, storageDir, FileStatus } from '../utils/models';
+import { API_KEYS } from "../config/api_keys";
+import { ChatSession, Role, ReasoningLevel, FileStatus, reasoningModels } from "../utils/models";
+import { getStoredFilePath } from "../utils/storage";
 import { type StreamPipeline } from "../views/answer";
 import { ResponseCreateParamsStreaming, ResponseCreateParamsNonStreaming } from "openai/resources/responses/responses";
 import assert from "assert";
 
+type OpenAIRole = "user" | "assistant" | "system";
+
 type Input = Array<{
-  role: 'user' | 'assistant' | 'system',
-  content: Content,
-  timestamp?: number,
+  role: OpenAIRole;
+  content: Content;
+  timestamp?: number;
 }>;
 
-type Content = string | Array<{
-  type: 'input_text' | 'input_file' | 'input_image',
-  text?: string,
-  filename?: string,
-  image_url?: string,
-  file_id?: string,
-  file_data?: string,
-}>;
+type Content =
+  | string
+  | Array<{
+    type: "input_text" | "input_file" | "input_image";
+    text?: string;
+    filename?: string;
+    image_url?: string;
+    file_id?: string;
+    file_data?: string;
+    detail?: "low" | "high" | "auto";
+  }>;
 
+type ContentItem = Exclude<Content, string>[number];
+
+type FileTypeConfig = {
+  mimeType: string;
+  type: ContentItem["type"];
+  defaultDetail?: "low" | "high" | "auto";
+};
+
+const FILE_TYPE_CONFIG: Record<string, FileTypeConfig> = {
+  pdf: { mimeType: "application/pdf", type: "input_file" },
+  doc: { mimeType: "application/msword", type: "input_file" },
+  docx: {
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    type: "input_file",
+  },
+  pptx: {
+    mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    type: "input_file",
+  },
+  txt: { mimeType: "text/plain", type: "input_file" },
+  md: { mimeType: "text/markdown", type: "input_file" },
+  json: { mimeType: "application/json", type: "input_file" },
+  js: { mimeType: "text/javascript", type: "input_file" },
+  ts: { mimeType: "application/typescript", type: "input_file" },
+  css: { mimeType: "text/css", type: "input_file" },
+  html: { mimeType: "text/html", type: "input_file" },
+  c: { mimeType: "text/x-c", type: "input_file" },
+  cpp: { mimeType: "text/x-c++", type: "input_file" },
+  cs: { mimeType: "text/x-csharp", type: "input_file" },
+  go: { mimeType: "text/x-golang", type: "input_file" },
+  java: { mimeType: "text/x-java", type: "input_file" },
+  py: { mimeType: "text/x-python", type: "input_file" },
+  rb: { mimeType: "text/x-ruby", type: "input_file" },
+  php: { mimeType: "text/x-php", type: "input_file" },
+  sh: { mimeType: "application/x-sh", type: "input_file" },
+  tex: { mimeType: "text/x-tex", type: "input_file" },
+  jpg: { mimeType: "image/jpeg", type: "input_image", defaultDetail: "auto" },
+  png: { mimeType: "image/png", type: "input_image", defaultDetail: "auto" },
+  gif: { mimeType: "image/gif", type: "input_image", defaultDetail: "auto" },
+  webp: { mimeType: "image/webp", type: "input_image", defaultDetail: "auto" },
+};
 
 const openai = new OpenAI({ apiKey: API_KEYS.OPENAI });
 
+
 export async function Responses(chat: ChatSession, streamPipeline: StreamPipeline) {
-  const input: Input = await GenerateInput(chat)
-  const inputWithFiles: Input = await AddFiles(chat, input)
-  const responsesObject = await ResponsesObject(chat, inputWithFiles) as ResponseCreateParamsStreaming;
-  GenerateStreaming(responsesObject, streamPipeline, chat)
+  const input: Input = await GenerateInput(chat);
+  const inputWithFiles: Input = await AddFiles(chat, input);
+  const responsesObject = (await ResponsesObject(chat, inputWithFiles)) as ResponseCreateParamsStreaming;
+  GenerateStreaming(responsesObject, streamPipeline, chat);
 }
 
 
 export async function TitleConversation(chat: ChatSession) {
-  let input: Input = await GenerateInput(chat)
-  input = input.map(({ timestamp, ...rest }) => rest)  // remove timestamps from the messages (used to match files on responses)
-  assert(Array.isArray(input), 'Input has an incorrect format')
-  input.push({ role: 'user', content: 'Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.' })
-  let responsesObject = {
+  let input: Input = await GenerateInput(chat);
+  input = input.map(({ timestamp, ...rest }) => rest); // remove timestamps from the messages (used to match files on responses)
+  assert(Array.isArray(input), "Input has an incorrect format");
+  input.push({
+    role: "user",
+    content:
+      "Give a short and descriptive title to the chat without mentioning so or using special characters. The title must describe the intention of the user.",
+  });
+  const responsesObject = {
     input: input,
-    model: 'gpt-4.1-mini',
+    model: "gpt-4.1-mini",
     stream: false,
-  }
-  showToast({ title: 'Creating a title', style: Toast.Style.Animated })
+  };
+  showToast({ title: "Creating a title", style: Toast.Style.Animated });
   const response = await openai.responses.create(responsesObject as ResponseCreateParamsNonStreaming);
-  showToast({ title: 'Title created' });
-  return response.output_text
+  showToast({ title: "Title created" });
+  return response.output_text;
 }
 
 
 export async function STT(chat: ChatSession, streamPipeline: StreamPipeline) {
-  const lastMsg = chat.messages.at(-1)
-  if (!lastMsg) return
-  const prompt: string = lastMsg.content ?? '';
+  const lastMsg = chat.messages.at(-1);
+  if (!lastMsg) return;
+  const prompt: string = lastMsg.content ?? "";
   const file = chat.files.at(0);
-  assert(file !== undefined, 'File was not found')
-  const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
+  assert(file !== undefined, "File was not found");
+  const filePath = getStoredFilePath(file);
   const stream = await openai.audio.transcriptions.create({
     file: fs.createReadStream(filePath),
     model: "gpt-4o-transcribe",
     prompt: prompt,
-    response_format: 'json', //  "text",
+    response_format: "json", //  "text",
     stream: true,
   });
 
   let isStreaming = false;
   for await (const event of stream) {
-    if (event.type === 'transcript.text.delta') {
+    if (event.type === "transcript.text.delta") {
       streamPipeline({
         apiResponse: event.delta,
-        apiStatus: 'streaming',
-      })
+        apiStatus: "in_progress",
+      });
 
       if (!isStreaming) {
         isStreaming = true;
-        showToast({ title: 'Streaming', style: Toast.Style.Animated })
+        showToast({ title: "Streaming", style: Toast.Style.Animated });
       }
-    } else if (event.type === 'transcript.text.done') {
+    } else if (event.type === "transcript.text.done") {
       streamPipeline({
-        apiResponse: '',
-        apiStatus: 'done',
-      })
+        apiResponse: "",
+        apiStatus: "completed",
+      });
     } else {
-      showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure })
+      showToast({ title: "Encountered unexpected event", style: Toast.Style.Failure });
     }
   }
 }
-
 
 
 export async function TTS(text: string) {
   const speechFile = path.resolve(os.homedir(), "Downloads", "RaycastAI_speech.wav");
 
   try {
-    showToast({ title: 'Generating Audio', style: Toast.Style.Animated })
+    showToast({ title: "Generating Audio", style: Toast.Style.Animated });
     const audio = await openai.audio.speech.create({
       model: "gpt-4o-mini-tts",
       voice: "alloy",
       input: text,
-      response_format: "wav"
+      response_format: "wav",
       // instructions: "Speak in a cheerful and positive tone.",
     });
     const buffer = Buffer.from(await audio.arrayBuffer());
     await fs.promises.writeFile(speechFile, buffer);
-    if (buffer) showToast({ title: 'Audio is ready', style: Toast.Style.Success })
+    if (buffer) showToast({ title: "Audio is ready", style: Toast.Style.Success });
   } catch (err) {
-    showToast({ title: 'Error generating audio', style: Toast.Style.Failure })
+    showToast({ title: "Error generating audio", style: Toast.Style.Failure });
   }
 }
-
 
 
 //  Helper Functions  //
 async function GenerateInput(chat: ChatSession) {
-  const timestamps: number[] = chat.files.map(file => file.timestamp);
-  if (chat.files.length <= 0) return chat.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
+  const timestamps: number[] = chat.files.map((file) => file.timestamp);
+  let input: Input;
 
-  let input: Input = chat.messages.map(({ role, content, timestamp }) => {
-    if (role === Role.User && timestamps.includes(timestamp)) {
+  if (chat.files.length === 0) {
+    input = chat.messages.map(({ role, content }) => {
+      assert(content, "Message content not found");
       return {
-        role: role,
-        content: [{ type: 'input_text', text: content }],
-        timestamp: timestamp
+        content: content,
+        role: role === Role.User ? "user" : ("assistant" as OpenAIRole),
+      };
+    });
+  } else {
+    input = chat.messages.map(({ role, content, timestamp }) => {
+      assert(content, "Message content not found");
+      if (role === Role.User && timestamp && timestamps.includes(timestamp)) {
+        return {
+          role: Role.User,
+          content: [{ type: "input_text", text: content }],
+          timestamp: timestamp,
+        };
+      } else {
+        return {
+          role: role === Role.User ? "user" : ("assistant" as OpenAIRole),
+          content: content,
+        };
       }
-    } else {
-      return {
-        role: role,
-        content: content
-      }
-    }
-  })
+    });
+  }
 
-  return input
+  return input;
 }
 
 
 async function AddFiles(chat: ChatSession, input: Input) {
-  if (chat.files.length < 1) return input
-  let inputWithFiles = [...input]
+  if (chat.files.length < 1) return input;
+  let inputWithFiles = [...input];
+  assert(chat.private, 'File is not private')
+
+  // for (const file of fileQueue) {
   for (const file of chat.files) {
-    const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
-    const arrayBuffer = fs.readFileSync(filePath);
-    const fileName = file.name;
-    const fileExtension = file.extension;
-    let item: Input[number] | undefined = inputWithFiles.find(item => item.timestamp === file.timestamp);
+    const inputItem: Input[number] | undefined = inputWithFiles.find((item) => item.timestamp === file.timestamp);
+    const filePath = getStoredFilePath(file);
+    const fileType = FILE_TYPE_CONFIG[file.extension].type;
+    let fileID;
 
-    assert(arrayBuffer !== undefined, 'File not found')
-    assert(Array.isArray(item?.content), 'Content attribute was not converted to array format')
-    assert(fileExtension && fileName, 'Error parsing file name and extension')
-    assert(['pdf', 'jpg', 'png', 'webp', 'gif'].includes(fileExtension), `File type ${fileExtension} not supported`)
+    // Check if the uploaded file is expired and change of status
+    if (file.status === FileStatus.Uploaded) {
+      fileID = file.id;
+      assert(fileID, 'File ID not found')
+      const retrievedFile = await openai.files.retrieve(fileID);
+      const expiration = Math.round(Date.now() / 1000) + 100;  // 100 seconds is the grace period
+      if (retrievedFile.expires_at && (retrievedFile.expires_at < expiration)) {
+        file.status = FileStatus.Idle;
+      }
+    }
 
-    // manual conversation state management
-    const base64 = arrayBuffer.toString('base64');
-    assert(base64, 'Attachment data not found')
-    item.content.push({
-      type: fileExtension === 'pdf' ? 'input_file' : 'input_image',
-      filename: fileExtension === 'pdf' ? fileName : undefined,
-      file_data: fileExtension === 'pdf' ? `data:application/pdf;base64,${base64}` : undefined,
-      image_url: ['jpg', 'png', 'webp', 'gif'].includes(fileExtension) ? `data:image/${fileExtension};base64,${base64}` : undefined,
-    })
-    file.status = FileStatus.Staged;
+    // Upload file
+    if (file.status !== FileStatus.Uploaded) {
+      const fileUpload = await openai.files.create({
+        file: fs.createReadStream(filePath),
+        purpose: 'user_data',
+        expires_after: chat.private ? {
+          anchor: 'created_at',
+          seconds: 15 * (24 * 60 ** 2)
+        } :
+          undefined
+      })
+      fileID = fileUpload.id;
+      file.status = FileStatus.Uploaded;
+      file.id = fileID;
+    }
+
+    // Attach file to the input variable
+    const attachment: ContentItem = {
+      type: fileType,
+      file_id: fileID
+    }
+    assert(Array.isArray(inputItem?.content), "Input wasn't converted to an array");
+    inputItem?.content.push(attachment)
+
+    // - [x] check for file status
+    // - [x] upload files
+    // - [x] add option for expiration on private mode
+    // - [x] mount files to input
+    // - [x] check if file is still on server
+    // - [ ] add option for pdf using private mode
+    // add toast for file uploads
+    // use vector files and file search instead?
   }
 
-  inputWithFiles = inputWithFiles.map(({ timestamp, ...rest }) => rest)
-  return inputWithFiles
+  inputWithFiles = inputWithFiles.map(({ timestamp, ...rest }) => rest);
+  return inputWithFiles;
 }
 
 
 async function ResponsesObject(chat: ChatSession, input: Input) {
-  const max_output_tokens = (
-    chat.model === 'o3' || chat.model === 'o3-pro' || chat.model === 'o4-mini' ?
-      100000 :
-      32000
-  )
-  const token_divider = (
-    chat.reasoning === ReasoningLevel.None ? 8 :
-      chat.reasoning === ReasoningLevel.Low ? 4 :
-        chat.reasoning === ReasoningLevel.Medium ? 2 :
-          chat.reasoning === ReasoningLevel.High ? 1 :
-            undefined
-  )
+  const max_output_tokens = reasoningModels.includes(chat.model) ? 100000 : 32000;
+  const token_divider =
+    chat.reasoning === ReasoningLevel.Low
+      ? 4
+      : chat.reasoning === ReasoningLevel.Medium
+        ? 2
+        : chat.reasoning === ReasoningLevel.High
+          ? 1
+          : undefined;
 
-  let responsesObject = {
+  const tools = [];
+  if (chat.tools?.includes("web")) {
+    tools.push({
+      type: "web_search",
+      user_location: {
+        type: "approximate",
+        country: "GB",
+        city: "London",
+        region: "London",
+      },
+    });
+  }
+  if (chat.tools?.includes("code")) {
+    tools.push({
+      type: "code_interpreter",
+      container: { type: "auto" },
+    });
+  }
+
+  const responsesObject = {
     input: input,
     model: chat.model,
     instructions: chat.instructions.length > 0 ? chat.instructions : undefined,
-    reasoning: chat.reasoning === 'none' || chat.reasoning === undefined ?
-      undefined :
-      {
-        effort: chat.reasoning,
-        summary: 'detailed'
-      },
-    tools: chat.tools?.includes('web') ?
-      [{
-        type: 'web_search',
-        user_location: {
-          type: "approximate",
-          country: "GB",
-          city: "London",
-          region: "London"
-        }
-      }] :
-      undefined,
+    reasoning: chat.reasoning
+      ? {
+        effort: chat.reasoning === ReasoningLevel.None ? "minimal" : chat.reasoning,
+        summary: "detailed",
+      }
+      : undefined,
+    tools: tools,
     max_output_tokens: token_divider ? max_output_tokens / token_divider : undefined,
     stream: true,
-    temperature: chat.temperature
-  }
+    temperature: chat.temperature,
+    store: chat.private ? false : true,
+    // use openai's conversations to manage conversations on server?
+  };
 
-  return responsesObject
+  return responsesObject;
 }
 
 
-async function GenerateStreaming(responsesObject: ResponseCreateParamsStreaming, streamPipeline: StreamPipeline, chat: ChatSession) {
-  let responseID = undefined;
+async function GenerateStreaming(
+  responsesObject: ResponseCreateParamsStreaming,
+  streamPipeline: StreamPipeline,
+  chat: ChatSession,
+) {
   const stream = await openai.responses.create(responsesObject);
   for await (const event of stream) {
-    if (event.type === 'response.created') {
-      showToast({ title: 'Request Received', style: Toast.Style.Success })
-      responseID = event.response.id;
-      streamPipeline({ apiStatus: 'received' })
-    } else if (event.type === 'response.output_item.added' && event.item.type === 'reasoning') {
-      showToast({ title: 'Thinking...', style: Toast.Style.Animated })
-    } else if (event.type === 'response.reasoning_summary_text.delta') {
-      streamPipeline({ apiResponse: `${event.delta} \n`, apiStatus: 'thinking' })
-    } else if (event.type === 'response.content_part.added') {
-      streamPipeline({ apiStatus: 'reset' })
-      showToast({ title: 'Streaming', style: Toast.Style.Animated })
-    } else if (event.type === 'response.output_text.delta') {
-      streamPipeline({ apiResponse: event.delta, apiStatus: 'streaming' })
-    } else if (event.type === 'response.completed') {
-      let promptTokens: number | undefined = event.response.usage?.input_tokens;
-      let responseTokens: number | undefined = event.response.usage?.output_tokens;
+    console.log(JSON.stringify(event));
+    if (event.type === "response.queued") {
+      streamPipeline({ apiStatus: event.response.status, responseID: event.response.id });
+      showToast({ title: "Request Received", style: Toast.Style.Success });
+    } else if (event.type === "response.output_item.added" && event.item.type === "reasoning") {
+      showToast({ title: "Thinking...", style: Toast.Style.Animated });
+    } else if (event.type === "response.reasoning_summary_text.delta") {
+      streamPipeline({ apiStatus: "in_progress", apiResponse: event.delta });
+    } else if (event.type === "response.content_part.added") {
+      streamPipeline({ apiStatus: "reset" });
+      showToast({ title: "Streaming", style: Toast.Style.Animated });
+    } else if (event.type === "response.output_text.delta") {
+      streamPipeline({ apiStatus: "in_progress", apiResponse: event.delta });
+    } else if (event.type === "response.completed") {
+      const inputTokens: number | undefined = event.response.usage?.input_tokens;
+      const outputTokens: number | undefined = event.response.usage?.output_tokens;
       streamPipeline({
-        apiResponse: '',
-        apiStatus: 'done',
-        responseID: responseID ?? undefined,
-        promptTokens: promptTokens,
-        responseTokens: responseTokens,
-      })
-      chat.files.map(att => att.status === FileStatus.Staged ? att.status = FileStatus.Uploaded : att.status)
+        apiStatus: event.response.status,
+        promptTokens: inputTokens,
+        responseTokens: outputTokens,
+      });
+      chat.files.map((att) => (att.status === FileStatus.Staged ? (att.status = FileStatus.Uploaded) : att.status));
       break;
+    } else if (event.type === "response.failed" || event.type === "response.incomplete") {
+      streamPipeline({ apiStatus: event.response.status });
     }
   }
 }
-
-
-export async function DeepResearchImprovements(chat: ChatSession, streamPipeline: StreamPipeline) {
-  const clarifying_instruction = `
-  You will be given a research task by a user. Your job is NOT to complete the task yet, but instead to ask clarifying questions that would help you or another researcher produce a more specific, efficient, and relevant answer.
-
-  GUIDELINES:
-  1. **Maximize Relevance**
-  - Ask questions that are *directly necessary* to scope the research output.
-  - Consider what information would change the structure, depth, or direction of the answer.
-  2. **Surface Missing but Critical Dimensions**
-  - Identify essential attributes that were not specified in the user’s request (e.g., preferences, time frame, budget, audience).
-  - Ask about each one *explicitly*, even if it feels obvious or typical.
-  3. **Do Not Invent Preferences**
-  - If the user did not mention a preference, *do not assume it*. Ask about it clearly and neutrally.
-  4. **Use the First Person**
-  - Phrase your questions from the perspective of the assistant or researcher talking to the user (e.g., “Could you clarify...” or “Do you have a preference for...”)
-  5. **Use a Bulleted List if Multiple Questions**
-  - If there are multiple open questions, list them clearly in bullet format for readability.
-  6. **Avoid Overasking**
-  - Prioritize the 3–6 questions that would most reduce ambiguity or scope creep. You don’t need to ask *everything*, just the most pivotal unknowns.
-  7. **Include Examples Where Helpful**
-  - If asking about preferences (e.g., travel style, report format), briefly list examples to help the user answer.
-  8. **Format for Conversational Use**
-  - The output should sound helpful and conversational—not like a form. Aim for a natural tone while still being precise.
-  `
-
-  const improvement_instruction = `
-  You will be given a research task by a user. Your job is to produce a set of instructions for a researcher that will complete the task. Do NOT complete the task yourself, just provide instructions on how to complete it.
-
-  GUIDELINES:
-  1. **Maximize Specificity and Detail**
-  - Include all known user preferences and explicitly list key attributes or dimensions to consider.
-  - It is of utmost importance that all details from the user are included in the instructions.
-  2. **Fill in Unstated But Necessary Dimensions as Open-Ended**
-  - If certain attributes are essential for a meaningful output but the user has not provided them, explicitly state that they are open-ended or default to no specific constraint.
-  3. **Avoid Unwarranted Assumptions**
-  - If the user has not provided a particular detail, do not invent one.
-  - Instead, state the lack of specification and guide the researcher to treat it as flexible or accept all possible options.
-  4. **Use the First Person**
-  - Phrase the request from the perspective of the user.
-  5. **Tables**
-  - If you determine that including a table will help illustrate, organize, or enhance the information in the research output, you must explicitly request that the researcher provide them.
-  Examples:
-  - Product Comparison (Consumer): When comparing different smartphone models, request a table listing each model's features, price, and consumer ratings side-by-side.
-  - Project Tracking (Work): When outlining project deliverables, create a table showing tasks, deadlines, responsible team members, and status updates.
-  - Budget Planning (Consumer): When creating a personal or household budget, request a table detailing income sources, monthly expenses, and savings goals.
-  Competitor Analysis (Work): When evaluating competitor products, request a table with key metrics, such as market share, pricing, and main differentiators.
-  6. **Headers and Formatting**
-  - You should include the expected output format in the prompt.
-  - If the user is asking for content that would be best returned in a structured format (e.g. a report, plan, etc.), ask the researcher to format as a report with the appropriate headers and formatting that ensures clarity and structure.
-  7. **Language**
-  - If the user input is in a language other than English, tell the researcher to respond in this language, unless the user query explicitly asks for the response in a different language.
-  8. **Sources**
-  - If specific sources should be prioritized, specify them in the prompt.
-  - For product and travel research, prefer linking directly to official or primary websites (e.g., official brand sites, manufacturer pages, or reputable e-commerce platforms like Amazon for user reviews) rather than aggregator sites or SEO-heavy blogs.
-  - For academic or scientific queries, prefer linking directly to the original paper or official journal publication rather than survey papers or secondary summaries.
-  - If the query is in a specific language, prioritize sources published in that language.
-  `
-
-  let input = chat.messages.map(({ timestamp, id, tokenCount, ...rest }) => rest)
-  const stream: boolean = chat.workflowState === 'dr_clarifying' ? true : false;
-
-  const response = await openai.responses.create({
-    model: 'gpt-4.1',
-    instructions: chat.workflowState === 'dr_clarifying' ? clarifying_instruction : improvement_instruction,
-    input: input,
-    stream: false
-  })
-
-  assert(response, 'No response from the api')
-  streamPipeline({ apiResponse: response.output_text, apiStatus: 'done' })
-}
-
-// export async function DeepResearchImprovePrompt(chat: ModelInfo.Data) {
-
-// const openai = new OpenAI({
-//   apiKey: API_KEYS.OPENAI,
-//   timeout: ModelInfo.deepResearchTimeout
-// });
-

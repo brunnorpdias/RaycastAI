@@ -1,95 +1,123 @@
-import path from 'path';
-import { homedir } from 'os';
+import { environment } from "@raycast/api";
+import fs from "fs";
+import path from "path";
 
+const supportStorageDir = path.join(environment.supportPath, "storage");
 
-export const APItoModels = {
-  'openai': [
-    { name: 'GPT 4.1 mini', code: 'gpt-4.1-mini' },
-    { name: 'GPT 4.1', code: 'gpt-4.1' },
-    { name: 'o4 mini', code: 'o4-mini' },
-    { name: 'o3', code: 'o3' },
-    { name: 'o3 Pro', code: 'o3-pro' },
-    { name: 'GPT 4o STT', code: 'gpt-4o-transcribe' },
+function ensureStorageDirectory() {
+  if (!fs.existsSync(supportStorageDir)) {
+    fs.mkdirSync(supportStorageDir, { recursive: true });
+  }
+
+  return supportStorageDir;
+}
+
+export const storageDir = ensureStorageDirectory();
+
+export const apiDetails = [
+  { name: "Open AI", code: "openai", image: "openai-logo.svg" },
+  { name: "Deepmind", code: "deepmind", image: "deepmind-icon.png" },
+  { name: "Anthropic", code: "anthropic", image: "anthropic-icon.png" },
+  { name: "OpenRouter", code: "openrouter", image: "open_router-logo.png" },
+  { name: "Ollama", code: "ollama", image: "ollama-icon.png" },
+];
+
+export const ApiToModels = {
+  openai: [
+    { name: "GPT 5", code: "gpt-5" },
+    { name: "GPT 5 Mini", code: "gpt-5-mini" },
+    { name: "GPT 5 Nano", code: "gpt-5-nano" },
+    { name: "GPT 4.1", code: "gpt-4.1" },
+    { name: "GPT 4.1 Mini", code: "gpt-4.1-mini" },
+    { name: "GPT 4.1 Nano", code: "gpt-4.1-nano" },
+    // { name: 'o3', code: 'o3' },
+    { name: "GPT 4o STT", code: "gpt-4o-transcribe" },
     // { name: 'GPT 4o TTS', code: 'gpt-4o-mini-tts' },
   ],
-  'deepmind': [
-    { name: 'Gemini 2.5 Flash', code: 'gemini-2.5-flash' },
-    { name: 'Gemini 2.5 Pro', code: 'gemini-2.5-pro' },
-    { name: 'Gemini 2.5 Flash Lite', code: 'gemini-2.5-flash-lite-preview-06-17' },
+  deepmind: [
+    { name: "Gemini 2.5 Pro", code: "gemini-pro-latest" },
+    { name: "Gemini 2.5 Flash", code: "gemini-flash-latest" },
+    { name: "Gemini 2.5 Flash Lite", code: "gemini-flash-lite-latest" },
   ],
-  'anthropic': [
-    { name: 'Claude 4 Sonnet', code: 'claude-sonnet-4-20250514' },
-    { name: 'Claude 4 Opus', code: 'claude-opus-4-20250514' },
+  anthropic: [
+    { name: "Claude 4.5 Sonnet", code: "claude-sonnet-4-5" },
+    { name: "Claude 4 Sonnet", code: "claude-sonnet-4-0" },
+    { name: "Claude 4 Opus", code: "claude-opus-4-0" },
+    { name: "Claude 4.1 Opus", code: "claude-opus-4-1" },
   ],
-  'openrouter': [
-    { name: 'Grok 4', code: 'x-ai/grok-4' },
-    { name: 'Grok 3', code: 'x-ai/grok-3' },
-    { name: 'Perplexity Sonar Pro', code: 'perplexity/sonar-reasoning-pro' },
-    { name: 'DeepSeek Prover V2', code: 'deepseek/deepseek-prover-v2' },
-    { name: 'Sonar Deep Research', code: 'perplexity/sonar-deep-research' },
-    { name: 'GPT 4o', code: 'openai/chatgpt-4o-latest' },
-    { name: 'Gemini 2.5 Flash', code: 'google/gemini-2.5-flash-preview' },
-    { name: 'Gemini 2.5 Pro', code: 'google/gemini-2.5-pro-preview-03-25' },
-    { name: 'Claude 3.7 Sonnet', code: 'anthropic/claude-3.7-sonnet' },
+  openrouter: [
+    { name: "Grok 4", code: "x-ai/grok-4" },
+    { name: "Grok 3", code: "x-ai/grok-3" },
+    { name: "Perplexity Sonar Pro", code: "perplexity/sonar-reasoning-pro" },
+    { name: "DeepSeek Prover V2", code: "deepseek/deepseek-prover-v2" },
+    { name: "GPT 4o", code: "openai/chatgpt-4o-latest" },
+    { name: "Gemini 2.5 Flash", code: "google/gemini-2.5-flash-preview" },
+    { name: "Gemini 2.5 Pro", code: "google/gemini-2.5-pro-preview-03-25" },
+    { name: "Claude 3.7 Sonnet", code: "anthropic/claude-3.7-sonnet" },
   ],
-  'ollama': [
-    { name: 'Gemma 3 12b', code: 'gemma3:12b-it-qat' },
-    { name: 'Gemma 3 27b', code: 'gemma3:27b-it-qat' },
-    { name: 'Qwen 3 8b', code: 'qwen3:8b' },
-    { name: 'Qwen 3 14b', code: 'qwen3:14b' },
-    { name: 'Qwen 3 32b', code: 'qwen3:32b' },
-  ]
+  ollama: [
+    { name: "Gemma 3 12b", code: "gemma3:12b-it-qat" },
+    { name: "Gemma 3 27b", code: "gemma3:27b-it-qat" },
+    { name: "Qwen 3 8b", code: "qwen3:8b" },
+    { name: "Qwen 3 14b", code: "qwen3:14b" },
+    { name: "Qwen 3 32b", code: "qwen3:32b" },
+  ],
 };
 
-
 export enum Role {
-  User = 'user',
-  Assistant = 'assistant',
+  User = "user",
+  Assistant = "assistant",
 }
 
 export enum ReasoningLevel {
-  None = 'none',
-  Low = 'low',
-  Medium = 'medium',
-  High = 'high',
-  Auto = 'auto',
+  None = "none",
+  Low = "low",
+  Medium = "medium",
+  High = "high",
+  // Auto = 'auto',
 }
 
 export enum FileStatus {
-  Idle = 'idle',
-  Staged = 'staged',
-  Uploaded = 'uploaded',
+  Idle = "idle",
+  Staged = "staged",
+  Uploaded = "uploaded",
 }
 
-export type Files = [] | Array<{
-  id?: string,
-  hash: string,
-  name: string,
-  extension: string,
-  timestamp: number,
-  status: FileStatus,
-  size?: number,
-}>
+export type Files =
+  | []
+  | Array<{
+    id?: string;
+    hash: string;
+    name: string;
+    extension: string;
+    timestamp: number;
+    status: FileStatus;
+    size?: number;
+  }>;
 
 export type Messages = Array<{
-  id?: string,  // response id on openai
-  timestamp: number,
-  role: Role,
-  content: string,
-  tokenCount?: number,
-}>
+  id?: string; // response id on openai
+  timestamp?: number;
+  role?: Role;
+  content?: string;
+  tokenCount?: number;
+}>;
+
+export type ApiStatus = "queued" | "in_progress" | "completed" | "cancelled" | "incomplete" | "failed";
 
 export type ChatSession = {
-  workflowState?: WorkflowState;
   timestamp: number;
   messages: Messages;
-  instructions: string,
+  instructions: string;
   model: Model;
   api: API;
-  tools?: Array<'web' | 'deepResearch'>;
-  reasoning: ReasoningLevel;  // add option for auto (just some models support it)
-  temperature?: number;
   files: Files;
+  tools?: Array<"web" | "code">;
+  reasoning?: ReasoningLevel;
+  workflowStage?: WorkflowStage;
+  apiStatus?: ApiStatus;
+  temperature?: number;
+  private?: boolean;
 };
 
 // export type FileData = {
@@ -97,47 +125,61 @@ export type ChatSession = {
 //   rawData: number[]
 // };
 
-
-export type WorkflowState =
+export type WorkflowStage =
   // chat workflow
-  | 'chat_queued'
-  | 'chat_processing' // chat is being processed
-
-  // dr workflow
-  | 'dr_queued'
-  | 'dr_clarifying' // model is generating clarification questions
-  | 'dr_awaiting' // system is waiting for the user's answers
-  | 'dr_improving_prompt' // model turns answers into improved prompt
-  | 'dr_prompt_complete' // the application can move on to more dr specific tasks and ui
-  | 'dr_researching' // long-running DR generation
+  | "chat_queued"
+  | "chat_processing" // chat is being processed
 
   // terminal states
-  | 'completed' // completed successfully
-  | 'cancelled' // user aborted; no way to do this yet
-  | 'failed';
+  | "completed" // completed successfully
+  | "cancelled" // user aborted; no way to do this yet
+  | "failed";
 
+// perhaps i can remove these markers since all current models have these advanced features
 
+// perhaps remove all these requirements if all models have the same capabilities now
 export const reasoningModels = [
-  'o4-mini', 'o3', 'o3-pro',
-  'claude-sonnet-4-20250514', 'claude-opus-4-20250514',
-  'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.5-flash', 'gemini-2.5-pro'
-]
-export const attachmentModels = ['o3', 'o3-pro', 'o4-mini', 'chatgpt-4o-latest', 'gpt-4.1-mini', 'gpt-4.1',
-  'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.5-flash', 'gemini-2.5-pro',
-  'claude-sonnet-4-20250514', 'claude-opus-4-20250514'
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "claude-sonnet-4-5",
+  "claude-sonnet-4-0",
+  "claude-opus-4-0",
+  "claude-opus-4-1",
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
+  "gemini-pro-latest",
 ];
-export const toolModels = ['gpt-4.1-mini', 'gpt-4.1', 'o3', 'o4-mini', // didn't add o3-pro, too expensive
-  'claude-sonnet-4-20250514', 'claude-opus-4-20250514',
-  'gemini-2.5-flash-lite-preview-06-17', 'gemini-2.5-flash', 'gemini-2.5-pro'
+export const attachmentModels = [
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-4.1",
+  "claude-sonnet-4-5",
+  "claude-sonnet-4-0",
+  "claude-opus-4-0",
+  "claude-opus-4-1",
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
+  "gemini-pro-latest",
 ];
-export const deepResearchModels = ['o3', 'o4-mini']
-export const sttModels = ['gpt-4o-transcribe'];
-export const ttsModels = ['gpt-4o-mini-tts'];
+export const toolModels = [
+  "gpt-5",
+  "gpt-5-mini",
+  "gpt-5-nano",
+  "gpt-4.1",
+  "claude-sonnet-4-5",
+  "claude-sonnet-4-0",
+  "claude-opus-4-0",
+  "claude-opus-4-1",
+  "gemini-flash-lite-latest",
+  "gemini-flash-latest",
+  "gemini-pro-latest",
+];
+export const sttModels = ["gpt-4o-transcribe"];
+export const ttsModels = ["gpt-4o-mini-tts"];
 
-export const storageDir = path.join(homedir(), 'Code/Projects/RaycastAI/storage/');
+export type API = keyof typeof ApiToModels;
 
-export type API = keyof typeof APItoModels;
+export type Model = (typeof ApiToModels)[API][number]["code"];
 
-export type Model = typeof APItoModels[API][number]['code'];
-
-export const deepResearchTimeout = 60 * 60000;

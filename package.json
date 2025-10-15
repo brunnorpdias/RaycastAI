@@ -13,7 +13,7 @@
   "commands": [
     {
       "name": "form",
-      "title": "Ask a question",
+      "title": "Ask a Question",
       "description": "Talk with an LLM",
       "mode": "view"
     },

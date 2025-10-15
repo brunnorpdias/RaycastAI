@@ -1,96 +1,98 @@
 import { showToast, Toast } from "@raycast/api";
 import { GoogleGenAI } from "@google/genai";
-import path from 'path';
 import assert from "assert";
 import fs from "fs";
 
-import { API_KEYS } from '../config/api_keys';
+import { API_KEYS } from "../config/api_keys";
 
-import { type ChatSession, Role, ReasoningLevel, storageDir, FileStatus } from "../utils/models";
+import { type ChatSession, Role, ReasoningLevel, FileStatus } from "../utils/models";
+import { getStoredFilePath } from "../utils/storage";
 import { type StreamPipeline } from "../views/answer";
 
 type Content = Array<{
-  role: 'model' | 'user',
+  role: "model" | "user";
   parts?: Array<{
-    text?: string,
-    inlineData?: { data: string, mimeType: string },
-    fileData?: FileReference,
-  }>,
-}>
+    text?: string;
+    inlineData?: { data: string; mimeType: string };
+    fileData?: FileReference;
+  }>;
+}>;
 
-type FileReference = { fileUri: string, mimeType: string };
+type FileReference = { fileUri: string; mimeType: string };
 
-
-const deepmind = new GoogleGenAI({ apiKey: API_KEYS.DEEPMIND })
+const deepmind = new GoogleGenAI({ apiKey: API_KEYS.DEEPMIND });
 
 export async function RunGoogle(chat: ChatSession, streamPipeline: StreamPipeline) {
   // port summarisation and title creation to gemini 2.0 flash
-  let messages = chat.messages
-    .map(({ id, tokenCount, role, content, ...msg }) => {
-      return {
-        role: role === Role.Assistant ? 'model' : 'user',
-        parts: [{ text: content }],
-        ...msg,
-      }
-    }) as (Content[number] & { timestamp: number })[]
+  const messages = chat.messages.map(({ id, tokenCount, role, content, ...msg }) => {
+    return {
+      role: role === Role.Assistant ? "model" : "user",
+      parts: [{ text: content }],
+      ...msg,
+    };
+  }) as (Content[number] & { timestamp: number })[];
 
   if (chat.files.length > 0) {
     for (const file of chat.files) {
-      const filePath = path.join(storageDir, `${file.hash}.${file.extension}`);
-      const arrayBuffer = fs.readFileSync(filePath);
-      assert(arrayBuffer !== undefined, 'File not found')
+      // need to verify all available file types, use new syntax version of file uploads, and try to retain file name (perhaps hash-filename?)
+      const filePath = getStoredFilePath(file);
+      const buffer = fs.readFileSync(filePath);
+      assert(buffer !== undefined, "File not found");
 
-      const mimeType: string | undefined =
-        ['pdf'].includes(file.extension) ?  // documents
-          `application/${file.extension}` :
-          ['txt', 'html', 'md', 'csv'].includes(file.extension) ?  // text
-            `text/${file.extension}` :
-            // is text correct?
-            ['png', 'jpeg', 'webp', 'heic', 'heif'].includes(file.extension) ?  // images
-              `image/${file.extension}` :
-              undefined
-      assert(mimeType !== undefined, `File format ${file.extension} not supported`)
-      let message: Content[number] | undefined = messages.find(msg => msg.timestamp === file.timestamp)
-      assert(message !== undefined, 'No messages match the timestamp of one of the files')
-      assert(Array.isArray(message.parts), 'Message content attribute was not converted to an array')
+      const mimeType: string | undefined = ["pdf"].includes(file.extension) // documents
+        ? `application/${file.extension}`
+        : ["txt", "html", "md", "csv"].includes(file.extension) // text
+          ? `text/${file.extension}`
+          : // is text correct?
+          ["png", "jpeg", "webp", "heic", "heif"].includes(file.extension) // images
+            ? `image/${file.extension}`
+            : undefined;
+      assert(mimeType !== undefined, `File format ${file.extension} not supported`);
+      const message: Content[number] | undefined = messages.find((msg) => msg.timestamp === file.timestamp);
+      assert(message !== undefined, "No messages match the timestamp of one of the files");
+      assert(Array.isArray(message.parts), "Message content attribute was not converted to an array");
 
       const totalFilesSize: number = chat.files
-        .map(file => file.size)
-        .filter(size => typeof size === 'number')
-        .reduce((totalSize, size) => totalSize + size, 0)
+        .map((file) => file.size)
+        .filter((size) => typeof size === "number")
+        .reduce((totalSize, size) => totalSize + size, 0);
       // now file upload is not dependent on "private" variable, but on file upload limitations
       if (totalFilesSize <= 20 * 10 ** 6) {
         const inlineData = {
           inlineData: {
             mimeType: mimeType,
-            data: arrayBuffer.toString('base64')
-          }
-        }
-        message.parts.push(inlineData)
+            data: buffer.toString("base64"),
+          },
+        };
+        message.parts.push(inlineData);
         file.status = FileStatus.Staged;
       } else {
-        if (file.status !== 'uploaded') {
+        if (file.status !== "uploaded") {
+          const arrayBuffer = buffer.buffer.slice(
+            buffer.byteOffset,
+            buffer.byteOffset + buffer.byteLength,
+          ) as ArrayBuffer;
           const fileBlob = new Blob([arrayBuffer], { type: mimeType });
           const uploadedFile = await deepmind.files.upload({
             file: fileBlob,
             config: { displayName: file.name },
-          })
-          assert(uploadedFile.uri && uploadedFile.mimeType, 'Error uploading file')
-          showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success })
+          });
+          assert(uploadedFile.uri && uploadedFile.mimeType, "Error uploading file");
+          showToast({ title: `File ${file.name} uploaded`, style: Toast.Style.Success });
           file.id = uploadedFile.uri;
         }
         const fileData = {
           fileData: {
             fileUri: file.id,
             mimeType: mimeType,
-          } as FileReference
+          } as FileReference,
         };
-        message.parts.push(fileData)
+        message.parts.push(fileData);
         file.status = file.status === FileStatus.Staged ? FileStatus.Uploaded : FileStatus.Staged;
       }
     }
   }
-  const content: Content = messages.map(({ timestamp, ...msg }) => msg)
+  const content: Content = messages.map(({ timestamp, ...msg }) => msg);
 
   const responseObject = {
     model: chat.model as any,
@@ -100,18 +102,23 @@ export async function RunGoogle(chat: ChatSession, streamPipeline: StreamPipelin
       maxOutputTokens: 60000000,
       thinkingConfig: {
         includeThoughts: !chat.reasoning || chat.reasoning === ReasoningLevel.None ? false : true,
-        thinkingBudget: chat.reasoning === ReasoningLevel.None ?
-          0 : chat.reasoning === ReasoningLevel.Low ?
-            8192 : chat.reasoning === ReasoningLevel.Medium ?
-              16384 : chat.reasoning === ReasoningLevel.High ?
-                24576 : undefined
+        thinkingBudget:
+          chat.reasoning === ReasoningLevel.None
+            ? 0
+            : chat.reasoning === ReasoningLevel.Low
+              ? 8192
+              : chat.reasoning === ReasoningLevel.Medium
+                ? 16384
+                : chat.reasoning === ReasoningLevel.High
+                  ? 24576
+                  : undefined,
       },
-      tools: chat.tools?.includes('web') ? [{ googleSearch: {} }] : undefined,
+      tools: chat.tools?.includes("web") ? [{ googleSearch: {} }] : undefined,
     },
-    temperature: chat.temperature
-  }
+    temperature: chat.temperature,
+  };
 
-  const response = await deepmind.models.generateContentStream(responseObject)// as GenerateContentParameters)
+  const response = await deepmind.models.generateContentStream(responseObject); // as GenerateContentParameters)
 
   let isStreaming: boolean = false;
   let isThinking: boolean = false;
@@ -119,40 +126,42 @@ export async function RunGoogle(chat: ChatSession, streamPipeline: StreamPipelin
     if (chunk.candidates?.at(0)?.content?.parts?.at(0)?.thought) {
       if (!isThinking) {
         isThinking = true;
-        showToast({ title: 'Thinking', style: Toast.Style.Animated });
-        streamPipeline({ apiResponse: '# Thinking Summary\n', apiStatus: 'thinking' })
+        showToast({ title: "Thinking", style: Toast.Style.Animated });
+        streamPipeline({ apiResponse: "# Thinking Summary\n", apiStatus: "in_progress" });
       }
       streamPipeline({
         apiResponse: chunk.candidates?.at(0)?.content?.parts?.at(0)?.text,
-        apiStatus: 'thinking'
-      })
+        apiStatus: "in_progress",
+      });
     } else if (chunk.text) {
       if (isThinking) {
         isThinking = false;
         // streamPipeline({ apiResponse: '\n---\n---\n# Answer\n', apiStatus: 'streaming' })
-        streamPipeline({ apiStatus: 'reset' });
+        streamPipeline({ apiStatus: "reset" });
       }
       streamPipeline({
         apiResponse: chunk.text,
-        apiStatus: 'streaming',
+        apiStatus: "in_progress",
       });
       if (!isStreaming) {
-        showToast({ title: 'Streaming', style: Toast.Style.Animated });
+        showToast({ title: "Streaming", style: Toast.Style.Animated });
         isStreaming = true;
       }
     }
 
-    if (chunk.candidates?.at(0)?.finishReason === 'STOP') {
-      let promptTokens: number | undefined = chunk.usageMetadata?.promptTokenCount;
-      let responseTokens: number | undefined = chunk.usageMetadata?.candidatesTokenCount;
+    if (chunk.candidates?.at(0)?.finishReason === "STOP") {
+      console.log(JSON.stringify(chunk))
+      // collect the real model when the api call is made (some models have a latest flag which is ambigous)
+      const promptTokens: number | undefined = chunk.usageMetadata?.promptTokenCount;
+      const responseTokens: number | undefined = chunk.usageMetadata?.candidatesTokenCount;
       streamPipeline({
-        apiResponse: '',
-        apiStatus: 'done',
+        apiResponse: "",
+        apiStatus: "completed",
         promptTokens: promptTokens,
         responseTokens: responseTokens,
       });
-      chat.files.map(att => att.status === FileStatus.Staged ? att.status = FileStatus.Uploaded : att.status)
-      break
+      chat.files.map((att) => (att.status === FileStatus.Staged ? (att.status = FileStatus.Uploaded) : att.status));
+      break;
     }
   }
 }

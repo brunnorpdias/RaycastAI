@@ -1,21 +1,21 @@
 import { type ChatSession } from "../utils/models";
 import { type StreamPipeline } from "../views/answer";
 
-import { API_KEYS } from '../config/api_keys';
+import { API_KEYS } from "../config/api_keys";
 import { showToast, Toast } from "@raycast/api";
 
 export async function OpenRouter(chat: ChatSession, streamPipeline: StreamPipeline) {
-  const url = 'https://openrouter.ai/api/v1/chat/completions';
+  const url = "https://openrouter.ai/api/v1/chat/completions";
   const messages = chat.messages.map(({ id, timestamp, tokenCount, ...msg }) => msg);
   const options = {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${API_KEYS.OPENROUTER}`, 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { Authorization: `Bearer ${API_KEYS.OPENROUTER}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      "model": chat.model,
-      "messages": messages,
-      "stream": true,
-      "temperature": chat.temperature
-    })
+      model: chat.model,
+      messages: messages,
+      stream: true,
+      temperature: chat.temperature,
+    }),
     // add pdf and image capabilities
     // https://openrouter.ai/docs/features/images-and-pdfs
   };
@@ -25,12 +25,12 @@ export async function OpenRouter(chat: ChatSession, streamPipeline: StreamPipeli
   const response = await fetch(url, options);
   const reader = response.body?.getReader();
   if (!reader) {
-    throw new Error('Response body is not readable');
+    throw new Error("Response body is not readable");
   }
 
   let isStreaming: boolean = false;
   const decoder = new TextDecoder();
-  let buffer = '';
+  let buffer = "";
 
   // improve this function
   try {
@@ -41,20 +41,20 @@ export async function OpenRouter(chat: ChatSession, streamPipeline: StreamPipeli
       buffer += decoder.decode(value, { stream: true });
       // Process complete lines from buffer
       while (true) {
-        const lineEnd = buffer.indexOf('\n');
+        const lineEnd = buffer.indexOf("\n");
         if (lineEnd === -1) break;
         const line = buffer.slice(0, lineEnd).trim();
         buffer = buffer.slice(lineEnd + 1);
-        if (line.startsWith('data: ')) {
+        if (line.startsWith("data: ")) {
           if (!isStreaming) {
-            showToast({ title: 'Streaming', style: Toast.Style.Animated })
-            isStreaming = true
+            showToast({ title: "Streaming", style: Toast.Style.Animated });
+            isStreaming = true;
           }
           const chatString = line.slice(6);
-          if (chatString === '[DONE]') {
+          if (chatString === "[DONE]") {
             streamPipeline({
-              apiResponse: '',
-              apiStatus: 'done'
+              apiResponse: "",
+              apiStatus: "completed",
             });
             break;
           }
@@ -63,10 +63,10 @@ export async function OpenRouter(chat: ChatSession, streamPipeline: StreamPipeli
             const content = parsed.choices[0].delta.content;
             streamPipeline({
               apiResponse: content,
-              apiStatus: 'streaming'
+              apiStatus: "in_progress",
             });
           } catch (e) {
-            showToast({ title: 'Invalid JSON', style: Toast.Style.Failure })
+            showToast({ title: "Invalid JSON", style: Toast.Style.Failure });
           }
         }
       }
